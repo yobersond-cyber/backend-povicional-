@@ -9,6 +9,7 @@ from app.models.materia import Materia
 from app.models.usuario_curso import UsuarioCurso
 from app.schemas.entrega import (
     EntregaCreate,
+    EntregaCalificacion,
     EntregaResponse,
 )
 
@@ -158,5 +159,38 @@ def obtener_entrega(
             status_code=404,
             detail="Entrega no encontrada",
         )
+
+    return entrega
+
+# PUT /entregas/{id_entrega}/calificacion
+@router.put(
+    "/{id_entrega}/calificacion",
+    response_model=EntregaResponse,
+)
+def calificar_entrega(
+    id_entrega: int,
+    datos: EntregaCalificacion,
+    db: Session = Depends(get_db),
+):
+    # Buscar entrega
+    entrega = (
+        db.query(Entrega)
+        .filter(
+            Entrega.id_entrega == id_entrega
+        )
+        .first()
+    )
+
+    if not entrega:
+        raise HTTPException(
+            status_code=404,
+            detail="Entrega no encontrada",
+        )
+
+    # Registrar calificación
+    entrega.nota = datos.nota
+
+    db.commit()
+    db.refresh(entrega)
 
     return entrega

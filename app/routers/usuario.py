@@ -3,6 +3,12 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database.conection import SessionLocal
 from app.models.Usuarios import Usuario
+from app.models.entrega import Entrega
+from app.schemas.entrega import EntregaResponse
+from app.models.actividad import Actividad
+from app.models.usuario_curso import UsuarioCurso
+from app.schemas.actividad import ActividadResponse
+from app.core.security import get_current_user
 from app.models.incapacidad import Incapacidad
 from app.schemas.usuario import (
     UsuarioCreate,
@@ -179,6 +185,70 @@ def listar_docentes(
         data=resultado,
     )
 
+    @router.get(
+    "/mis-entregas",
+    response_model=APIResponse[list[EntregaResponse]],
+)
+    def obtener_mis_entregas(
+    id_usuario: int = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+     entregas = (
+        db.query(Entrega)
+        .filter(Entrega.id_usuario == id_usuario)
+        .all()
+    )
+
+    return APIResponse(
+        success=True,
+        mensaje="Entregas del usuario obtenidas exitosamente",
+        data=entregas,
+    )
+    @router.get(
+    "/mis-actividades",
+    response_model=APIResponse[list[ActividadResponse]],
+)
+    def obtener_mis_actividades(
+    id_usuario: int = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+        actividades = (
+        db.query(Actividad)
+        .join(Materia, Actividad.id_materia == Materia.id_materia)
+        .join(UsuarioCurso, Materia.id_curso == UsuarioCurso.id_curso)
+        .filter(UsuarioCurso.id_usuario == id_usuario)
+        .all()
+    )
+
+    return APIResponse(
+        success=True,
+        mensaje="Actividades del usuario obtenidas exitosamente",
+        data=actividades,
+    )
+
+
+@router.get(
+    "/mis-calificaciones",
+    response_model=APIResponse[list[EntregaResponse]],
+)
+def obtener_mis_calificaciones(
+    id_usuario: int = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    entregas = (
+        db.query(Entrega)
+        .filter(
+            Entrega.id_usuario == id_usuario,
+            Entrega.nota.isnot(None)
+        )
+        .all()
+    )
+
+    return APIResponse(
+        success=True,
+        mensaje="Calificaciones del usuario obtenidas exitosamente",
+        data=entregas,
+    )
 
 # 6. Obtener usuario por ID (Debe ir DESPUÉS de las rutas específicas)
 @router.get(

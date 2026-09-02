@@ -41,6 +41,12 @@ class EntregaBase(BaseSchema):
 class EntregaCreate(EntregaBase):
     pass
 
+class EntregaCalificacion(BaseSchema):
+    nota: int = Field(
+        ...,
+        ge=0,
+        le=100
+    )
 
 class EntregaResponse(EntregaBase):
     id_entrega: int
