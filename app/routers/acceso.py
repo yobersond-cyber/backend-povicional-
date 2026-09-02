@@ -10,6 +10,7 @@ from app.schemas.acceso_academico import (
     AccesoAcademicoResponse,
     EstadoAcceso,
 )
+from app.services.acceso_service import finalizar_accesos_vencidos
 
 
 router = APIRouter(
@@ -27,7 +28,7 @@ def get_db():
 
 
 # POST /accesos
-@router.post(   
+@router.post(
     "",
     response_model=AccesoAcademicoResponse,
     status_code=status.HTTP_201_CREATED,
@@ -110,6 +111,9 @@ def crear_acceso(
 def listar_accesos(
     db: Session = Depends(get_db),
 ):
+    # Finalizar automáticamente los accesos vencidos
+    finalizar_accesos_vencidos(db)
+
     return db.query(AccesoAcademico).all()
 
 
@@ -122,6 +126,10 @@ def obtener_acceso(
     id_acceso: int,
     db: Session = Depends(get_db),
 ):
+    # Finalizar automáticamente los accesos vencidos
+    # antes de consultar el acceso solicitado
+    finalizar_accesos_vencidos(db)
+
     acceso = (
         db.query(AccesoAcademico)
         .filter(

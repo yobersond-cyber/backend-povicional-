@@ -11,6 +11,13 @@ from app.schemas.material_academico import (
     MaterialAcademicoResponse,
 )
 
+from app.schemas.material_academico import (
+    MaterialAcademicoCreate,
+    MaterialAcademicoUpdate,
+    MaterialAcademicoResponse,
+)
+
+
 
 router = APIRouter(
     prefix="/materiales",
@@ -140,3 +147,165 @@ def obtener_material(
         )
 
     return material
+
+
+# PUT /materiales/{id_material}
+@router.put(
+    "/{id_material}",
+    response_model=MaterialAcademicoResponse,
+)
+def editar_material(
+    id_material: int,
+    datos: MaterialAcademicoUpdate,
+    id_usuario: int,
+    db: Session = Depends(get_db),
+):
+    # Buscar material
+    material = (
+        db.query(MaterialAcademico)
+        .filter(
+            MaterialAcademico.id_material == id_material
+        )
+        .first()
+    )
+
+    if not material:
+        raise HTTPException(
+            status_code=404,
+            detail="Material académico no encontrado",
+        )
+
+    # Verificar usuario
+    usuario = (
+        db.query(Usuario)
+        .filter(
+            Usuario.id_usuario == id_usuario
+        )
+        .first()
+    )
+
+    if not usuario:
+        raise HTTPException(
+            status_code=404,
+            detail="Usuario no encontrado",
+        )
+
+    # Solo docentes
+    if usuario.tipo_de_usuario != "docente":
+        raise HTTPException(
+            status_code=403,
+            detail="Solo un docente puede editar material académico",
+        )
+
+    # Verificar que sea el docente que publicó el material
+    if material.id_usuario != id_usuario:
+        raise HTTPException(
+            status_code=403,
+            detail="No puedes editar material publicado por otro docente",
+        )
+
+    # Verificar que el docente siga asignado a la materia
+    asignacion = (
+        db.query(DocenteMateria)
+        .filter(
+            DocenteMateria.id_usuario == id_usuario,
+            DocenteMateria.id_materia == material.id_materia,
+        )
+        .first()
+    )
+
+    if not asignacion:
+        raise HTTPException(
+            status_code=403,
+            detail="El docente no está autorizado para gestionar esta materia",
+        )
+
+    # Actualizar información editable
+    material.titulo = datos.titulo
+    material.descripcion = datos.descripcion
+    material.archivo = datos.archivo
+    material.fecha_publicacion = datos.fecha_publicacion
+
+    db.commit()
+    db.refresh(material)
+
+    return material
+
+
+# DELETE /materiales/{id_material}
+@router.delete(
+    "/{id_material}",
+)
+def eliminar_material(
+    id_material: int,
+    id_usuario: int,
+    db: Session = Depends(get_db),
+):
+    # Buscar material
+    material = (
+        db.query(MaterialAcademico)
+        .filter(
+            MaterialAcademico.id_material == id_material
+        )
+        .first()
+    )
+
+    if not material:
+        raise HTTPException(
+            status_code=404,
+            detail="Material académico no encontrado",
+        )
+
+    # Verificar usuario
+    usuario = (
+        db.query(Usuario)
+        .filter(
+            Usuario.id_usuario == id_usuario
+        )
+        .first()
+    )
+
+    if not usuario:
+        raise HTTPException(
+            status_code=404,
+            detail="Usuario no encontrado",
+        )
+
+    # Solo docentes
+    if usuario.tipo_de_usuario != "docente":
+        raise HTTPException(
+            status_code=403,
+            detail="Solo un docente puede eliminar material académico",
+        )
+
+    # Verificar propietario
+    if material.id_usuario != id_usuario:
+        raise HTTPException(
+            status_code=403,
+            detail="No puedes eliminar material publicado por otro docente",
+        )
+
+    # Verificar que el docente siga asignado a la materia
+    asignacion = (
+        db.query(DocenteMateria)
+        .filter(
+            DocenteMateria.id_usuario == id_usuario,
+            DocenteMateria.id_materia == material.id_materia,
+        )
+        .first()
+    )
+
+    if not asignacion:
+        raise HTTPException(
+            status_code=403,
+            detail="El docente no está autorizado para gestionar esta materia",
+        )
+
+    db.delete(material)
+    db.commit()
+
+    return {
+        "success": True,
+        "mensaje": "Material académico eliminado correctamente",
+        "data": None,
+    }	

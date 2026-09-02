@@ -22,5 +22,12 @@ class MaterialAcademicoCreate(MaterialAcademicoBase):
     pass
 
 
+class MaterialAcademicoUpdate(BaseSchema):
+    titulo: str = Field(..., min_length=1, max_length=150)
+    descripcion: str = Field(..., min_length=1)
+    archivo: str = Field(..., min_length=1, max_length=255)
+    fecha_publicacion: datetime
+
+
 class MaterialAcademicoResponse(MaterialAcademicoBase):
     id_material: int

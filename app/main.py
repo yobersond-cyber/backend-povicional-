@@ -16,11 +16,36 @@ from app.routers import (
     entrega,
 )
 
+import asyncio
+
+from contextlib import asynccontextmanager
+
+from app.services.automatic_tasks import tarea_finalizar_accesos
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    tarea = asyncio.create_task(
+        tarea_finalizar_accesos()
+    )
+
+    try:
+        yield
+    finally:
+        tarea.cancel()
+
+        try:
+            await tarea
+        except asyncio.CancelledError:
+            pass
+
+
 app = FastAPI(
     title="Aprenzy Backend",
     description="API MVP para la gestión académica de Aprenzy",
     version="1.0.0",
+    lifespan=lifespan,
 )
+
 
 # 1. Configuración de CORS para permitir la conexión desde el frontend (React)
 origins = [
@@ -63,3 +88,8 @@ routers = [
 # 3. Inclusión correcta de routers utilizando include_router
 for router in routers:
     app.include_router(router)
+    
+    
+
+
+
