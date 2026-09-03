@@ -18,6 +18,9 @@ class ActividadBase(BaseSchema):
 class ActividadCreate(ActividadBase):
     pass
 
+class ActividadUpdate(ActividadBase):
+    pass
+
 
 class ActividadUpdate(BaseSchema):
     titulo: Optional[str] = Field(
