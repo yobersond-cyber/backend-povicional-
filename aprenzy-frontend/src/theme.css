@@ -1,0 +1,907 @@
+/* Tema visual Aprenzy basado en el logo */
+
+:root {
+  --ap-bg: #050807;
+  --ap-bg-soft: #091112;
+  --ap-panel: #0d1819;
+  --ap-panel-2: #101f20;
+
+  --ap-border: rgba(83, 255, 118, 0.16);
+
+  --ap-blue: #4d7cff;
+  --ap-cyan: #24e7ff;
+  --ap-green: #62ff78;
+
+  --ap-text: #edf7f5;
+  --ap-muted: #91aaa7;
+
+  --ap-danger: #ff6b7a;
+
+  --ap-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.32);
+}
+
+/* Base general */
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(
+      circle at 80% 0%,
+      rgba(36, 231, 255, 0.08),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 10% 90%,
+      rgba(98, 255, 120, 0.07),
+      transparent 30%
+    ),
+    var(--ap-bg) !important;
+
+  color: var(--ap-text) !important;
+
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+/* =========================
+   LOGIN
+   ========================= */
+
+.login-container {
+  position: relative;
+
+  overflow: hidden;
+
+  min-height: 100vh;
+
+  padding: 28px;
+
+  background:
+    radial-gradient(
+      circle at 50% 35%,
+      rgba(36, 231, 255, 0.09),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 50% 65%,
+      rgba(98, 255, 120, 0.06),
+      transparent 34%
+    ),
+    #030505 !important;
+}
+
+.login-container::before,
+.login-container::after {
+  content: "";
+
+  position: absolute;
+
+  border-radius: 50%;
+
+  filter: blur(70px);
+
+  pointer-events: none;
+}
+
+.login-container::before {
+  width: 260px;
+  height: 260px;
+
+  top: 8%;
+  left: 8%;
+
+  background: rgba(36, 231, 255, 0.08);
+}
+
+.login-container::after {
+  width: 260px;
+  height: 260px;
+
+  right: 8%;
+  bottom: 8%;
+
+  background: rgba(98, 255, 120, 0.08);
+}
+
+.login-card {
+  position: relative;
+
+  z-index: 1;
+
+  max-width: 440px;
+
+  padding: 42px;
+
+  border:
+    1px solid
+    var(--ap-border);
+
+  border-radius: 24px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(14, 27, 28, 0.96),
+      rgba(6, 12, 13, 0.96)
+    ) !important;
+
+  box-shadow:
+    var(--ap-shadow),
+    0 0 35px rgba(36, 231, 255, 0.06);
+
+  color: var(--ap-text);
+
+  backdrop-filter: blur(18px);
+}
+
+/* Muestra el logo real */
+
+.login-logo {
+  width: min(290px, 100%);
+
+  height: 170px;
+
+  margin: 0 auto 18px;
+
+  border-radius: 18px;
+
+  background:
+    url("./assets/aprenzy-logo.png")
+    center /
+    contain
+    no-repeat !important;
+
+  color: transparent !important;
+
+  font-size: 0 !important;
+
+  filter:
+    drop-shadow(
+      0 0 10px
+      rgba(36, 231, 255, 0.18)
+    );
+}
+
+.login-card h1 {
+  color: #fff !important;
+
+  margin-bottom: 8px;
+
+  letter-spacing: -0.03em;
+}
+
+.login-description {
+  color: var(--ap-muted) !important;
+}
+
+.login-card label {
+  color: #d9e8e5 !important;
+}
+
+.input-container {
+  border:
+    1px solid
+    rgba(145, 170, 167, 0.22) !important;
+
+  border-radius: 12px;
+
+  background:
+    rgba(255, 255, 255, 0.025) !important;
+}
+
+.input-container:focus-within {
+  border-color:
+    var(--ap-cyan) !important;
+
+  box-shadow:
+    0 0 0 3px
+      rgba(36, 231, 255, 0.11),
+    0 0 18px
+      rgba(36, 231, 255, 0.08) !important;
+}
+
+.input-container svg {
+  color:
+    var(--ap-cyan) !important;
+}
+
+.input-container input {
+  color: #fff !important;
+}
+
+.input-container input::placeholder {
+  color: #617a77;
+}
+
+.login-card button {
+  border:
+    1px solid
+    rgba(98, 255, 120, 0.45) !important;
+
+  background:
+    linear-gradient(
+      135deg,
+      var(--ap-blue),
+      var(--ap-cyan),
+      var(--ap-green)
+    ) !important;
+
+  color: #03100a !important;
+
+  box-shadow:
+    0 0 22px
+    rgba(36, 231, 255, 0.15);
+}
+
+.login-card button:hover {
+  filter: brightness(1.08);
+
+  box-shadow:
+    0 0 30px
+    rgba(98, 255, 120, 0.18);
+}
+
+.login-card button:disabled {
+  opacity: 0.65;
+}
+
+.login-error {
+  color:
+    var(--ap-danger) !important;
+}
+
+/* =========================
+   DASHBOARD
+   ========================= */
+
+.dashboard {
+  min-height: 100vh;
+
+  background:
+    transparent !important;
+}
+
+.dashboard-sidebar {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(8, 18, 19, 0.98),
+      rgba(3, 9, 10, 0.99)
+    ) !important;
+
+  border-right:
+    1px solid
+    var(--ap-border) !important;
+
+  box-shadow:
+    12px 0 40px
+    rgba(0, 0, 0, 0.24);
+}
+
+.dashboard-brand-logo,
+.sidebar-logo-icon {
+  background:
+    linear-gradient(
+      135deg,
+      var(--ap-blue),
+      var(--ap-cyan),
+      var(--ap-green)
+    ) !important;
+
+  color:
+    #03100a !important;
+
+  box-shadow:
+    0 0 22px
+    rgba(36, 231, 255, 0.2);
+}
+
+.dashboard-brand-name,
+.sidebar-logo {
+  color: #fff !important;
+}
+
+.dashboard-brand-subtitle,
+.dashboard-section-role,
+.dashboard-user-role,
+.header-label,
+.header-user span {
+  color:
+    var(--ap-muted) !important;
+}
+
+.dashboard-nav-title {
+  color:
+    #607a77 !important;
+}
+
+.dashboard-nav-button,
+.nav-item {
+  color:
+    #9db2af !important;
+}
+
+.dashboard-nav-button:hover,
+.nav-item:hover {
+  background:
+    rgba(36, 231, 255, 0.07) !important;
+
+  color: #fff !important;
+}
+
+.dashboard-nav-active,
+.nav-item.active {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(77, 124, 255, 0.25),
+      rgba(36, 231, 255, 0.13)
+    ) !important;
+
+  color: #fff !important;
+
+  border-left:
+    2px solid
+    var(--ap-cyan) !important;
+
+  box-shadow:
+    inset 0 0 22px
+      rgba(36, 231, 255, 0.04),
+    0 0 18px
+      rgba(36, 231, 255, 0.05);
+}
+
+.dashboard-nav-icon,
+.dashboard-nav-arrow,
+.welcome-icon,
+.stat-icon,
+.section-title > svg,
+.activity-icon,
+.empty-icon,
+.profile-avatar,
+.header-avatar {
+  color:
+    var(--ap-cyan) !important;
+}
+
+.dashboard-user-avatar,
+.dashboard-topbar-avatar,
+.header-avatar,
+.profile-avatar {
+  background:
+    rgba(36, 231, 255, 0.08) !important;
+
+  border:
+    1px solid
+    rgba(36, 231, 255, 0.2);
+}
+
+.dashboard-logout,
+.logout-button {
+  color:
+    #ff7d88 !important;
+}
+
+.dashboard-main,
+.main-content {
+  background:
+    transparent !important;
+}
+
+.dashboard-topbar {
+  background:
+    rgba(5, 8, 7, 0.72) !important;
+
+  border-bottom:
+    1px solid
+    rgba(83, 255, 118, 0.1) !important;
+
+  backdrop-filter: blur(16px);
+}
+
+.dashboard-section-title,
+.dashboard-topbar-user-text strong,
+.dashboard-header h1,
+.welcome-card h2,
+.section-title h3,
+.profile-header h1 {
+  color: #fff !important;
+}
+
+.dashboard-content {
+  background:
+    transparent !important;
+}
+
+/* =========================
+   TARJETAS
+   ========================= */
+
+.dashboard-card,
+.welcome-card,
+.stat-card,
+.profile-section,
+.empty-section,
+.dashboard-content .page-section,
+.dashboard-content .card,
+.cursos-card,
+.docente-card,
+.delivery-card,
+.apelacion-card,
+.accesos-card,
+.estadistica-card,
+.estadisticas-section,
+.estadisticas-summary,
+.estudiantes-table-card {
+  background:
+    linear-gradient(
+      145deg,
+      rgba(14, 27, 28, 0.94),
+      rgba(8, 16, 17, 0.94)
+    ) !important;
+
+  border:
+    1px solid
+    var(--ap-border) !important;
+
+  box-shadow:
+    var(--ap-shadow) !important;
+
+  color:
+    var(--ap-text) !important;
+}
+
+/* =========================
+   INICIO
+   ========================= */
+
+.inicio-welcome {
+  background:
+    radial-gradient(
+      circle at 90% 20%,
+      rgba(36, 231, 255, 0.16),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 70% 90%,
+      rgba(98, 255, 120, 0.1),
+      transparent 32%
+    ),
+    linear-gradient(
+      135deg,
+      #0c1a1b,
+      #071011
+    ) !important;
+
+  border:
+    1px solid
+    rgba(36, 231, 255, 0.18) !important;
+
+  box-shadow:
+    var(--ap-shadow),
+    0 0 35px
+      rgba(36, 231, 255, 0.05) !important;
+}
+
+.inicio-welcome span,
+.card-label,
+.section-title span,
+.estadisticas-kicker,
+.cursos-kicker,
+.docentes-kicker {
+  color:
+    var(--ap-green) !important;
+}
+
+.inicio-welcome h1,
+.inicio-card h3 {
+  color: #fff !important;
+}
+
+.inicio-welcome p,
+.inicio-card p,
+.stat-card span,
+.stat-card small,
+.info-row span,
+.welcome-card p,
+.activity-item span {
+  color:
+    var(--ap-muted) !important;
+}
+
+.inicio-card,
+.inicio-page .card {
+  background:
+    rgba(13, 24, 25, 0.92) !important;
+
+  border:
+    1px solid
+    var(--ap-border) !important;
+
+  box-shadow:
+    var(--ap-shadow) !important;
+}
+
+.inicio-card-icon,
+.welcome-icon,
+.stat-icon,
+.activity-icon,
+.empty-icon {
+  background:
+    rgba(36, 231, 255, 0.08) !important;
+
+  border:
+    1px solid
+    rgba(36, 231, 255, 0.16);
+}
+
+/* =========================
+   PERFIL
+   ========================= */
+
+.perfil-card,
+.profile-section {
+  background:
+    linear-gradient(
+      145deg,
+      rgba(14, 27, 28, 0.94),
+      rgba(8, 16, 17, 0.94)
+    ) !important;
+
+  border:
+    1px solid
+    var(--ap-border) !important;
+
+  box-shadow:
+    var(--ap-shadow) !important;
+
+  color:
+    var(--ap-text) !important;
+}
+
+.perfil-item span,
+.perfil-item strong,
+.profile-section p,
+.profile-section span {
+  color:
+    var(--ap-muted) !important;
+}
+
+.perfil-item strong,
+.profile-section strong {
+  color: #fff !important;
+}
+
+/* =========================
+   FORMULARIOS
+   ========================= */
+
+input,
+select,
+textarea,
+.search-box,
+.estudiantes-search,
+.docentes-search,
+.apelaciones-search,
+.delivery-search-box,
+.accesos-search {
+  background:
+    rgba(255, 255, 255, 0.035) !important;
+
+  color:
+    #fff !important;
+
+  border-color:
+    rgba(145, 170, 167, 0.22) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color:
+    #617a77 !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color:
+    var(--ap-cyan) !important;
+
+  outline: none;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(36, 231, 255, 0.08) !important;
+}
+
+/* =========================
+   BOTONES
+   ========================= */
+
+.primary-button,
+.apelaciones-button.primary,
+.accesos-button-primary,
+.cursos-primary,
+.delivery-new-button,
+.delivery-form .save,
+button[class*="primary"] {
+  background:
+    linear-gradient(
+      135deg,
+      var(--ap-blue),
+      var(--ap-cyan),
+      var(--ap-green)
+    ) !important;
+
+  color:
+    #03100a !important;
+
+  border-color:
+    rgba(98, 255, 120, 0.35) !important;
+
+  box-shadow:
+    0 0 18px
+    rgba(36, 231, 255, 0.1) !important;
+}
+
+.secondary-button,
+.apelaciones-button.secondary,
+.accesos-button-secondary,
+.cursos-refresh,
+.docentes-refresh,
+.estudiantes-refresh,
+.delivery-refresh {
+  background:
+    rgba(255, 255, 255, 0.035) !important;
+
+  color:
+    #dce9e6 !important;
+
+  border-color:
+    rgba(145, 170, 167, 0.24) !important;
+}
+
+.primary-button:hover,
+.apelaciones-button.primary:hover,
+.accesos-button-primary:hover,
+.cursos-primary:hover,
+.delivery-new-button:hover {
+  filter: brightness(1.08);
+
+  transform:
+    translateY(-1px);
+}
+
+/* =========================
+   TABLAS
+   ========================= */
+
+table,
+.estudiantes-table,
+.cursos-table,
+.accesos-table {
+  color:
+    var(--ap-text) !important;
+}
+
+thead th,
+.estudiantes-table th,
+.cursos-table th {
+  background:
+    rgba(36, 231, 255, 0.045) !important;
+
+  color:
+    #8da6a2 !important;
+
+  border-color:
+    rgba(145, 170, 167, 0.13) !important;
+}
+
+tbody td,
+.estudiantes-table td,
+.cursos-table td {
+  border-color:
+    rgba(145, 170, 167, 0.1) !important;
+}
+
+tbody tr:hover,
+.estudiantes-table tbody tr:hover,
+.cursos-table tbody tr:hover {
+  background:
+    rgba(36, 231, 255, 0.035) !important;
+}
+
+/* =========================
+   ESTADÍSTICAS
+   ========================= */
+
+.estadistica-card strong,
+.estadisticas-status strong,
+.estadisticas-summary strong {
+  color: #fff !important;
+}
+
+.estadistica-icon,
+.estadisticas-summary-icon {
+  background:
+    rgba(36, 231, 255, 0.08) !important;
+
+  color:
+    var(--ap-cyan) !important;
+
+  border:
+    1px solid
+    rgba(36, 231, 255, 0.14);
+}
+
+.estadisticas-status {
+  background:
+    rgba(255, 255, 255, 0.035) !important;
+
+  border:
+    1px solid
+    rgba(145, 170, 167, 0.1);
+}
+
+.estadisticas-section-header h2,
+.estadisticas-summary h2 {
+  color: #fff !important;
+}
+
+.estadisticas-section-header p,
+.estadisticas-summary p {
+  color:
+    var(--ap-muted) !important;
+}
+
+/* =========================
+   ALERTAS
+   ========================= */
+
+.error-box,
+.apelaciones-alert.error,
+.accesos-alert-error,
+.estudiantes-error,
+.docentes-error,
+.cursos-error,
+.delivery-error,
+.estadisticas-alert {
+  background:
+    rgba(255, 107, 122, 0.08) !important;
+
+  color:
+    #ff9ca6 !important;
+
+  border:
+    1px solid
+    rgba(255, 107, 122, 0.15) !important;
+}
+
+.apelaciones-alert.success,
+.accesos-alert-success {
+  background:
+    rgba(98, 255, 120, 0.07) !important;
+
+  color:
+    var(--ap-green) !important;
+
+  border:
+    1px solid
+    rgba(98, 255, 120, 0.14) !important;
+}
+
+/* =========================
+   BADGES
+   ========================= */
+
+.status.completed,
+.estudiantes-badge,
+.docente-tags span,
+.badge {
+  background:
+    rgba(98, 255, 120, 0.08) !important;
+
+  color:
+    var(--ap-green) !important;
+
+  border-color:
+    rgba(98, 255, 120, 0.14) !important;
+}
+
+.status.pending {
+  background:
+    rgba(255, 196, 76, 0.09) !important;
+
+  color:
+    #ffd36a !important;
+}
+
+/* =========================
+   MODALES
+   ========================= */
+
+.cursos-modal-overlay,
+.apelaciones-overlay,
+.delivery-modal-overlay {
+  background:
+    rgba(0, 0, 0, 0.76) !important;
+
+  backdrop-filter: blur(7px);
+}
+
+.cursos-modal,
+.apelaciones-modal,
+.delivery-modal {
+  background:
+    linear-gradient(
+      145deg,
+      #102021,
+      #081314
+    ) !important;
+
+  color:
+    var(--ap-text) !important;
+
+  border:
+    1px solid
+    var(--ap-border) !important;
+
+  box-shadow:
+    0 30px 80px
+    rgba(0, 0, 0, 0.5) !important;
+}
+
+/* =========================
+   ESTADOS VACÍOS
+   ========================= */
+
+.empty-section h2,
+.empty-section p,
+.estudiantes-state,
+.estudiantes-empty,
+.docentes-state,
+.docentes-empty,
+.cursos-state,
+.cursos-empty,
+.apelaciones-empty,
+.delivery-empty {
+  color:
+    var(--ap-muted) !important;
+}
+
+.empty-section h2 {
+  color: #fff !important;
+}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+
+@media (max-width: 800px) {
+  .login-card {
+    padding: 30px 24px;
+  }
+
+  .login-logo {
+    height: 145px;
+  }
+}
