@@ -29,6 +29,9 @@ class ActividadBase(BaseSchema):
 class ActividadCreate(ActividadBase):
     pass
 
+class ActividadUpdate(ActividadBase):
+    pass
+
 
 class ActividadResponse(ActividadBase):
     id_actividad: int
