@@ -63,10 +63,141 @@ textarea {
 }
 
 /* =========================
+   INPUTS
+   ========================= */
+
+/* Corrige fondo y texto de todos los campos */
+
+body input,
+body select,
+body textarea {
+  background:
+    #0d1819 !important;
+
+  color:
+    #ffffff !important;
+
+  border:
+    1px solid
+    rgba(145, 170, 167, 0.25) !important;
+
+  caret-color:
+    var(--ap-cyan) !important;
+
+  -webkit-text-fill-color:
+    #ffffff !important;
+}
+
+/* Corrige específicamente los campos del login */
+
+body .login-card input,
+body .login-card select,
+body .login-card textarea,
+body .input-container input {
+  background:
+    #0b1516 !important;
+
+  color:
+    #ffffff !important;
+
+  -webkit-text-fill-color:
+    #ffffff !important;
+
+  caret-color:
+    var(--ap-cyan) !important;
+}
+
+body input::placeholder,
+body textarea::placeholder {
+  color:
+    #6f8985 !important;
+
+  opacity: 1 !important;
+
+  -webkit-text-fill-color:
+    #6f8985 !important;
+}
+
+body input:focus,
+body select:focus,
+body textarea:focus {
+  background:
+    #0d1b1c !important;
+
+  color:
+    #ffffff !important;
+
+  border-color:
+    var(--ap-cyan) !important;
+
+  outline: none !important;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(36, 231, 255, 0.1) !important;
+
+  -webkit-text-fill-color:
+    #ffffff !important;
+}
+
+/* Evita que el navegador cambie el color al autocompletar */
+
+body input:-webkit-autofill,
+body input:-webkit-autofill:hover,
+body input:-webkit-autofill:focus,
+body input:-webkit-autofill:active {
+  -webkit-text-fill-color:
+    #ffffff !important;
+
+  -webkit-box-shadow:
+    0 0 0 1000px
+    #0b1516
+    inset !important;
+
+  box-shadow:
+    0 0 0 1000px
+    #0b1516
+    inset !important;
+
+  caret-color:
+    var(--ap-cyan) !important;
+}
+
+/* Contenedor de campos */
+
+body .input-container {
+  background:
+    #0b1516 !important;
+
+  border:
+    1px solid
+    rgba(145, 170, 167, 0.24) !important;
+}
+
+body .input-container:focus-within {
+  background:
+    #0d1b1c !important;
+
+  border-color:
+    var(--ap-cyan) !important;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(36, 231, 255, 0.1),
+    0 0 20px
+    rgba(36, 231, 255, 0.07) !important;
+}
+
+body .input-container svg {
+  color:
+    var(--ap-cyan) !important;
+}
+
+/* =========================
    LOGIN
    ========================= */
 
-.login-container {
+body .login-container {
   position: relative;
 
   overflow: hidden;
@@ -89,40 +220,7 @@ textarea {
     #030505 !important;
 }
 
-.login-container::before,
-.login-container::after {
-  content: "";
-
-  position: absolute;
-
-  border-radius: 50%;
-
-  filter: blur(70px);
-
-  pointer-events: none;
-}
-
-.login-container::before {
-  width: 260px;
-  height: 260px;
-
-  top: 8%;
-  left: 8%;
-
-  background: rgba(36, 231, 255, 0.08);
-}
-
-.login-container::after {
-  width: 260px;
-  height: 260px;
-
-  right: 8%;
-  bottom: 8%;
-
-  background: rgba(98, 255, 120, 0.08);
-}
-
-.login-card {
+body .login-card {
   position: relative;
 
   z-index: 1;
@@ -133,36 +231,43 @@ textarea {
 
   border:
     1px solid
-    var(--ap-border);
+    var(--ap-border) !important;
 
   border-radius: 24px;
 
   background:
     linear-gradient(
       145deg,
-      rgba(14, 27, 28, 0.96),
-      rgba(6, 12, 13, 0.96)
+      rgba(14, 27, 28, 0.97),
+      rgba(6, 12, 13, 0.97)
     ) !important;
 
   box-shadow:
     var(--ap-shadow),
-    0 0 35px rgba(36, 231, 255, 0.06);
+    0 0 35px
+    rgba(36, 231, 255, 0.06);
 
-  color: var(--ap-text);
+  color:
+    var(--ap-text) !important;
 
-  backdrop-filter: blur(18px);
+  backdrop-filter:
+    blur(18px);
 }
 
-/* Muestra el logo real */
+/* Logo del login */
 
-.login-logo {
-  width: min(290px, 100%);
+body .login-logo {
+  width:
+    min(290px, 100%);
 
-  height: 170px;
+  height:
+    170px;
 
-  margin: 0 auto 18px;
+  margin:
+    0 auto 18px;
 
-  border-radius: 18px;
+  border-radius:
+    18px;
 
   background:
     url("./assets/aprenzy-logo.png")
@@ -170,9 +275,11 @@ textarea {
     contain
     no-repeat !important;
 
-  color: transparent !important;
+  color:
+    transparent !important;
 
-  font-size: 0 !important;
+  font-size:
+    0 !important;
 
   filter:
     drop-shadow(
@@ -181,58 +288,30 @@ textarea {
     );
 }
 
-.login-card h1 {
-  color: #fff !important;
-
-  margin-bottom: 8px;
-
-  letter-spacing: -0.03em;
-}
-
-.login-description {
-  color: var(--ap-muted) !important;
-}
-
-.login-card label {
-  color: #d9e8e5 !important;
-}
-
-.input-container {
-  border:
-    1px solid
-    rgba(145, 170, 167, 0.22) !important;
-
-  border-radius: 12px;
-
-  background:
-    rgba(255, 255, 255, 0.025) !important;
-}
-
-.input-container:focus-within {
-  border-color:
-    var(--ap-cyan) !important;
-
-  box-shadow:
-    0 0 0 3px
-      rgba(36, 231, 255, 0.11),
-    0 0 18px
-      rgba(36, 231, 255, 0.08) !important;
-}
-
-.input-container svg {
+body .login-card h1 {
   color:
-    var(--ap-cyan) !important;
+    #ffffff !important;
+
+  margin-bottom:
+    8px;
+
+  letter-spacing:
+    -0.03em;
 }
 
-.input-container input {
-  color: #fff !important;
+body .login-description {
+  color:
+    var(--ap-muted) !important;
 }
 
-.input-container input::placeholder {
-  color: #617a77;
+body .login-card label {
+  color:
+    #d9e8e5 !important;
 }
 
-.login-card button {
+/* Botón login */
+
+body .login-card button {
   border:
     1px solid
     rgba(98, 255, 120, 0.45) !important;
@@ -245,42 +324,36 @@ textarea {
       var(--ap-green)
     ) !important;
 
-  color: #03100a !important;
+  color:
+    #03100a !important;
 
   box-shadow:
     0 0 22px
     rgba(36, 231, 255, 0.15);
 }
 
-.login-card button:hover {
-  filter: brightness(1.08);
+body .login-card button:hover {
+  filter:
+    brightness(1.08);
 
   box-shadow:
     0 0 30px
     rgba(98, 255, 120, 0.18);
 }
 
-.login-card button:disabled {
-  opacity: 0.65;
-}
-
-.login-error {
-  color:
-    var(--ap-danger) !important;
-}
-
 /* =========================
    DASHBOARD
    ========================= */
 
-.dashboard {
-  min-height: 100vh;
+body .dashboard {
+  min-height:
+    100vh;
 
   background:
     transparent !important;
 }
 
-.dashboard-sidebar {
+body .dashboard-sidebar {
   background:
     linear-gradient(
       180deg,
@@ -297,8 +370,7 @@ textarea {
     rgba(0, 0, 0, 0.24);
 }
 
-.dashboard-brand-logo,
-.sidebar-logo-icon {
+body .dashboard-brand-logo {
   background:
     linear-gradient(
       135deg,
@@ -315,41 +387,39 @@ textarea {
     rgba(36, 231, 255, 0.2);
 }
 
-.dashboard-brand-name,
-.sidebar-logo {
-  color: #fff !important;
+body .dashboard-brand-name,
+body .dashboard-section-title,
+body .dashboard-topbar-user-text strong {
+  color:
+    #ffffff !important;
 }
 
-.dashboard-brand-subtitle,
-.dashboard-section-role,
-.dashboard-user-role,
-.header-label,
-.header-user span {
+body .dashboard-brand-subtitle,
+body .dashboard-section-role,
+body .dashboard-user-role {
   color:
     var(--ap-muted) !important;
 }
 
-.dashboard-nav-title {
+body .dashboard-nav-title {
   color:
     #607a77 !important;
 }
 
-.dashboard-nav-button,
-.nav-item {
+body .dashboard-nav-button {
   color:
     #9db2af !important;
 }
 
-.dashboard-nav-button:hover,
-.nav-item:hover {
+body .dashboard-nav-button:hover {
   background:
     rgba(36, 231, 255, 0.07) !important;
 
-  color: #fff !important;
+  color:
+    #ffffff !important;
 }
 
-.dashboard-nav-active,
-.nav-item.active {
+body .dashboard-nav-active {
   background:
     linear-gradient(
       90deg,
@@ -357,7 +427,8 @@ textarea {
       rgba(36, 231, 255, 0.13)
     ) !important;
 
-  color: #fff !important;
+  color:
+    #ffffff !important;
 
   border-left:
     2px solid
@@ -365,28 +436,19 @@ textarea {
 
   box-shadow:
     inset 0 0 22px
-      rgba(36, 231, 255, 0.04),
+    rgba(36, 231, 255, 0.04),
     0 0 18px
-      rgba(36, 231, 255, 0.05);
+    rgba(36, 231, 255, 0.05);
 }
 
-.dashboard-nav-icon,
-.dashboard-nav-arrow,
-.welcome-icon,
-.stat-icon,
-.section-title > svg,
-.activity-icon,
-.empty-icon,
-.profile-avatar,
-.header-avatar {
+body .dashboard-nav-icon,
+body .dashboard-nav-arrow {
   color:
     var(--ap-cyan) !important;
 }
 
-.dashboard-user-avatar,
-.dashboard-topbar-avatar,
-.header-avatar,
-.profile-avatar {
+body .dashboard-user-avatar,
+body .dashboard-topbar-avatar {
   background:
     rgba(36, 231, 255, 0.08) !important;
 
@@ -395,39 +457,24 @@ textarea {
     rgba(36, 231, 255, 0.2);
 }
 
-.dashboard-logout,
-.logout-button {
-  color:
-    #ff7d88 !important;
-}
-
-.dashboard-main,
-.main-content {
+body .dashboard-main {
   background:
     transparent !important;
 }
 
-.dashboard-topbar {
+body .dashboard-topbar {
   background:
-    rgba(5, 8, 7, 0.72) !important;
+    rgba(5, 8, 7, 0.78) !important;
 
   border-bottom:
     1px solid
     rgba(83, 255, 118, 0.1) !important;
 
-  backdrop-filter: blur(16px);
+  backdrop-filter:
+    blur(16px);
 }
 
-.dashboard-section-title,
-.dashboard-topbar-user-text strong,
-.dashboard-header h1,
-.welcome-card h2,
-.section-title h3,
-.profile-header h1 {
-  color: #fff !important;
-}
-
-.dashboard-content {
+body .dashboard-content {
   background:
     transparent !important;
 }
@@ -436,27 +483,19 @@ textarea {
    TARJETAS
    ========================= */
 
-.dashboard-card,
-.welcome-card,
-.stat-card,
-.profile-section,
-.empty-section,
-.dashboard-content .page-section,
-.dashboard-content .card,
-.cursos-card,
-.docente-card,
-.delivery-card,
-.apelacion-card,
-.accesos-card,
-.estadistica-card,
-.estadisticas-section,
-.estadisticas-summary,
-.estudiantes-table-card {
+body .inicio-card,
+body .perfil-card,
+body .estadistica-card,
+body .estadisticas-section,
+body .estadisticas-summary,
+body .cursos-card,
+body .docente-card,
+body .estudiantes-table-card {
   background:
     linear-gradient(
       145deg,
-      rgba(14, 27, 28, 0.94),
-      rgba(8, 16, 17, 0.94)
+      rgba(14, 27, 28, 0.95),
+      rgba(8, 16, 17, 0.95)
     ) !important;
 
   border:
@@ -474,7 +513,7 @@ textarea {
    INICIO
    ========================= */
 
-.inicio-welcome {
+body .inicio-welcome {
   background:
     radial-gradient(
       circle at 90% 20%,
@@ -499,151 +538,36 @@ textarea {
   box-shadow:
     var(--ap-shadow),
     0 0 35px
-      rgba(36, 231, 255, 0.05) !important;
+    rgba(36, 231, 255, 0.05) !important;
 }
 
-.inicio-welcome span,
-.card-label,
-.section-title span,
-.estadisticas-kicker,
-.cursos-kicker,
-.docentes-kicker {
+body .inicio-welcome h1,
+body .inicio-card h3,
+body .perfil-header h1,
+body .estadisticas-section-header h2,
+body .estadisticas-summary h2 {
   color:
-    var(--ap-green) !important;
+    #ffffff !important;
 }
 
-.inicio-welcome h1,
-.inicio-card h3 {
-  color: #fff !important;
-}
-
-.inicio-welcome p,
-.inicio-card p,
-.stat-card span,
-.stat-card small,
-.info-row span,
-.welcome-card p,
-.activity-item span {
+body .inicio-welcome p,
+body .inicio-card p,
+body .perfil-item span,
+body .perfil-item strong,
+body .estadisticas-section-header p,
+body .estadisticas-summary p {
   color:
     var(--ap-muted) !important;
-}
-
-.inicio-card,
-.inicio-page .card {
-  background:
-    rgba(13, 24, 25, 0.92) !important;
-
-  border:
-    1px solid
-    var(--ap-border) !important;
-
-  box-shadow:
-    var(--ap-shadow) !important;
-}
-
-.inicio-card-icon,
-.welcome-icon,
-.stat-icon,
-.activity-icon,
-.empty-icon {
-  background:
-    rgba(36, 231, 255, 0.08) !important;
-
-  border:
-    1px solid
-    rgba(36, 231, 255, 0.16);
-}
-
-/* =========================
-   PERFIL
-   ========================= */
-
-.perfil-card,
-.profile-section {
-  background:
-    linear-gradient(
-      145deg,
-      rgba(14, 27, 28, 0.94),
-      rgba(8, 16, 17, 0.94)
-    ) !important;
-
-  border:
-    1px solid
-    var(--ap-border) !important;
-
-  box-shadow:
-    var(--ap-shadow) !important;
-
-  color:
-    var(--ap-text) !important;
-}
-
-.perfil-item span,
-.perfil-item strong,
-.profile-section p,
-.profile-section span {
-  color:
-    var(--ap-muted) !important;
-}
-
-.perfil-item strong,
-.profile-section strong {
-  color: #fff !important;
-}
-
-/* =========================
-   FORMULARIOS
-   ========================= */
-
-input,
-select,
-textarea,
-.search-box,
-.estudiantes-search,
-.docentes-search,
-.apelaciones-search,
-.delivery-search-box,
-.accesos-search {
-  background:
-    rgba(255, 255, 255, 0.035) !important;
-
-  color:
-    #fff !important;
-
-  border-color:
-    rgba(145, 170, 167, 0.22) !important;
-}
-
-input::placeholder,
-textarea::placeholder {
-  color:
-    #617a77 !important;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  border-color:
-    var(--ap-cyan) !important;
-
-  outline: none;
-
-  box-shadow:
-    0 0 0 3px
-    rgba(36, 231, 255, 0.08) !important;
 }
 
 /* =========================
    BOTONES
    ========================= */
 
-.primary-button,
-.apelaciones-button.primary,
-.accesos-button-primary,
-.cursos-primary,
-.delivery-new-button,
-.delivery-form .save,
-button[class*="primary"] {
+body .primary-button,
+body .cursos-primary,
+body .delivery-new-button,
+body button[class*="primary"] {
   background:
     linear-gradient(
       135deg,
@@ -663,13 +587,11 @@ button[class*="primary"] {
     rgba(36, 231, 255, 0.1) !important;
 }
 
-.secondary-button,
-.apelaciones-button.secondary,
-.accesos-button-secondary,
-.cursos-refresh,
-.docentes-refresh,
-.estudiantes-refresh,
-.delivery-refresh {
+body .secondary-button,
+body .cursos-refresh,
+body .docentes-refresh,
+body .estudiantes-refresh,
+body .delivery-refresh {
   background:
     rgba(255, 255, 255, 0.035) !important;
 
@@ -680,32 +602,16 @@ button[class*="primary"] {
     rgba(145, 170, 167, 0.24) !important;
 }
 
-.primary-button:hover,
-.apelaciones-button.primary:hover,
-.accesos-button-primary:hover,
-.cursos-primary:hover,
-.delivery-new-button:hover {
-  filter: brightness(1.08);
-
-  transform:
-    translateY(-1px);
-}
-
 /* =========================
    TABLAS
    ========================= */
 
-table,
-.estudiantes-table,
-.cursos-table,
-.accesos-table {
+body table {
   color:
     var(--ap-text) !important;
 }
 
-thead th,
-.estudiantes-table th,
-.cursos-table th {
+body thead th {
   background:
     rgba(36, 231, 255, 0.045) !important;
 
@@ -716,16 +622,15 @@ thead th,
     rgba(145, 170, 167, 0.13) !important;
 }
 
-tbody td,
-.estudiantes-table td,
-.cursos-table td {
+body tbody td {
   border-color:
     rgba(145, 170, 167, 0.1) !important;
+
+  color:
+    #dce9e6 !important;
 }
 
-tbody tr:hover,
-.estudiantes-table tbody tr:hover,
-.cursos-table tbody tr:hover {
+body tbody tr:hover {
   background:
     rgba(36, 231, 255, 0.035) !important;
 }
@@ -734,14 +639,8 @@ tbody tr:hover,
    ESTADÍSTICAS
    ========================= */
 
-.estadistica-card strong,
-.estadisticas-status strong,
-.estadisticas-summary strong {
-  color: #fff !important;
-}
-
-.estadistica-icon,
-.estadisticas-summary-icon {
+body .estadistica-icon,
+body .estadisticas-summary-icon {
   background:
     rgba(36, 231, 255, 0.08) !important;
 
@@ -753,7 +652,14 @@ tbody tr:hover,
     rgba(36, 231, 255, 0.14);
 }
 
-.estadisticas-status {
+body .estadistica-card strong,
+body .estadisticas-status strong,
+body .estadisticas-summary strong {
+  color:
+    #ffffff !important;
+}
+
+body .estadisticas-status {
   background:
     rgba(255, 255, 255, 0.035) !important;
 
@@ -762,95 +668,28 @@ tbody tr:hover,
     rgba(145, 170, 167, 0.1);
 }
 
-.estadisticas-section-header h2,
-.estadisticas-summary h2 {
-  color: #fff !important;
-}
-
-.estadisticas-section-header p,
-.estadisticas-summary p {
+body .estadisticas-status span {
   color:
     var(--ap-muted) !important;
-}
-
-/* =========================
-   ALERTAS
-   ========================= */
-
-.error-box,
-.apelaciones-alert.error,
-.accesos-alert-error,
-.estudiantes-error,
-.docentes-error,
-.cursos-error,
-.delivery-error,
-.estadisticas-alert {
-  background:
-    rgba(255, 107, 122, 0.08) !important;
-
-  color:
-    #ff9ca6 !important;
-
-  border:
-    1px solid
-    rgba(255, 107, 122, 0.15) !important;
-}
-
-.apelaciones-alert.success,
-.accesos-alert-success {
-  background:
-    rgba(98, 255, 120, 0.07) !important;
-
-  color:
-    var(--ap-green) !important;
-
-  border:
-    1px solid
-    rgba(98, 255, 120, 0.14) !important;
-}
-
-/* =========================
-   BADGES
-   ========================= */
-
-.status.completed,
-.estudiantes-badge,
-.docente-tags span,
-.badge {
-  background:
-    rgba(98, 255, 120, 0.08) !important;
-
-  color:
-    var(--ap-green) !important;
-
-  border-color:
-    rgba(98, 255, 120, 0.14) !important;
-}
-
-.status.pending {
-  background:
-    rgba(255, 196, 76, 0.09) !important;
-
-  color:
-    #ffd36a !important;
 }
 
 /* =========================
    MODALES
    ========================= */
 
-.cursos-modal-overlay,
-.apelaciones-overlay,
-.delivery-modal-overlay {
+body .cursos-modal-overlay,
+body .apelaciones-overlay,
+body .delivery-modal-overlay {
   background:
     rgba(0, 0, 0, 0.76) !important;
 
-  backdrop-filter: blur(7px);
+  backdrop-filter:
+    blur(7px);
 }
 
-.cursos-modal,
-.apelaciones-modal,
-.delivery-modal {
+body .cursos-modal,
+body .apelaciones-modal,
+body .delivery-modal {
   background:
     linear-gradient(
       145deg,
@@ -871,25 +710,23 @@ tbody tr:hover,
 }
 
 /* =========================
-   ESTADOS VACÍOS
+   ALERTAS
    ========================= */
 
-.empty-section h2,
-.empty-section p,
-.estudiantes-state,
-.estudiantes-empty,
-.docentes-state,
-.docentes-empty,
-.cursos-state,
-.cursos-empty,
-.apelaciones-empty,
-.delivery-empty {
-  color:
-    var(--ap-muted) !important;
-}
+body .estadisticas-alert,
+body .estudiantes-error,
+body .docentes-error,
+body .cursos-error,
+body .delivery-error {
+  background:
+    rgba(255, 107, 122, 0.08) !important;
 
-.empty-section h2 {
-  color: #fff !important;
+  color:
+    #ff9ca6 !important;
+
+  border:
+    1px solid
+    rgba(255, 107, 122, 0.15) !important;
 }
 
 /* =========================
@@ -897,11 +734,13 @@ tbody tr:hover,
    ========================= */
 
 @media (max-width: 800px) {
-  .login-card {
-    padding: 30px 24px;
+  body .login-card {
+    padding:
+      30px 24px;
   }
 
-  .login-logo {
-    height: 145px;
+  body .login-logo {
+    height:
+      145px;
   }
 }
