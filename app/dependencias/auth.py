@@ -1,5 +1,5 @@
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 import jwt
 
@@ -8,22 +8,20 @@ from app.database.conection import get_db
 from app.models.Usuarios import Usuario
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/usuarios/login")
+security = HTTPBearer()
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ):
-    """
-    Obtiene el usuario autenticado a partir del JWT.
-    """
-
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="No se pudo validar el token",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+    token = credentials.credentials
 
     try:
         payload = jwt.decode(
@@ -55,10 +53,6 @@ def get_current_user(
 
 
 def require_role(*roles: str):
-    """
-    Permite restringir un endpoint a uno o varios roles.
-    """
-
     def role_checker(
         current_user: Usuario = Depends(get_current_user),
     ):

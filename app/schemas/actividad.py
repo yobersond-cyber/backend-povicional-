@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Optional
 
 from pydantic import Field
 
@@ -31,3 +32,7 @@ class ActividadCreate(ActividadBase):
 
 class ActividadResponse(ActividadBase):
     id_actividad: int
+
+
+class ActividadEstudianteResponse(ActividadResponse):
+    estado: str
