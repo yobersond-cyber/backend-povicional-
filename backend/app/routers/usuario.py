@@ -1,5 +1,4 @@
 from datetime import date
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
@@ -10,6 +9,7 @@ from app.models.Usuarios import Usuario
 from app.models.entrega import Entrega
 from app.models.actividad import Actividad
 from app.models.usuario_curso import UsuarioCurso
+from app.models.curso import Curso
 from app.models.incapacidad import Incapacidad
 from app.models.materia import Materia
 from app.models.material_academico import MaterialAcademico
@@ -121,6 +121,7 @@ def verificar_datos_unicos(
 # Solo coordinadores; únicamente docentes y estudiantes.
 # ============================================================
 
+
 @router.post(
     "",
     response_model=APIResponse[UsuarioResponse],
@@ -133,24 +134,65 @@ def crear_usuario(
     ),
     db: Session = Depends(get_db),
 ):
+    # El coordinador debe tener un colegio asignado.
     if current_user.id_colegio is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="El coordinador no tiene un colegio asignado",
         )
 
+    # Solo se permite crear docentes y estudiantes.
+    roles_permitidos = {"docente", "estudiante"}
+    if usuario.tipo_de_usuario not in roles_permitidos:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo puedes crear docentes y estudiantes",
+        )
+
+    # No se permite crear usuarios en otro colegio.
     if usuario.id_colegio != current_user.id_colegio:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No puedes crear usuarios en otro colegio",
         )
 
-    if usuario.tipo_de_usuario not in ("docente", "estudiante"):
+    # Verificar que el colegio exista.
+    from app.models.colegios import Colegio
+
+    colegio = db.query(Colegio).filter(
+        Colegio.id_colegio == current_user.id_colegio
+    ).first()
+
+    if not colegio:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo puedes crear docentes y estudiantes",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La institución/colegio indicado no existe",
         )
 
+    # Los estudiantes deben tener un curso válido
+    # que pertenezca al mismo colegio.
+    if usuario.tipo_de_usuario == "estudiante":
+        if not usuario.id_curso:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="El estudiante debe indicar un curso",
+            )
+
+        curso = db.query(Curso).filter(
+            Curso.id_curso == usuario.id_curso,
+            Curso.id_colegio == current_user.id_colegio,
+        ).first()
+
+        if not curso:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "El curso no existe o no pertenece "
+                    "a la institución indicada"
+                ),
+            )
+
+    # Verificar que código, documento y correo sean únicos.
     verificar_datos_unicos(db, usuario)
 
     nuevo_usuario = Usuario(
@@ -181,11 +223,29 @@ def crear_usuario(
             ),
         )
 
+    # Vincular al estudiante con el curso seleccionado.
+    if usuario.tipo_de_usuario == "estudiante" and usuario.id_curso:
+        try:
+            db.add(
+                UsuarioCurso(
+                    id_usuario=nuevo_usuario.id_usuario,
+                    id_curso=usuario.id_curso,
+                )
+            )
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="No se pudo vincular al estudiante con el curso.",
+            )
+
     return APIResponse(
         success=True,
         mensaje="Usuario registrado exitosamente",
         data=nuevo_usuario,
     )
+
 
 
 # ============================================================

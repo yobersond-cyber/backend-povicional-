@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import Registro from "./Registro";
 import { FiLock, FiMail } from "react-icons/fi";
 
 // Importa el servicio de autenticación
@@ -9,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 
 // Componente de inicio de sesión
 function Login() {
+  const [mostrarRegistro, setMostrarRegistro] = useState(false);
   //obtiene la funcion de inico de sesion de el contexto 
   const { login } = useAuth();
 
@@ -52,6 +54,11 @@ try {
   setLoading(false);
 }
   };
+
+  // Alterna entre el inicio de sesión y el registro dinámico por rol
+  if (mostrarRegistro) {
+    return <Registro onBackToLogin={() => setMostrarRegistro(false)} />;
+  }
 
   // Renderiza la interfaz del login
   return (
@@ -132,6 +139,17 @@ try {
           </button>
 
         </form>
+
+        <p className="register-switch">
+          ¿No tienes cuenta?{" "}
+          <button
+            type="button"
+            className="text-button"
+            onClick={() => setMostrarRegistro(true)}
+          >
+            Regístrate aquí
+          </button>
+        </p>
       </section>
     </main>
   );

@@ -3571,3 +3571,513 @@ input {
     padding: 18px;
   }
 }
+
+
+/* ===== Mejora visual del registro APRENZY ===== */
+
+/* Campos del formulario de registro */
+.register-card .role-select,
+.register-card .register-field input,
+.register-card .register-field select {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  padding: 12px 14px;
+
+  /* Diferencia visual entre el campo y la tarjeta blanca */
+  background-color: #f8fafc;
+  color: #182230;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+/* Texto de los campos */
+.register-card .register-field input,
+.register-card .register-field select,
+.register-card .role-select {
+  color: #182230;
+  -webkit-text-fill-color: #182230;
+}
+
+/* Al pasar el cursor */
+.register-card .register-field input:hover,
+.register-card .register-field select:hover,
+.register-card .role-select:hover {
+  border-color: #94a3b8;
+}
+
+/* Al seleccionar un campo */
+.register-card .register-field input:focus,
+.register-card .register-field select:focus,
+.register-card .role-select:focus {
+  background-color: #ffffff;
+  border-color: #3156d8;
+  box-shadow: 0 0 0 3px rgba(49, 86, 216, 0.14);
+}
+
+/* Placeholder, si se añade a los inputs */
+.register-card .register-field input::placeholder {
+  color: #8490a1;
+  opacity: 1;
+}
+
+/* Corregir el aspecto del autocompletado de Chrome */
+.register-card .register-field input:-webkit-autofill,
+.register-card .register-field input:-webkit-autofill:hover,
+.register-card .register-field input:-webkit-autofill:focus,
+.register-card .register-field input:-webkit-autofill:active {
+  -webkit-text-fill-color: #182230 !important;
+  caret-color: #182230;
+
+  /* Evita que Chrome imponga un fondo amarillo/blanco distinto */
+  -webkit-box-shadow: 0 0 0 1000px #eef4ff inset !important;
+  box-shadow: 0 0 0 1000px #eef4ff inset !important;
+
+  border: 1px solid #9db8f5;
+  border-radius: 10px;
+}
+
+/* Mantener legibles los campos deshabilitados */
+.register-card .register-field input:disabled,
+.register-card .register-field select:disabled {
+  background-color: #e9edf3;
+  color: #64748b;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* Etiquetas más claras */
+.register-card .register-field label {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Adaptación a pantallas pequeñas */
+@media (max-width: 620px) {
+  .register-card {
+    padding: 26px 20px;
+  }
+
+  .register-card .register-field input,
+  .register-card .register-field select,
+  .register-card .role-select {
+    min-height: 46px;
+    font-size: 16px;
+  }
+}
+
+/* ===== AUTORRELLENO: REGISTRO ===== */
+.register-container .register-card input,
+.register-container .register-card select,
+.register-container .register-field input,
+.register-container .register-field select {
+  background-color: #eef3fb !important;
+  color: #182230 !important;
+  -webkit-text-fill-color: #182230 !important;
+  border: 1px solid #d5deec;
+}
+
+/* Chrome y Edge cuando rellenan automáticamente */
+.register-container input:-webkit-autofill,
+.register-container input:-webkit-autofill:hover,
+.register-container input:-webkit-autofill:focus,
+.register-container input:-webkit-autofill:active {
+  -webkit-text-fill-color: #182230 !important;
+  caret-color: #182230 !important;
+  -webkit-box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  background-color: #eef3fb !important;
+  border: 1px solid #d5deec !important;
+}
+
+/* Cuando el campo está seleccionado */
+.register-container .register-field input:focus,
+.register-container .register-field select:focus {
+  background-color: #ffffff !important;
+  border-color: #526ee8 !important;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(82, 110, 232, 0.15);
+}
+
+/* ===== ESTUDIANTE Y DOCENTE: OCULTAR BARRA ===== */
+.role-estudiante .role-layout-nav,
+.role-docente .role-layout-nav {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.role-estudiante .role-layout-nav::-webkit-scrollbar,
+.role-docente .role-layout-nav::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* ===== COORDINADOR: BARRA MODERNA ===== */
+.role-admin .role-layout-nav {
+  scrollbar-width: thin;
+  scrollbar-color: #8b5cf6 #eeeaff;
+  padding-right: 5px;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar {
+  width: 9px;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar-track {
+  background: linear-gradient(180deg, #f5f3ff, #e9e7ff);
+  border-radius: 20px;
+  margin-block: 5px;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #a78bfa, #6d28d9);
+  border: 2px solid #eeeaff;
+  border-radius: 20px;
+  min-height: 35px;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #7c3aed, #4c1d95);
+}
+
+/* Permite que el menú lateral se desplace sin mostrar la barra */
+.role-estudiante .role-layout-nav,
+.role-docente .role-layout-nav,
+.role-admin .role-layout-nav {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* Mantener el estilo de los campos cuando Chrome los autocompleta */
+.register-container input:-webkit-autofill,
+.register-container input:-webkit-autofill:hover,
+.register-container input:-webkit-autofill:focus,
+.register-container input:-webkit-autofill:active,
+.login-container input:-webkit-autofill,
+.login-container input:-webkit-autofill:hover,
+.login-container input:-webkit-autofill:focus,
+.login-container input:-webkit-autofill:active {
+  -webkit-text-fill-color: #182230 !important;
+  caret-color: #182230 !important;
+
+  /* Sustituye el fondo blanco de Chrome */
+  -webkit-box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  box-shadow: 0 0 0 1000px #eef3fb inset !important;
+
+  /* Mantiene el color aunque Chrome aplique su propio estilo */
+  background-color: #eef3fb !important;
+  transition: background-color 999999s ease-out 0s;
+}
+
+/* Apariencia normal de los campos */
+.register-container input,
+.login-container input {
+  background-color: #eef3fb;
+  color: #182230;
+}
+
+/* Al seleccionar un campo */
+.register-container input:focus,
+.login-container input:focus {
+  border-color: #526ee8;
+  outline: none;
+}
+/* ===== BARRA DE DESPLAZAMIENTO VERTICAL ===== */
+
+/* Estudiante y Docente: ocultar visualmente la barra del menú */
+.role-estudiante .role-layout-nav,
+.role-docente .role-layout-nav {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.role-estudiante .role-layout-nav::-webkit-scrollbar,
+.role-docente .role-layout-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* Coordinador: barra delgada y elegante */
+.role-admin .role-layout-nav {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #8b7cf6 transparent;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar {
+  width: 7px;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #a78bfa, #6366f1);
+  border-radius: 20px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #8b5cf6, #4338ca);
+  background-clip: padding-box;
+}
+
+/* Permite el desplazamiento */
+.role-estudiante .role-layout-nav,
+.role-docente .role-layout-nav {
+  overflow-y: auto;
+}
+/* ===== CAMPOS DE REGISTRO E INICIO DE SESIÓN ===== */
+
+.register-container .register-card input,
+.register-container .register-card select,
+.login-container input {
+  background-color: #eef3fb !important;
+  color: #182230 !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px;
+  box-shadow: none;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Al seleccionar el campo */
+.register-container .register-card input:focus,
+.register-container .register-card select:focus,
+.login-container input:focus {
+  background-color: #eef3fb !important;
+  border-color: #8b9cf7 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+  outline: none;
+}
+
+/* Cuando el campo tiene un dato autocompletado por Chrome o Edge */
+.register-container input:-webkit-autofill,
+.register-container input:-webkit-autofill:hover,
+.register-container input:-webkit-autofill:focus,
+.register-container input:-webkit-autofill:active,
+.login-container input:-webkit-autofill,
+.login-container input:-webkit-autofill:hover,
+.login-container input:-webkit-autofill:focus,
+.login-container input:-webkit-autofill:active {
+  -webkit-text-fill-color: #182230 !important;
+  caret-color: #182230 !important;
+  -webkit-box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px;
+}
+.register-container input:-webkit-autofill,
+.register-container input:-webkit-autofill:hover,
+.register-container input:-webkit-autofill:focus,
+.register-container input:-webkit-autofill:active {
+  -webkit-text-fill-color: #182230 !important;
+  caret-color: #182230 !important;
+  -webkit-box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px;
+}
+/* ===== CAMPOS DE LOGIN Y REGISTRO ===== */
+
+.login-container input,
+.register-container input,
+.login-container select,
+.register-container select {
+  border: 1px solid transparent !important;
+  outline: none !important;
+  border-radius: 10px !important;
+  color: #182230 !important;
+}
+
+/* Fondo normal de los campos */
+.login-container input:not(:-webkit-autofill),
+.register-container input:not(:-webkit-autofill) {
+  background-color: #071313 !important;
+  -webkit-text-fill-color: #dce8e8 !important;
+  box-shadow: none !important;
+}
+
+/* Fondo azul claro cuando el navegador autocompleta */
+.login-container input:-webkit-autofill,
+.login-container input:-webkit-autofill:hover,
+.login-container input:-webkit-autofill:focus,
+.login-container input:-webkit-autofill:active,
+.register-container input:-webkit-autofill,
+.register-container input:-webkit-autofill:hover,
+.register-container input:-webkit-autofill:focus,
+.register-container input:-webkit-autofill:active {
+  -webkit-text-fill-color: #182230 !important;
+  caret-color: #182230 !important;
+  -webkit-box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  border: 1px solid transparent !important;
+  outline: none !important;
+}
+
+/* Al seleccionar el campo, el borde interior no se vuelve blanco */
+.login-container input:focus,
+.register-container input:focus {
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Mantener visible el foco mediante el contenedor exterior */
+.login-container .login-field:focus-within,
+.login-container .form-field:focus-within,
+.register-container .register-field:focus-within {
+  border-color: #2dd4bf !important;
+}
+
+/* =====================================================
+   APRENZY — AUTOCOMPLETADO Y CAMPOS
+   ===================================================== */
+
+/* Contenedor del correo y la contraseña */
+.login-container .input-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  padding: 0 14px;
+  background: rgba(5, 18, 19, 0.45);
+  box-shadow: none;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+/* Foco suave, sin un halo turquesa intenso */
+.login-container .input-container:focus-within {
+  border-color: rgba(45, 212, 191, 0.4);
+  box-shadow: none;
+}
+
+/* Iconos del campo */
+.login-container .input-container svg {
+  flex-shrink: 0;
+  color: #22d3ee;
+}
+
+/* Campo normal: transparente dentro de su contenedor */
+.login-container .input-container input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 14px 0;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #dce8e8;
+  -webkit-text-fill-color: #dce8e8;
+}
+
+/* Cuando Chrome o Edge autocompletan el campo,
+   el contenedor completo adopta el mismo relleno azul */
+.login-container .input-container:has(input:-webkit-autofill),
+.login-container .input-container:has(input:autofill) {
+  background: #eef3fb !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  box-shadow: none !important;
+}
+
+/* Cambiar el color del icono sobre el fondo azul */
+.login-container .input-container:has(input:-webkit-autofill) svg,
+.login-container .input-container:has(input:autofill) svg {
+  color: #0891b2;
+}
+
+/* Mantener el autocompletado y su texto oscuro */
+.login-container .input-container input:-webkit-autofill,
+.login-container .input-container input:-webkit-autofill:hover,
+.login-container .input-container input:-webkit-autofill:focus,
+.login-container .input-container input:-webkit-autofill:active {
+  -webkit-text-fill-color: #182230 !important;
+  caret-color: #182230 !important;
+  -webkit-box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  background-color: #eef3fb !important;
+  border: none !important;
+  outline: none !important;
+  border-radius: 12px !important;
+}
+
+/* =====================================================
+   APRENZY — REGISTRO
+   ===================================================== */
+
+.register-container .register-field input,
+.register-container .register-field select {
+  color: #182230 !important;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+}
+
+.register-container .register-field input:-webkit-autofill,
+.register-container .register-field input:-webkit-autofill:hover,
+.register-container .register-field input:-webkit-autofill:focus,
+.register-container .register-field input:-webkit-autofill:active {
+  -webkit-text-fill-color: #182230 !important;
+  caret-color: #182230 !important;
+  -webkit-box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  box-shadow: 0 0 0 1000px #eef3fb inset !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+}
+
+/* =====================================================
+   APRENZY — BARRAS DE DESPLAZAMIENTO DE LOS MENÚS
+   ===================================================== */
+
+/* Estudiante y Docente: ocultar la barra, mantener el scroll */
+.role-estudiante .role-layout-nav,
+.role-docente .role-layout-nav {
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.role-estudiante .role-layout-nav::-webkit-scrollbar,
+.role-docente .role-layout-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* Coordinador: barra delgada con degradado violeta */
+.role-admin .role-layout-nav {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #8b7cf6 transparent;
+  overscroll-behavior: contain;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar {
+  width: 7px;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #a78bfa, #6366f1);
+  border-radius: 20px;
+}
+
+.role-admin .role-layout-nav::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #8b5cf6, #4338ca);
+}

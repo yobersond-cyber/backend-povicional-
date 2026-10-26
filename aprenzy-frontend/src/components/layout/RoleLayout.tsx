@@ -1,3 +1,4 @@
+
 import {
   useState,
   type ReactNode,
@@ -10,6 +11,11 @@ import {
   FiUser,
   FiX,
 } from "react-icons/fi";
+
+import {
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
 
@@ -24,14 +30,9 @@ interface RoleLayoutProps {
   subtitulo: string;
   menu: RoleMenuItem[];
   seccionInicial: string;
-  renderSeccion: (
-    seccion: string,
-  ) => ReactNode;
+  renderSeccion: (seccion: string) => ReactNode;
   children?: ReactNode;
-  variante:
-    | "admin"
-    | "docente"
-    | "estudiante";
+  variante: "admin" | "docente" | "estudiante";
 }
 
 export default function RoleLayout({
@@ -43,100 +44,92 @@ export default function RoleLayout({
   children,
   variante,
 }: RoleLayoutProps) {
-  const {
-    usuario,
-    logout,
-  } = useAuth();
+  const { usuario, logout } = useAuth();
 
-  const [
-    seccionActiva,
-    setSeccionActiva,
-  ] = useState(
-    seccionInicial,
-  );
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const [
-    menuAbierto,
-    setMenuAbierto,
-  ] = useState(false);
+const [menuAbierto, setMenuAbierto] = useState(false);
+
+const baseRuta =
+  variante === "admin"
+    ? "/administrador"
+    : `/${variante}`;
+
+const rutaActual =
+  location.pathname.replace(/\/+$/, "") || "/";
+
+  const seccionDeRuta =
+    rutaActual === baseRuta
+      ? seccionInicial
+      : rutaActual.startsWith(`${baseRuta}/`)
+        ? rutaActual.slice(baseRuta.length + 1)
+        : seccionInicial;
+
+  const seccionActiva = menu.some(
+    (opcion) => opcion.id === seccionDeRuta,
+  )
+    ? seccionDeRuta
+    : seccionInicial;
 
   const nombreUsuario =
-    usuario?.nombres_compl ??
-    "Usuario";
+    usuario?.nombres_compl ?? "Usuario";
 
   const nombreCompleto =
     `${usuario?.nombres_compl ?? ""} ${
       usuario?.apellidos_compl ?? ""
     }`.trim();
 
-  const opcionActiva =
-    menu.find(
-      (opcion) =>
-        opcion.id ===
-        seccionActiva,
-    );
+  const opcionActiva = menu.find(
+    (opcion) => opcion.id === seccionActiva,
+  );
 
-  function cambiarSeccion(
-    seccion: string,
-  ) {
-    setSeccionActiva(seccion);
+  function cambiarSeccion(seccion: string) {
+    const destino =
+      seccion === seccionInicial
+        ? baseRuta
+        : `${baseRuta}/${seccion}`;
+
+    navigate(destino);
     setMenuAbierto(false);
   }
 
   function cerrarSesion() {
-    const confirmar =
-      window.confirm(
-        "¿Deseas cerrar sesión?",
-      );
+    const confirmar = window.confirm(
+      "¿Deseas cerrar sesión?",
+    );
 
-    if (!confirmar) {
-      return;
-    }
+    if (!confirmar) return;
 
     logout();
   }
 
   return (
-    <div
-      className={`role-layout role-${variante}`}
-    >
+    <div className={`role-layout role-${variante}`}>
       {menuAbierto && (
         <div
           className="role-layout-overlay"
-          onClick={() =>
-            setMenuAbierto(false)
-          }
+          onClick={() => setMenuAbierto(false)}
         />
       )}
 
       <aside
         className={`role-layout-sidebar ${
-          menuAbierto
-            ? "role-layout-sidebar-open"
-            : ""
+          menuAbierto ? "role-layout-sidebar-open" : ""
         }`}
       >
         <div className="role-layout-brand">
-          <div className="role-layout-logo">
-            A
-          </div>
+          <div className="role-layout-logo">A</div>
 
           <div className="role-layout-brand-info">
-            <strong>
-              Aprenzy
-            </strong>
-
-            <span>
-              {subtitulo}
-            </span>
+            <strong>Aprenzy</strong>
+            <span>{subtitulo}</span>
           </div>
 
           <button
             type="button"
             className="role-layout-mobile-close"
-            onClick={() =>
-              setMenuAbierto(false)
-            }
+            onClick={() => setMenuAbierto(false)}
             aria-label="Cerrar menú"
           >
             <FiX />
@@ -149,13 +142,8 @@ export default function RoleLayout({
           </div>
 
           <div>
-            <strong>
-              {nombreUsuario}
-            </strong>
-
-            <span>
-              {titulo}
-            </span>
+            <strong>{nombreUsuario}</strong>
+            <span>{titulo}</span>
           </div>
         </div>
 
@@ -164,53 +152,40 @@ export default function RoleLayout({
             Menú principal
           </div>
 
-          {menu.map(
-            (opcion) => (
-              <button
-                key={opcion.id}
-                type="button"
-                className={`role-layout-nav-button ${
-                  seccionActiva ===
-                  opcion.id
-                    ? "role-layout-nav-active"
-                    : ""
-                }`}
-                onClick={() =>
-                  cambiarSeccion(
-                    opcion.id,
-                  )
-                }
-              >
-                <span className="role-layout-nav-icon">
-                  {opcion.icono}
-                </span>
+          {menu.map((opcion) => (
+            <button
+              key={opcion.id}
+              type="button"
+              className={`role-layout-nav-button ${
+                seccionActiva === opcion.id
+                  ? "role-layout-nav-active"
+                  : ""
+              }`}
+              onClick={() => cambiarSeccion(opcion.id)}
+            >
+              <span className="role-layout-nav-icon">
+                {opcion.icono}
+              </span>
 
-                <span className="role-layout-nav-label">
-                  {opcion.nombre}
-                </span>
+              <span className="role-layout-nav-label">
+                {opcion.nombre}
+              </span>
 
-                {seccionActiva ===
-                  opcion.id && (
-                  <FiChevronRight className="role-layout-nav-arrow" />
-                )}
-              </button>
-            ),
-          )}
+              {seccionActiva === opcion.id && (
+                <FiChevronRight className="role-layout-nav-arrow" />
+              )}
+            </button>
+          ))}
         </nav>
 
         <div className="role-layout-sidebar-footer">
           <button
             type="button"
             className="role-layout-logout"
-            onClick={
-              cerrarSesion
-            }
+            onClick={cerrarSesion}
           >
             <FiLogOut />
-
-            <span>
-              Cerrar sesión
-            </span>
+            <span>Cerrar sesión</span>
           </button>
         </div>
       </aside>
@@ -221,9 +196,7 @@ export default function RoleLayout({
             <button
               type="button"
               className="role-layout-mobile-menu"
-              onClick={() =>
-                setMenuAbierto(true)
-              }
+              onClick={() => setMenuAbierto(true)}
               aria-label="Abrir menú"
             >
               <FiMenu />
@@ -231,8 +204,7 @@ export default function RoleLayout({
 
             <div>
               <div className="role-layout-section-title">
-                {opcionActiva?.nombre ??
-                  "Inicio"}
+                {opcionActiva?.nombre ?? "Inicio"}
               </div>
 
               <div className="role-layout-section-subtitle">
@@ -244,14 +216,10 @@ export default function RoleLayout({
           <div className="role-layout-user">
             <div className="role-layout-user-text">
               <strong>
-                {nombreCompleto ||
-                  nombreUsuario}
+                {nombreCompleto || nombreUsuario}
               </strong>
 
-              <span>
-                {usuario?.correo ??
-                  ""}
-              </span>
+              <span>{usuario?.correo ?? ""}</span>
             </div>
 
             <div className="role-layout-avatar">
@@ -262,10 +230,7 @@ export default function RoleLayout({
 
         <section className="role-layout-content">
           {children}
-
-          {renderSeccion(
-            seccionActiva,
-          )}
+          {renderSeccion(seccionActiva)}
         </section>
       </main>
     </div>
