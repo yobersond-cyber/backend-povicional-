@@ -24,10 +24,10 @@ export interface UsuarioCreate {
   correo: string;
   tipo_de_usuario:
     | "estudiante"
-    | "docente"
-    | "administrador";
+    | "docente";
   jornada: string | null;
   contrasena: string;
+  id_curso?: number | null;
 }
 
 // Representa una incapacidad asociada al estudiante

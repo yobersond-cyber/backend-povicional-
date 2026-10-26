@@ -19,6 +19,8 @@ class UsuarioBase(BaseSchema):
 
 class UsuarioCreate(UsuarioBase):
     contrasena: str = Field(min_length=6, max_length=255)
+    # Campo condicional: obligatorio para estudiantes.
+    id_curso: Optional[int] = Field(default=None, gt=0)
 
 
 class UsuarioResponse(UsuarioBase):

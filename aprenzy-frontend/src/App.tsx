@@ -1,5 +1,7 @@
-import Login from "./pages/Login";
 
+import { BrowserRouter, Navigate, useLocation } from "react-router-dom";
+
+import Login from "./pages/Login";
 import {
   AuthProvider,
   useAuth,
@@ -10,27 +12,16 @@ import DocenteLayout from "./layouts/DocenteLayout";
 import EstudianteLayout from "./layouts/EstudianteLayout";
 
 function AppContent() {
-  const {
-    token,
-    usuario,
-    loading,
-  } = useAuth();
+  const { token, usuario, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
       <div className="app-loading">
         <div className="app-loading-card">
-          <div className="app-loading-logo">
-            A
-          </div>
-
-          <h2>
-            Cargando Aprenzy...
-          </h2>
-
-          <p>
-            Verificando tu sesión.
-          </p>
+          <div className="app-loading-logo">A</div>
+          <h2>Cargando Aprenzy...</h2>
+          <p>Verificando tu sesión.</p>
         </div>
       </div>
     );
@@ -40,50 +31,63 @@ function AppContent() {
     return <Login />;
   }
 
-  const rol =
-    usuario.tipo_de_usuario
-      ?.trim()
-      .toLowerCase();
+  const rol = usuario.tipo_de_usuario
+    ?.trim()
+    .toLowerCase();
 
-  if (rol === "administrador") {
-    return <AdminLayout />;
+  const rutasPorRol: Record<string, string> = {
+    administrador: "/administrador",
+    docente: "/docente",
+    estudiante: "/estudiante",
+  };
+
+  const rutaBase = rutasPorRol[rol];
+
+  if (!rutaBase) {
+    return (
+      <div className="app-error">
+        <h1>Rol no reconocido</h1>
+        <p>
+          No se reconoce el rol de este usuario:
+          {" "}
+          {usuario.tipo_de_usuario ?? "Sin rol"}
+        </p>
+      </div>
+    );
   }
 
-  if (rol === "docente") {
-    return <DocenteLayout />;
+  const rutaActual = location.pathname.replace(/\/+$/, "") || "/";
+
+  const perteneceAlRol =
+    rutaActual === rutaBase ||
+    rutaActual.startsWith(`${rutaBase}/`);
+
+  if (!perteneceAlRol) {
+    return <Navigate to={rutaBase} replace />;
   }
 
-  if (rol === "estudiante") {
-    return <EstudianteLayout />;
+  switch (rol) {
+    case "administrador":
+      return <AdminLayout />;
+
+    case "docente":
+      return <DocenteLayout />;
+
+    case "estudiante":
+      return <EstudianteLayout />;
+
+    default:
+      return <Navigate to="/" replace />;
   }
-
-  return (
-    <div className="app-error">
-      <h1>
-        Rol no reconocido
-      </h1>
-
-      <p>
-        El usuario tiene un tipo
-        de usuario que Aprenzy no
-        reconoce.
-      </p>
-
-      <p>
-        Rol recibido:{" "}
-        <strong>
-          {usuario.tipo_de_usuario}
-        </strong>
-      </p>
-    </div>
-  );
 }
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

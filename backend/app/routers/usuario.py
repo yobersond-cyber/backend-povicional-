@@ -1,5 +1,4 @@
 from datetime import date
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
@@ -9,6 +8,7 @@ from app.models.Usuarios import Usuario
 from app.models.entrega import Entrega
 from app.models.actividad import Actividad
 from app.models.usuario_curso import UsuarioCurso
+from app.models.curso import Curso
 from app.models.incapacidad import Incapacidad
 from app.models.materia import Materia
 from app.models.material_academico import MaterialAcademico
@@ -72,6 +72,40 @@ def crear_usuario(
     usuario: UsuarioCreate,
     db: Session = Depends(get_db),
 ):
+    # El registro público solo admite estudiantes y docentes.
+    roles_permitidos = {"docente", "estudiante"}
+    if usuario.tipo_de_usuario not in roles_permitidos:
+        raise HTTPException(
+            status_code=422,
+            detail="Tipo de usuario no válido",
+        )
+
+    if usuario.tipo_de_usuario == "estudiante":
+        if not usuario.id_curso:
+            raise HTTPException(
+                status_code=422,
+                detail="El estudiante debe indicar un curso",
+            )
+        curso = db.query(Curso).filter(
+            Curso.id_curso == usuario.id_curso,
+            Curso.id_colegio == usuario.id_colegio,
+        ).first()
+        if not curso:
+            raise HTTPException(
+                status_code=400,
+                detail="El curso no existe o no pertenece a la institución indicada",
+            )
+
+    # La institución puede no tener cursos aún; se valida que el colegio exista.
+    from app.models.colegios import Colegio
+    if not db.query(Colegio).filter(
+        Colegio.id_colegio == usuario.id_colegio
+    ).first():
+        raise HTTPException(
+            status_code=400,
+            detail="La institución/colegio indicado no existe",
+        )
+
     if db.query(Usuario).filter(
         Usuario.codigo_usuario == usuario.codigo_usuario
     ).first():
@@ -112,6 +146,14 @@ def crear_usuario(
     db.add(nuevo_usuario)
     db.commit()
     db.refresh(nuevo_usuario)
+
+    # Vincula al estudiante con el curso seleccionado en el formulario.
+    if usuario.tipo_de_usuario == "estudiante" and usuario.id_curso:
+        db.add(UsuarioCurso(
+            id_usuario=nuevo_usuario.id_usuario,
+            id_curso=usuario.id_curso,
+        ))
+        db.commit()
 
     return APIResponse(
         success=True,
