@@ -14,6 +14,22 @@ export interface Usuario {
   jornada: string | null;
 }
 
+export interface UsuarioCreate {
+  id_colegio: number;
+  codigo_usuario: string;
+  documento: string;
+  nombres_compl: string;
+  apellidos_compl: string;
+  telefono: string;
+  correo: string;
+  tipo_de_usuario:
+    | "estudiante"
+    | "docente"
+    | "administrador";
+  jornada: string | null;
+  contrasena: string;
+}
+
 // Representa una incapacidad asociada al estudiante
 export interface IncapacidadResumen {
   id_incapacidad: number;
@@ -49,6 +65,21 @@ export async function obtenerEstudiantes(): Promise<
   return respuesta.data;
 }
 
+// Crea un estudiante o docente.
+export async function crearUsuario(
+  datos: UsuarioCreate,
+): Promise<Usuario> {
+  const respuesta = await apiFetch(
+    "/usuarios",
+    {
+      method: "POST",
+      body: JSON.stringify(datos),
+    },
+  );
+
+  return respuesta.data;
+}
+
 // Obtiene un usuario por su ID
 export async function obtenerUsuarioPorId(
   id: number,
@@ -62,13 +93,11 @@ export async function obtenerUsuarioPorId(
 
 // Actualiza un usuario
 export async function actualizarUsuario(
-  id: number,
-  datos: Omit<Usuario, "id_usuario"> & {
-    contrasena?: string;
-  },
+  idUsuario: number,
+  datos: Partial<UsuarioCreate>,
 ): Promise<Usuario> {
   const respuesta = await apiFetch(
-    `/usuarios/${id}`,
+    `/usuarios/${idUsuario}`,
     {
       method: "PUT",
       body: JSON.stringify(datos),
@@ -94,3 +123,12 @@ export async function eliminarUsuario(
 
   return respuesta.data;
 }
+
+export async function obtenerDocentes(): Promise<Usuario[]> {
+  const respuesta = await apiFetch(
+    "/usuarios/docentes",
+  );
+
+  return respuesta.data;
+}
+

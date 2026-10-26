@@ -1,746 +1,1213 @@
-/* Tema visual Aprenzy basado en el logo */
+/* =========================================================
+   IDENTIDAD VISUAL POR ROL
+   ========================================================= */
 
-:root {
-  --ap-bg: #050807;
-  --ap-bg-soft: #091112;
-  --ap-panel: #0d1819;
-  --ap-panel-2: #101f20;
+/* ---------------------------------------------------------
+   BASE DEL ROLE LAYOUT
+   --------------------------------------------------------- */
 
-  --ap-border: rgba(83, 255, 118, 0.16);
-
-  --ap-blue: #4d7cff;
-  --ap-cyan: #24e7ff;
-  --ap-green: #62ff78;
-
-  --ap-text: #edf7f5;
-  --ap-muted: #91aaa7;
-
-  --ap-danger: #ff6b7a;
-
-  --ap-shadow:
-    0 18px 45px rgba(0, 0, 0, 0.32);
-}
-
-/* Base general */
-
-html,
-body,
-#root {
-  min-height: 100%;
-}
-
-body {
-  background:
-    radial-gradient(
-      circle at 80% 0%,
-      rgba(36, 231, 255, 0.08),
-      transparent 28%
-    ),
-    radial-gradient(
-      circle at 10% 90%,
-      rgba(98, 255, 120, 0.07),
-      transparent 30%
-    ),
-    var(--ap-bg) !important;
-
-  color: var(--ap-text) !important;
-
-  font-family:
-    Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif !important;
-}
-
-button,
-input,
-select,
-textarea {
-  font-family: inherit;
-}
-
-/* =========================
-   INPUTS
-   ========================= */
-
-/* Corrige fondo y texto de todos los campos */
-
-body input,
-body select,
-body textarea {
-  background:
-    #0d1819 !important;
-
-  color:
-    #ffffff !important;
-
-  border:
-    1px solid
-    rgba(145, 170, 167, 0.25) !important;
-
-  caret-color:
-    var(--ap-cyan) !important;
-
-  -webkit-text-fill-color:
-    #ffffff !important;
-}
-
-/* Corrige específicamente los campos del login */
-
-body .login-card input,
-body .login-card select,
-body .login-card textarea,
-body .input-container input {
-  background:
-    #0b1516 !important;
-
-  color:
-    #ffffff !important;
-
-  -webkit-text-fill-color:
-    #ffffff !important;
-
-  caret-color:
-    var(--ap-cyan) !important;
-}
-
-body input::placeholder,
-body textarea::placeholder {
-  color:
-    #6f8985 !important;
-
-  opacity: 1 !important;
-
-  -webkit-text-fill-color:
-    #6f8985 !important;
-}
-
-body input:focus,
-body select:focus,
-body textarea:focus {
-  background:
-    #0d1b1c !important;
-
-  color:
-    #ffffff !important;
-
-  border-color:
-    var(--ap-cyan) !important;
-
-  outline: none !important;
-
-  box-shadow:
-    0 0 0 3px
-    rgba(36, 231, 255, 0.1) !important;
-
-  -webkit-text-fill-color:
-    #ffffff !important;
-}
-
-/* Evita que el navegador cambie el color al autocompletar */
-
-body input:-webkit-autofill,
-body input:-webkit-autofill:hover,
-body input:-webkit-autofill:focus,
-body input:-webkit-autofill:active {
-  -webkit-text-fill-color:
-    #ffffff !important;
-
-  -webkit-box-shadow:
-    0 0 0 1000px
-    #0b1516
-    inset !important;
-
-  box-shadow:
-    0 0 0 1000px
-    #0b1516
-    inset !important;
-
-  caret-color:
-    var(--ap-cyan) !important;
-}
-
-/* Contenedor de campos */
-
-body .input-container {
-  background:
-    #0b1516 !important;
-
-  border:
-    1px solid
-    rgba(145, 170, 167, 0.24) !important;
-}
-
-body .input-container:focus-within {
-  background:
-    #0d1b1c !important;
-
-  border-color:
-    var(--ap-cyan) !important;
-
-  box-shadow:
-    0 0 0 3px
-    rgba(36, 231, 255, 0.1),
-    0 0 20px
-    rgba(36, 231, 255, 0.07) !important;
-}
-
-body .input-container svg {
-  color:
-    var(--ap-cyan) !important;
-}
-
-/* =========================
-   LOGIN
-   ========================= */
-
-body .login-container {
-  position: relative;
-
-  overflow: hidden;
-
+.role-layout {
   min-height: 100vh;
-
-  padding: 28px;
-
-  background:
-    radial-gradient(
-      circle at 50% 35%,
-      rgba(36, 231, 255, 0.09),
-      transparent 30%
-    ),
-    radial-gradient(
-      circle at 50% 65%,
-      rgba(98, 255, 120, 0.06),
-      transparent 34%
-    ),
-    #030505 !important;
-}
-
-body .login-card {
   position: relative;
-
-  z-index: 1;
-
-  max-width: 440px;
-
-  padding: 42px;
-
-  border:
-    1px solid
-    var(--ap-border) !important;
-
-  border-radius: 24px;
-
-  background:
-    linear-gradient(
-      145deg,
-      rgba(14, 27, 28, 0.97),
-      rgba(6, 12, 13, 0.97)
-    ) !important;
-
-  box-shadow:
-    var(--ap-shadow),
-    0 0 35px
-    rgba(36, 231, 255, 0.06);
-
-  color:
-    var(--ap-text) !important;
-
-  backdrop-filter:
-    blur(18px);
 }
 
-/* Logo del login */
+/* ---------------------------------------------------------
+   ADMINISTRADOR
+   Identidad: gestión institucional
+   --------------------------------------------------------- */
 
-body .login-logo {
-  width:
-    min(290px, 100%);
-
-  height:
-    170px;
-
-  margin:
-    0 auto 18px;
-
-  border-radius:
-    18px;
-
-  background:
-    url("./assets/aprenzy-logo.png")
-    center /
-    contain
-    no-repeat !important;
-
-  color:
-    transparent !important;
-
-  font-size:
-    0 !important;
-
-  filter:
-    drop-shadow(
-      0 0 10px
-      rgba(36, 231, 255, 0.18)
-    );
+.role-admin {
+  --role-primary: #6366f1;
+  --role-secondary: #818cf8;
+  --role-accent: #a5b4fc;
+  --role-glow: rgba(99, 102, 241, 0.18);
 }
 
-body .login-card h1 {
-  color:
-    #ffffff !important;
-
-  margin-bottom:
-    8px;
-
-  letter-spacing:
-    -0.03em;
-}
-
-body .login-description {
-  color:
-    var(--ap-muted) !important;
-}
-
-body .login-card label {
-  color:
-    #d9e8e5 !important;
-}
-
-/* Botón login */
-
-body .login-card button {
-  border:
-    1px solid
-    rgba(98, 255, 120, 0.45) !important;
-
-  background:
-    linear-gradient(
-      135deg,
-      var(--ap-blue),
-      var(--ap-cyan),
-      var(--ap-green)
-    ) !important;
-
-  color:
-    #03100a !important;
-
-  box-shadow:
-    0 0 22px
-    rgba(36, 231, 255, 0.15);
-}
-
-body .login-card button:hover {
-  filter:
-    brightness(1.08);
-
-  box-shadow:
-    0 0 30px
-    rgba(98, 255, 120, 0.18);
-}
-
-/* =========================
-   DASHBOARD
-   ========================= */
-
-body .dashboard {
-  min-height:
-    100vh;
-
-  background:
-    transparent !important;
-}
-
-body .dashboard-sidebar {
+.role-admin .role-layout-sidebar {
   background:
     linear-gradient(
       180deg,
-      rgba(8, 18, 19, 0.98),
-      rgba(3, 9, 10, 0.99)
+      #11152b 0%,
+      #0b1020 55%,
+      #080c18 100%
     ) !important;
 
   border-right:
     1px solid
-    var(--ap-border) !important;
-
-  box-shadow:
-    12px 0 40px
-    rgba(0, 0, 0, 0.24);
+    rgba(129, 140, 248, 0.18) !important;
 }
 
-body .dashboard-brand-logo {
+.role-admin .role-layout-logo {
   background:
     linear-gradient(
       135deg,
-      var(--ap-blue),
-      var(--ap-cyan),
-      var(--ap-green)
+      #4f46e5,
+      #6366f1,
+      #8b5cf6
     ) !important;
 
-  color:
-    #03100a !important;
+  color: #ffffff !important;
 
   box-shadow:
-    0 0 22px
-    rgba(36, 231, 255, 0.2);
+    0 0 24px
+    rgba(99, 102, 241, 0.28) !important;
 }
 
-body .dashboard-brand-name,
-body .dashboard-section-title,
-body .dashboard-topbar-user-text strong {
-  color:
-    #ffffff !important;
+.role-admin .role-layout-brand-info strong {
+  color: #ffffff !important;
 }
 
-body .dashboard-brand-subtitle,
-body .dashboard-section-role,
-body .dashboard-user-role {
-  color:
-    var(--ap-muted) !important;
+.role-admin .role-layout-brand-info span {
+  color: #a5b4fc !important;
 }
 
-body .dashboard-nav-title {
-  color:
-    #607a77 !important;
-}
-
-body .dashboard-nav-button {
-  color:
-    #9db2af !important;
-}
-
-body .dashboard-nav-button:hover {
+.role-admin .role-layout-role-card {
   background:
-    rgba(36, 231, 255, 0.07) !important;
+    rgba(99, 102, 241, 0.09) !important;
+
+  border:
+    1px solid
+    rgba(129, 140, 248, 0.16) !important;
+}
+
+.role-admin .role-layout-role-icon {
+  background:
+    rgba(99, 102, 241, 0.18) !important;
+
+  color:
+    #a5b4fc !important;
+}
+
+.role-admin .role-layout-nav-title {
+  color:
+    #737ba3 !important;
+}
+
+.role-admin .role-layout-nav-button {
+  color:
+    #aab1cc !important;
+}
+
+.role-admin .role-layout-nav-button:hover {
+  background:
+    rgba(99, 102, 241, 0.09) !important;
 
   color:
     #ffffff !important;
 }
 
-body .dashboard-nav-active {
+.role-admin .role-layout-nav-active {
   background:
     linear-gradient(
       90deg,
-      rgba(77, 124, 255, 0.25),
-      rgba(36, 231, 255, 0.13)
+      rgba(99, 102, 241, 0.22),
+      rgba(129, 140, 248, 0.08)
     ) !important;
 
   color:
     #ffffff !important;
 
   border-left:
-    2px solid
-    var(--ap-cyan) !important;
+    3px solid
+    #818cf8 !important;
 
   box-shadow:
-    inset 0 0 22px
-    rgba(36, 231, 255, 0.04),
-    0 0 18px
-    rgba(36, 231, 255, 0.05);
+    inset 0 0 24px
+    rgba(99, 102, 241, 0.05) !important;
 }
 
-body .dashboard-nav-icon,
-body .dashboard-nav-arrow {
+.role-admin .role-layout-nav-icon,
+.role-admin .role-layout-nav-arrow {
   color:
-    var(--ap-cyan) !important;
+    #818cf8 !important;
 }
 
-body .dashboard-user-avatar,
-body .dashboard-topbar-avatar {
-  background:
-    rgba(36, 231, 255, 0.08) !important;
-
-  border:
-    1px solid
-    rgba(36, 231, 255, 0.2);
-}
-
-body .dashboard-main {
-  background:
-    transparent !important;
-}
-
-body .dashboard-topbar {
-  background:
-    rgba(5, 8, 7, 0.78) !important;
-
-  border-bottom:
-    1px solid
-    rgba(83, 255, 118, 0.1) !important;
-
-  backdrop-filter:
-    blur(16px);
-}
-
-body .dashboard-content {
-  background:
-    transparent !important;
-}
-
-/* =========================
-   TARJETAS
-   ========================= */
-
-body .inicio-card,
-body .perfil-card,
-body .estadistica-card,
-body .estadisticas-section,
-body .estadisticas-summary,
-body .cursos-card,
-body .docente-card,
-body .estudiantes-table-card {
+.role-admin .role-layout-main {
   background:
     linear-gradient(
       145deg,
-      rgba(14, 27, 28, 0.95),
-      rgba(8, 16, 17, 0.95)
+      #090d18 0%,
+      #0b1020 50%,
+      #080c17 100%
     ) !important;
-
-  border:
-    1px solid
-    var(--ap-border) !important;
-
-  box-shadow:
-    var(--ap-shadow) !important;
-
-  color:
-    var(--ap-text) !important;
 }
 
-/* =========================
-   INICIO
-   ========================= */
-
-body .inicio-welcome {
+.role-admin .role-layout-topbar {
   background:
-    radial-gradient(
-      circle at 90% 20%,
-      rgba(36, 231, 255, 0.16),
-      transparent 28%
-    ),
-    radial-gradient(
-      circle at 70% 90%,
-      rgba(98, 255, 120, 0.1),
-      transparent 32%
-    ),
-    linear-gradient(
-      135deg,
-      #0c1a1b,
-      #071011
-    ) !important;
+    rgba(9, 13, 24, 0.88) !important;
 
-  border:
+  border-bottom:
     1px solid
-    rgba(36, 231, 255, 0.18) !important;
-
-  box-shadow:
-    var(--ap-shadow),
-    0 0 35px
-    rgba(36, 231, 255, 0.05) !important;
+    rgba(129, 140, 248, 0.12) !important;
 }
 
-body .inicio-welcome h1,
-body .inicio-card h3,
-body .perfil-header h1,
-body .estadisticas-section-header h2,
-body .estadisticas-summary h2 {
+.role-admin .role-layout-section-title {
   color:
     #ffffff !important;
 }
 
-body .inicio-welcome p,
-body .inicio-card p,
-body .perfil-item span,
-body .perfil-item strong,
-body .estadisticas-section-header p,
-body .estadisticas-summary p {
+.role-admin .role-layout-section-subtitle {
   color:
-    var(--ap-muted) !important;
+    #8d96b5 !important;
 }
 
-/* =========================
-   BOTONES
-   ========================= */
+.role-admin .role-layout-avatar {
+  background:
+    rgba(99, 102, 241, 0.14) !important;
 
-body .primary-button,
-body .cursos-primary,
-body .delivery-new-button,
-body button[class*="primary"] {
+  border:
+    1px solid
+    rgba(129, 140, 248, 0.22) !important;
+
+  color:
+    #a5b4fc !important;
+}
+
+.role-admin .role-home-header {
+  background:
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(99, 102, 241, 0.20),
+      transparent 32%
+    ),
+    linear-gradient(
+      135deg,
+      #121936,
+      #0b1020
+    ) !important;
+
+  border:
+    1px solid
+    rgba(129, 140, 248, 0.18) !important;
+}
+
+.role-admin .role-home-badge {
+  background:
+    rgba(99, 102, 241, 0.14) !important;
+
+  color:
+    #a5b4fc !important;
+
+  border:
+    1px solid
+    rgba(129, 140, 248, 0.20) !important;
+}
+
+.role-admin .role-home-card {
+  border:
+    1px solid
+    rgba(129, 140, 248, 0.15) !important;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(19, 25, 50, 0.96),
+      rgba(10, 15, 30, 0.96)
+    ) !important;
+}
+
+.role-admin .role-home-card > svg {
+  color:
+    #818cf8 !important;
+}
+
+/* ---------------------------------------------------------
+   DOCENTE
+   Identidad: aula / enseñanza
+   --------------------------------------------------------- */
+
+.role-docente {
+  --role-primary: #0891b2;
+  --role-secondary: #06b6d4;
+  --role-accent: #67e8f9;
+  --role-glow: rgba(6, 182, 212, 0.18);
+}
+
+.role-docente .role-layout-sidebar {
+  background:
+    linear-gradient(
+      180deg,
+      #062b35 0%,
+      #06232c 55%,
+      #041a22 100%
+    ) !important;
+
+  border-right:
+    1px solid
+    rgba(34, 211, 238, 0.18) !important;
+}
+
+.role-docente .role-layout-logo {
   background:
     linear-gradient(
       135deg,
-      var(--ap-blue),
-      var(--ap-cyan),
-      var(--ap-green)
+      #0891b2,
+      #06b6d4,
+      #22d3ee
+    ) !important;
+
+  color:
+    #03242b !important;
+
+  box-shadow:
+    0 0 24px
+    rgba(6, 182, 212, 0.25) !important;
+}
+
+.role-docente .role-layout-brand-info strong {
+  color:
+    #ecfeff !important;
+}
+
+.role-docente .role-layout-brand-info span {
+  color:
+    #67e8f9 !important;
+}
+
+.role-docente .role-layout-role-card {
+  background:
+    rgba(6, 182, 212, 0.09) !important;
+
+  border:
+    1px solid
+    rgba(34, 211, 238, 0.16) !important;
+}
+
+.role-docente .role-layout-role-icon {
+  background:
+    rgba(6, 182, 212, 0.16) !important;
+
+  color:
+    #67e8f9 !important;
+}
+
+.role-docente .role-layout-nav-title {
+  color:
+    #5c8d96 !important;
+}
+
+.role-docente .role-layout-nav-button {
+  color:
+    #a2c5ca !important;
+}
+
+.role-docente .role-layout-nav-button:hover {
+  background:
+    rgba(6, 182, 212, 0.09) !important;
+
+  color:
+    #ecfeff !important;
+}
+
+.role-docente .role-layout-nav-active {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(6, 182, 212, 0.22),
+      rgba(34, 211, 238, 0.07)
+    ) !important;
+
+  color:
+    #ecfeff !important;
+
+  border-left:
+    3px solid
+    #22d3ee !important;
+
+  box-shadow:
+    inset 0 0 24px
+    rgba(6, 182, 212, 0.05) !important;
+}
+
+.role-docente .role-layout-nav-icon,
+.role-docente .role-layout-nav-arrow {
+  color:
+    #22d3ee !important;
+}
+
+.role-docente .role-layout-main {
+  background:
+    linear-gradient(
+      145deg,
+      #061b21 0%,
+      #07242b 50%,
+      #04161c 100%
+    ) !important;
+}
+
+.role-docente .role-layout-topbar {
+  background:
+    rgba(5, 27, 33, 0.90) !important;
+
+  border-bottom:
+    1px solid
+    rgba(34, 211, 238, 0.12) !important;
+}
+
+.role-docente .role-layout-section-title {
+  color:
+    #ecfeff !important;
+}
+
+.role-docente .role-layout-section-subtitle {
+  color:
+    #7faeb6 !important;
+}
+
+.role-docente .role-layout-avatar {
+  background:
+    rgba(6, 182, 212, 0.12) !important;
+
+  border:
+    1px solid
+    rgba(34, 211, 238, 0.22) !important;
+
+  color:
+    #67e8f9 !important;
+}
+
+.role-docente .role-home-header {
+  background:
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(6, 182, 212, 0.20),
+      transparent 32%
+    ),
+    linear-gradient(
+      135deg,
+      #08343d,
+      #06242c
+    ) !important;
+
+  border:
+    1px solid
+    rgba(34, 211, 238, 0.18) !important;
+}
+
+.role-docente .role-home-badge {
+  background:
+    rgba(6, 182, 212, 0.13) !important;
+
+  color:
+    #67e8f9 !important;
+
+  border:
+    1px solid
+    rgba(34, 211, 238, 0.20) !important;
+}
+
+.role-docente .role-home-card {
+  border:
+    1px solid
+    rgba(34, 211, 238, 0.15) !important;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(8, 52, 61, 0.96),
+      rgba(5, 30, 37, 0.96)
+    ) !important;
+}
+
+.role-docente .role-home-card > svg {
+  color:
+    #22d3ee !important;
+}
+
+/* ---------------------------------------------------------
+   ESTUDIANTE
+   Identidad: aprendizaje personal
+   --------------------------------------------------------- */
+
+.role-estudiante {
+  --role-primary: #059669;
+  --role-secondary: #10b981;
+  --role-accent: #6ee7b7;
+  --role-glow: rgba(16, 185, 129, 0.18);
+}
+
+.role-estudiante .role-layout-sidebar {
+  background:
+    linear-gradient(
+      180deg,
+      #062d24 0%,
+      #06241e 55%,
+      #041a16 100%
+    ) !important;
+
+  border-right:
+    1px solid
+    rgba(52, 211, 153, 0.18) !important;
+}
+
+.role-estudiante .role-layout-logo {
+  background:
+    linear-gradient(
+      135deg,
+      #059669,
+      #10b981,
+      #34d399
+    ) !important;
+
+  color:
+    #032219 !important;
+
+  box-shadow:
+    0 0 24px
+    rgba(16, 185, 129, 0.25) !important;
+}
+
+.role-estudiante .role-layout-brand-info strong {
+  color:
+    #ecfdf5 !important;
+}
+
+.role-estudiante .role-layout-brand-info span {
+  color:
+    #6ee7b7 !important;
+}
+
+.role-estudiante .role-layout-role-card {
+  background:
+    rgba(16, 185, 129, 0.09) !important;
+
+  border:
+    1px solid
+    rgba(52, 211, 153, 0.16) !important;
+}
+
+.role-estudiante .role-layout-role-icon {
+  background:
+    rgba(16, 185, 129, 0.16) !important;
+
+  color:
+    #6ee7b7 !important;
+}
+
+.role-estudiante .role-layout-nav-title {
+  color:
+    #59947f !important;
+}
+
+.role-estudiante .role-layout-nav-button {
+  color:
+    #a4c9bd !important;
+}
+
+.role-estudiante .role-layout-nav-button:hover {
+  background:
+    rgba(16, 185, 129, 0.09) !important;
+
+  color:
+    #ecfdf5 !important;
+}
+
+.role-estudiante .role-layout-nav-active {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(16, 185, 129, 0.22),
+      rgba(52, 211, 153, 0.07)
+    ) !important;
+
+  color:
+    #ecfdf5 !important;
+
+  border-left:
+    3px solid
+    #34d399 !important;
+
+  box-shadow:
+    inset 0 0 24px
+    rgba(16, 185, 129, 0.05) !important;
+}
+
+.role-estudiante .role-layout-nav-icon,
+.role-estudiante .role-layout-nav-arrow {
+  color:
+    #34d399 !important;
+}
+
+.role-estudiante .role-layout-main {
+  background:
+    linear-gradient(
+      145deg,
+      #061d18 0%,
+      #07261f 50%,
+      #041611 100%
+    ) !important;
+}
+
+.role-estudiante .role-layout-topbar {
+  background:
+    rgba(5, 28, 22, 0.90) !important;
+
+  border-bottom:
+    1px solid
+    rgba(52, 211, 153, 0.12) !important;
+}
+
+.role-estudiante .role-layout-section-title {
+  color:
+    #ecfdf5 !important;
+}
+
+.role-estudiante .role-layout-section-subtitle {
+  color:
+    #82ad9e !important;
+}
+
+.role-estudiante .role-layout-avatar {
+  background:
+    rgba(16, 185, 129, 0.12) !important;
+
+  border:
+    1px solid
+    rgba(52, 211, 153, 0.22) !important;
+
+  color:
+    #6ee7b7 !important;
+}
+
+.role-estudiante .role-home-header {
+  background:
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(16, 185, 129, 0.20),
+      transparent 32%
+    ),
+    linear-gradient(
+      135deg,
+      #08382b,
+      #06271f
+    ) !important;
+
+  border:
+    1px solid
+    rgba(52, 211, 153, 0.18) !important;
+}
+
+.role-estudiante .role-home-badge {
+  background:
+    rgba(16, 185, 129, 0.13) !important;
+
+  color:
+    #6ee7b7 !important;
+
+  border:
+    1px solid
+    rgba(52, 211, 153, 0.20) !important;
+}
+
+.role-estudiante .role-home-card {
+  border:
+    1px solid
+    rgba(52, 211, 153, 0.15) !important;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(8, 56, 43, 0.96),
+      rgba(5, 31, 24, 0.96)
+    ) !important;
+}
+
+.role-estudiante .role-home-card > svg {
+  color:
+    #34d399 !important;
+}
+
+/* ---------------------------------------------------------
+   CONTENIDO PRINCIPAL DE LOS TRES ROLES
+   --------------------------------------------------------- */
+
+.role-layout-content {
+  min-height: calc(100vh - 76px);
+  box-sizing: border-box;
+}
+
+/* Encabezados */
+
+.role-home-header h1 {
+  color: #ffffff !important;
+}
+
+.role-home-header p {
+  color: #a7b8b5 !important;
+}
+
+.role-home-grid {
+  margin-top: 24px;
+}
+
+.role-home-card {
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.role-home-card:hover {
+  transform: translateY(-3px);
+}
+
+/* Efecto diferente para cada rol */
+
+.role-admin .role-home-card:hover {
+  border-color:
+    rgba(129, 140, 248, 0.35) !important;
+
+  box-shadow:
+    0 14px 35px
+    rgba(99, 102, 241, 0.10) !important;
+}
+
+.role-docente .role-home-card:hover {
+  border-color:
+    rgba(34, 211, 238, 0.35) !important;
+
+  box-shadow:
+    0 14px 35px
+    rgba(6, 182, 212, 0.10) !important;
+}
+
+.role-estudiante .role-home-card:hover {
+  border-color:
+    rgba(52, 211, 153, 0.35) !important;
+
+  box-shadow:
+    0 14px 35px
+    rgba(16, 185, 129, 0.10) !important;
+}
+
+/* ---------------------------------------------------------
+   BOTÓN CERRAR SESIÓN POR ROL
+   --------------------------------------------------------- */
+
+.role-admin .role-layout-logout:hover {
+  background:
+    rgba(99, 102, 241, 0.10) !important;
+
+  color:
+    #c7d2fe !important;
+}
+
+.role-docente .role-layout-logout:hover {
+  background:
+    rgba(6, 182, 212, 0.10) !important;
+
+  color:
+    #a5f3fc !important;
+}
+
+.role-estudiante .role-layout-logout:hover {
+  background:
+    rgba(16, 185, 129, 0.10) !important;
+
+  color:
+    #a7f3d0 !important;
+}
+
+/* ---------------------------------------------------------
+   RESPONSIVE
+   --------------------------------------------------------- */
+
+@media (max-width: 800px) {
+  .role-admin .role-layout-sidebar,
+  .role-docente .role-layout-sidebar,
+  .role-estudiante .role-layout-sidebar {
+    box-shadow:
+      12px 0 40px
+      rgba(0, 0, 0, 0.45) !important;
+  }
+}
+
+/* =========================================================
+   LOGIN APRenzy - DISEÑO PREMIUM
+   ========================================================= */
+
+body .login-container {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 30px;
+  box-sizing: border-box;
+
+  background:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(77, 124, 255, 0.22),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 80% 15%,
+      rgba(36, 231, 255, 0.18),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 50% 100%,
+      rgba(98, 255, 120, 0.14),
+      transparent 35%
+    ),
+    #020504 !important;
+}
+
+/* Luces decorativas */
+
+body .login-container::before,
+body .login-container::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(2px);
+}
+
+body .login-container::before {
+  width: 420px;
+  height: 420px;
+  top: -180px;
+  left: -120px;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(77, 124, 255, 0.20),
+      transparent 70%
+    );
+}
+
+body .login-container::after {
+  width: 500px;
+  height: 500px;
+  right: -180px;
+  bottom: -220px;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(98, 255, 120, 0.14),
+      transparent 70%
+    );
+}
+
+/* Tarjeta */
+
+body .login-card {
+  position: relative;
+  z-index: 2;
+
+  width: min(440px, 100%);
+  box-sizing: border-box;
+
+  padding: 42px 40px 38px;
+
+  border:
+    1px solid
+    rgba(100, 220, 255, 0.20) !important;
+
+  border-radius: 28px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(14, 27, 29, 0.94),
+      rgba(5, 11, 12, 0.97)
+    ) !important;
+
+  box-shadow:
+    0 35px 90px rgba(0, 0, 0, 0.55),
+    0 0 60px rgba(36, 231, 255, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+
+  backdrop-filter: blur(22px);
+
+  animation:
+    login-card-enter 0.65s ease-out;
+}
+
+/* Línea luminosa superior */
+
+body .login-card::before {
+  content: "";
+
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+
+  height: 2px;
+
+  border-radius: 50%;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      #4d7cff,
+      #24e7ff,
+      #62ff78,
+      transparent
+    );
+
+  box-shadow:
+    0 0 18px
+    rgba(36, 231, 255, 0.45);
+}
+
+/* Logo */
+
+body .login-logo {
+  position: relative;
+
+  width: 240px;
+  height: 125px;
+
+  margin:
+    0 auto 15px;
+
+  background:
+    url("./assets/aprenzy-logo.png")
+    center / contain
+    no-repeat !important;
+
+  filter:
+    drop-shadow(
+      0 0 18px
+      rgba(36, 231, 255, 0.25)
+    );
+
+  transition:
+    transform 0.3s ease,
+    filter 0.3s ease;
+}
+
+body .login-logo:hover {
+  transform:
+    scale(1.04);
+
+  filter:
+    drop-shadow(
+      0 0 25px
+      rgba(36, 231, 255, 0.38)
+    );
+}
+
+/* Título */
+
+body .login-card h1 {
+  margin:
+    5px 0 8px;
+
+  text-align: center;
+
+  color:
+    #ffffff !important;
+
+  font-size:
+    28px;
+
+  font-weight:
+    800;
+
+  letter-spacing:
+    -0.04em;
+}
+
+/* Descripción */
+
+body .login-description {
+  max-width: 330px;
+
+  margin:
+    0 auto 28px;
+
+  text-align: center;
+
+  color:
+    #8da6a2 !important;
+
+  line-height:
+    1.6;
+}
+
+/* Labels */
+
+body .login-card label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  color:
+    #dce9e6 !important;
+
+  font-size:
+    12px;
+
+  font-weight:
+    700;
+
+  letter-spacing:
+    0.02em;
+}
+
+/* Contenedores de input */
+
+body .login-card .input-container {
+  min-height: 52px;
+
+  box-sizing: border-box;
+
+  border:
+    1px solid
+    rgba(145, 170, 167, 0.20) !important;
+
+  border-radius:
+    13px !important;
+
+  background:
+    rgba(7, 18, 19, 0.90) !important;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+body .login-card .input-container:hover {
+  border-color:
+    rgba(36, 231, 255, 0.28) !important;
+}
+
+body .login-card .input-container:focus-within {
+  transform:
+    translateY(-1px);
+
+  border-color:
+    #24e7ff !important;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(36, 231, 255, 0.08),
+    0 0 25px
+    rgba(36, 231, 255, 0.08) !important;
+}
+
+/* Iconos de inputs */
+
+body .login-card .input-container svg {
+  color:
+    #24e7ff !important;
+
+  filter:
+    drop-shadow(
+      0 0 5px
+      rgba(36, 231, 255, 0.35)
+    );
+}
+
+/* Inputs */
+
+body .login-card .input-container input {
+  height:
+    50px;
+
+  box-sizing:
+    border-box;
+
+  color:
+    #ffffff !important;
+
+  background:
+    transparent !important;
+}
+
+/* Placeholder */
+
+body .login-card input::placeholder {
+  color:
+    #66817d !important;
+}
+
+/* Botón */
+
+body .login-card button {
+  position: relative;
+
+  width: 100%;
+
+  min-height:
+    52px;
+
+  margin-top:
+    24px;
+
+  border:
+    0 !important;
+
+  border-radius:
+    13px !important;
+
+  background:
+    linear-gradient(
+      100deg,
+      #4d7cff 0%,
+      #24cfea 48%,
+      #62ff78 100%
     ) !important;
 
   color:
     #03100a !important;
 
-  border-color:
-    rgba(98, 255, 120, 0.35) !important;
+  font-size:
+    14px;
+
+  font-weight:
+    800;
+
+  letter-spacing:
+    0.01em;
+
+  cursor:
+    pointer;
+
+  overflow:
+    hidden;
 
   box-shadow:
-    0 0 18px
-    rgba(36, 231, 255, 0.1) !important;
+    0 10px 30px
+    rgba(36, 231, 255, 0.15) !important;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
 }
 
-body .secondary-button,
-body .cursos-refresh,
-body .docentes-refresh,
-body .estudiantes-refresh,
-body .delivery-refresh {
-  background:
-    rgba(255, 255, 255, 0.035) !important;
+body .login-card button::before {
+  content: "";
 
-  color:
-    #dce9e6 !important;
+  position: absolute;
 
-  border-color:
-    rgba(145, 170, 167, 0.24) !important;
-}
+  top: 0;
+  left: -120%;
 
-/* =========================
-   TABLAS
-   ========================= */
+  width: 70%;
+  height: 100%;
 
-body table {
-  color:
-    var(--ap-text) !important;
-}
-
-body thead th {
-  background:
-    rgba(36, 231, 255, 0.045) !important;
-
-  color:
-    #8da6a2 !important;
-
-  border-color:
-    rgba(145, 170, 167, 0.13) !important;
-}
-
-body tbody td {
-  border-color:
-    rgba(145, 170, 167, 0.1) !important;
-
-  color:
-    #dce9e6 !important;
-}
-
-body tbody tr:hover {
-  background:
-    rgba(36, 231, 255, 0.035) !important;
-}
-
-/* =========================
-   ESTADÍSTICAS
-   ========================= */
-
-body .estadistica-icon,
-body .estadisticas-summary-icon {
-  background:
-    rgba(36, 231, 255, 0.08) !important;
-
-  color:
-    var(--ap-cyan) !important;
-
-  border:
-    1px solid
-    rgba(36, 231, 255, 0.14);
-}
-
-body .estadistica-card strong,
-body .estadisticas-status strong,
-body .estadisticas-summary strong {
-  color:
-    #ffffff !important;
-}
-
-body .estadisticas-status {
-  background:
-    rgba(255, 255, 255, 0.035) !important;
-
-  border:
-    1px solid
-    rgba(145, 170, 167, 0.1);
-}
-
-body .estadisticas-status span {
-  color:
-    var(--ap-muted) !important;
-}
-
-/* =========================
-   MODALES
-   ========================= */
-
-body .cursos-modal-overlay,
-body .apelaciones-overlay,
-body .delivery-modal-overlay {
-  background:
-    rgba(0, 0, 0, 0.76) !important;
-
-  backdrop-filter:
-    blur(7px);
-}
-
-body .cursos-modal,
-body .apelaciones-modal,
-body .delivery-modal {
   background:
     linear-gradient(
-      145deg,
-      #102021,
-      #081314
-    ) !important;
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.30),
+      transparent
+    );
 
-  color:
-    var(--ap-text) !important;
+  transform:
+    skewX(-20deg);
+
+  transition:
+    left 0.5s ease;
+}
+
+body .login-card button:hover {
+  transform:
+    translateY(-2px);
+
+  filter:
+    brightness(1.08);
+
+  box-shadow:
+    0 15px 35px
+    rgba(36, 231, 255, 0.24) !important;
+}
+
+body .login-card button:hover::before {
+  left:
+    140%;
+}
+
+body .login-card button:active {
+  transform:
+    translateY(0);
+}
+
+/* Error */
+
+body .login-card .login-error {
+  margin-top:
+    15px;
+
+  padding:
+    11px 13px;
 
   border:
     1px solid
-    var(--ap-border) !important;
+    rgba(255, 107, 122, 0.20);
 
-  box-shadow:
-    0 30px 80px
-    rgba(0, 0, 0, 0.5) !important;
-}
+  border-radius:
+    10px;
 
-/* =========================
-   ALERTAS
-   ========================= */
-
-body .estadisticas-alert,
-body .estudiantes-error,
-body .docentes-error,
-body .cursos-error,
-body .delivery-error {
   background:
-    rgba(255, 107, 122, 0.08) !important;
+    rgba(255, 107, 122, 0.07);
 
   color:
     #ff9ca6 !important;
 
-  border:
-    1px solid
-    rgba(255, 107, 122, 0.15) !important;
+  text-align:
+    center;
+
+  font-size:
+    13px;
 }
 
-/* =========================
-   RESPONSIVE
-   ========================= */
+/* Animación de entrada */
 
-@media (max-width: 800px) {
+@keyframes login-card-enter {
+  from {
+    opacity: 0;
+    transform:
+      translateY(20px)
+      scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+/* Responsive */
+
+@media (max-width: 600px) {
+  body .login-container {
+    padding:
+      18px;
+  }
+
   body .login-card {
     padding:
-      30px 24px;
+      34px 24px 28px;
+
+    border-radius:
+      22px;
   }
 
   body .login-logo {
+    width:
+      210px;
+
     height:
-      145px;
+      110px;
+  }
+
+  body .login-card h1 {
+    font-size:
+      24px;
   }
 }

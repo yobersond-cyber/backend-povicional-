@@ -1,29 +1,85 @@
 import Login from "./pages/Login";
-import Dashboard from "./pages/dashboard";
 
-// Importa el contexto de autenticación
 import {
   AuthProvider,
   useAuth,
 } from "./context/AuthContext";
 
-// Decide qué pantalla mostrar
-function AppContent() {
-  // Obtiene la información de la sesión
-  const { token } = useAuth();
+import AdminLayout from "./layouts/AdminLayout";
+import DocenteLayout from "./layouts/DocenteLayout";
+import EstudianteLayout from "./layouts/EstudianteLayout";
 
-  // Muestra el dashboard si existe un token
-  if (token) {
-    return <Dashboard />;
+function AppContent() {
+  const {
+    token,
+    usuario,
+    loading,
+  } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="app-loading">
+        <div className="app-loading-card">
+          <div className="app-loading-logo">
+            A
+          </div>
+
+          <h2>
+            Cargando Aprenzy...
+          </h2>
+
+          <p>
+            Verificando tu sesión.
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  // Muestra el login si no existe una sesión
-  return <Login />;
+  if (!token || !usuario) {
+    return <Login />;
+  }
+
+  const rol =
+    usuario.tipo_de_usuario
+      ?.trim()
+      .toLowerCase();
+
+  if (rol === "administrador") {
+    return <AdminLayout />;
+  }
+
+  if (rol === "docente") {
+    return <DocenteLayout />;
+  }
+
+  if (rol === "estudiante") {
+    return <EstudianteLayout />;
+  }
+
+  return (
+    <div className="app-error">
+      <h1>
+        Rol no reconocido
+      </h1>
+
+      <p>
+        El usuario tiene un tipo
+        de usuario que Aprenzy no
+        reconoce.
+      </p>
+
+      <p>
+        Rol recibido:{" "}
+        <strong>
+          {usuario.tipo_de_usuario}
+        </strong>
+      </p>
+    </div>
+  );
 }
 
-// Componente principal de la aplicación
 function App() {
-  // Proporciona la autenticación a toda la aplicación
   return (
     <AuthProvider>
       <AppContent />
@@ -31,7 +87,4 @@ function App() {
   );
 }
 
-// Exporta la aplicación
 export default App;
-
-//react router doom

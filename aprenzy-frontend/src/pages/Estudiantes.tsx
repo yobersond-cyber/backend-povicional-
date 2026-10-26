@@ -1,98 +1,220 @@
-import { useEffect, useState } from "react";
 import {
-  FiAlertCircle,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import {
+  FiPlus,
   FiRefreshCw,
   FiSearch,
   FiUsers,
 } from "react-icons/fi";
 
 import {
+  eliminarUsuario,
   obtenerEstudiantes,
   type Estudiante,
 } from "../services/usuario";
 
-// Lista los estudiantes del colegio para el administrador
-export default function Estudiantes() {
-  const [estudiantes, setEstudiantes] = useState<Estudiante[]>([]);
-  const [busqueda, setBusqueda] = useState("");
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState("");
+import EstudianteForm from "../components/admin/EstudianteForm";
 
-  // Carga los estudiantes desde FastAPI
+import EstudianteTable from "../components/admin/EstudianteTable";
+
+export default function Estudiantes() {
+  const [
+    estudiantes,
+    setEstudiantes,
+  ] = useState<Estudiante[]>([]);
+
+  const [
+    busqueda,
+    setBusqueda,
+  ] = useState("");
+
+  const [
+    cargando,
+    setCargando,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+  const [
+    mostrarFormulario,
+    setMostrarFormulario,
+  ] = useState(false);
+
+  const [
+    estudianteEditando,
+    setEstudianteEditando,
+  ] = useState<Estudiante | null>(
+    null,
+  );
+
   async function cargarEstudiantes() {
     try {
       setCargando(true);
       setError("");
 
-      const datos = await obtenerEstudiantes();
+      const datos =
+        await obtenerEstudiantes();
 
       setEstudiantes(datos);
     } catch (err) {
-      const mensaje =
+      setError(
         err instanceof Error
           ? err.message
-          : "No fue posible cargar los estudiantes.";
-
-      setError(mensaje);
+          : "No fue posible cargar los estudiantes.",
+      );
     } finally {
       setCargando(false);
     }
   }
 
-  // Carga los datos al abrir el módulo
   useEffect(() => {
     void cargarEstudiantes();
   }, []);
 
-  // Filtra los estudiantes
-  const estudiantesFiltrados = estudiantes.filter(
-    (estudiante) => {
-      const texto = `
-        ${estudiante.nombres_compl}
-        ${estudiante.apellidos_compl}
-        ${estudiante.codigo_usuario}
-        ${estudiante.documento}
-      `.toLowerCase();
+  const estudiantesFiltrados =
+    useMemo(() => {
+      const texto =
+        busqueda
+          .trim()
+          .toLowerCase();
 
-      return texto.includes(
-        busqueda.toLowerCase().trim(),
+      if (!texto) {
+        return estudiantes;
+      }
+
+      return estudiantes.filter(
+        (estudiante) => {
+          const datos = `
+            ${estudiante.nombres_compl}
+            ${estudiante.apellidos_compl}
+            ${estudiante.codigo_usuario}
+            ${estudiante.documento}
+            ${estudiante.correo}
+          `.toLowerCase();
+
+          return datos.includes(
+            texto,
+          );
+        },
       );
-    },
-  );
+    }, [
+      estudiantes,
+      busqueda,
+    ]);
+
+  async function eliminarEstudiante(
+    estudiante: Estudiante,
+  ) {
+    const nombre = `${estudiante.nombres_compl} ${estudiante.apellidos_compl}`;
+
+    const confirmar =
+      window.confirm(
+        `¿Seguro que deseas eliminar al estudiante ${nombre}?`,
+      );
+
+    if (!confirmar) {
+      return;
+    }
+
+    try {
+      setError("");
+
+      await eliminarUsuario(
+        estudiante.id_usuario,
+      );
+
+      await cargarEstudiantes();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No fue posible eliminar el estudiante.",
+      );
+    }
+  }
+
+  function abrirCrearEstudiante() {
+    setError("");
+    setEstudianteEditando(null);
+    setMostrarFormulario(true);
+  }
+
+  function abrirEditarEstudiante(
+    estudiante: Estudiante,
+  ) {
+    setError("");
+    setEstudianteEditando(estudiante);
+    setMostrarFormulario(true);
+  }
+
+  function cerrarFormulario() {
+    setMostrarFormulario(false);
+    setEstudianteEditando(null);
+  }
+
+  function formularioGuardado() {
+    cerrarFormulario();
+
+    void cargarEstudiantes();
+  }
 
   return (
-    <div className="estudiantes-page">
-      {/* Encabezado */}
-      <section className="estudiantes-header">
+    <div className="admin-page">
+      <section className="admin-page-header">
         <div>
-          <span className="estudiantes-kicker">
+          <span className="admin-page-kicker">
             Administración
           </span>
 
-          <h1>Estudiantes</h1>
+          <h1>
+            Estudiantes
+          </h1>
 
           <p>
-            Consulta los estudiantes registrados
-            en el colegio.
+            Crea, consulta, actualiza
+            y administra los estudiantes
+            del colegio.
           </p>
         </div>
 
-        <div className="estudiantes-total">
-          <FiUsers />
+        <div className="admin-page-header-actions">
+          <div className="admin-total-card">
+            <FiUsers />
 
-          <strong>
-            {estudiantes.length}
-          </strong>
+            <div>
+              <strong>
+                {estudiantes.length}
+              </strong>
 
-          <span>
-            registrados
-          </span>
+              <span>
+                estudiantes
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="admin-button-primary"
+            onClick={
+              abrirCrearEstudiante
+            }
+          >
+            <FiPlus />
+
+            Nuevo estudiante
+          </button>
         </div>
       </section>
 
-      {/* Barra de búsqueda */}
-      <section className="estudiantes-toolbar">
-        <div className="estudiantes-search">
+      <section className="admin-toolbar">
+        <div className="admin-search">
           <FiSearch />
 
           <input
@@ -103,14 +225,14 @@ export default function Estudiantes() {
                 event.target.value,
               )
             }
-            placeholder="Buscar por nombre, código o documento..."
+            placeholder="Buscar por nombre, código, documento o correo..."
             aria-label="Buscar estudiantes"
           />
         </div>
 
         <button
           type="button"
-          className="estudiantes-refresh"
+          className="admin-button-secondary"
           onClick={() =>
             void cargarEstudiantes()
           }
@@ -122,120 +244,45 @@ export default function Estudiantes() {
         </button>
       </section>
 
-      {/* Mensaje de error */}
       {error && (
         <div
-          className="estudiantes-error"
+          className="admin-alert-error"
           role="alert"
         >
-          <FiAlertCircle />
-
-          <span>
-            {error}
-          </span>
+          {error}
         </div>
       )}
 
-      {/* Estado de carga */}
-      {cargando && (
-        <div className="estudiantes-state">
+      {cargando ? (
+        <div className="admin-loading">
           Cargando estudiantes...
         </div>
+      ) : (
+        <EstudianteTable
+          estudiantes={
+            estudiantesFiltrados
+          }
+          onEditar={
+            abrirEditarEstudiante
+          }
+          onEliminar={
+            eliminarEstudiante
+          }
+        />
       )}
 
-      {/* Tabla */}
-      {!cargando && !error && (
-        <section className="estudiantes-table-card">
-          <div className="estudiantes-table-wrapper">
-            <table className="estudiantes-table">
-              <thead>
-                <tr>
-                  <th>Estudiante</th>
-                  <th>Código</th>
-                  <th>Documento</th>
-                  <th>Correo</th>
-                  <th>Jornada</th>
-                  <th>Incapacidades</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {estudiantesFiltrados.map(
-                  (estudiante) => (
-                    <tr
-                      key={
-                        estudiante.id_usuario
-                      }
-                    >
-                      <td>
-                        <div className="estudiantes-name">
-                          <strong>
-                            {
-                              estudiante.nombres_compl
-                            }{" "}
-                            {
-                              estudiante.apellidos_compl
-                            }
-                          </strong>
-
-                          <span>
-                            {
-                              estudiante.telefono
-                            }
-                          </span>
-                        </div>
-                      </td>
-
-                      <td>
-                        {
-                          estudiante.codigo_usuario
-                        }
-                      </td>
-
-                      <td>
-                        {
-                          estudiante.documento
-                        }
-                      </td>
-
-                      <td>
-                        {
-                          estudiante.correo
-                        }
-                      </td>
-
-                      <td>
-                        {
-                          estudiante.jornada ??
-                          "No definida"
-                        }
-                      </td>
-
-                      <td>
-                        <span className="estudiantes-badge">
-                          {
-                            estudiante
-                              .incapacidades
-                              .length
-                          }
-                        </span>
-                      </td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Sin resultados */}
-          {estudiantesFiltrados.length ===
-            0 && (
-            <div className="estudiantes-empty">
-              No hay estudiantes que
-              coincidan con la búsqueda.
-            </div>
-          )}
-        </section>
+      {mostrarFormulario && (
+        <EstudianteForm
+          estudiante={
+            estudianteEditando
+          }
+          onSuccess={
+            formularioGuardado
+          }
+          onCancel={
+            cerrarFormulario
+          }
+        />
       )}
     </div>
   );
