@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -19,6 +20,48 @@ router = APIRouter(
 )
 
 
+def verificar_colegio_coordinador(current_user: Usuario) -> int:
+    if current_user.id_colegio is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="El coordinador no tiene un colegio asignado",
+        )
+
+    return current_user.id_colegio
+
+
+def obtener_relacion_del_colegio(
+    db: Session,
+    id_usuario_curso: int,
+    id_colegio: int,
+):
+    relacion = (
+        db.query(UsuarioCurso)
+        .join(
+            Usuario,
+            UsuarioCurso.id_usuario == Usuario.id_usuario,
+        )
+        .join(
+            Curso,
+            UsuarioCurso.id_curso == Curso.id_curso,
+        )
+        .filter(
+            UsuarioCurso.id_usuario_curso == id_usuario_curso,
+            Usuario.id_colegio == id_colegio,
+            Curso.id_colegio == id_colegio,
+        )
+        .first()
+    )
+
+    if relacion is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Relación usuario-curso no encontrada en tu colegio",
+        )
+
+    return relacion
+
+
 @router.post(
     "",
     response_model=APIResponse[UsuarioCursoResponse],
@@ -27,103 +70,98 @@ router = APIRouter(
 def asignar_usuario_curso(
     datos: UsuarioCursoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(require_role("administrador")),
+    current_user: Usuario = Depends(require_role("coordinador")),
 ):
-    # Buscar usuario
+    id_colegio = verificar_colegio_coordinador(current_user)
+
     usuario = (
         db.query(Usuario)
         .filter(Usuario.id_usuario == datos.id_usuario)
         .first()
     )
 
-    if not usuario:
+    if usuario is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Usuario no encontrado",
         )
 
-    # El usuario debe pertenecer al mismo colegio
-    # que el administrador.
-    if usuario.id_colegio != current_user.id_colegio:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No puedes gestionar usuarios de otro colegio",
-        )
-
-    # Un administrador no necesita pertenecer a un curso.
-    if usuario.tipo_de_usuario == "administrador":
+    if usuario.tipo_de_usuario not in ("estudiante", "docente"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Un administrador no puede ser asignado a un curso",
+            detail="Solo se pueden asignar estudiantes o docentes a un curso",
         )
 
-    # Buscar curso
+    if usuario.id_colegio != id_colegio:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No puedes asignar usuarios de otro colegio",
+        )
+
     curso = (
         db.query(Curso)
         .filter(Curso.id_curso == datos.id_curso)
         .first()
     )
 
-    if not curso:
+    if curso is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Curso no encontrado",
         )
 
-    # El curso debe pertenecer al mismo colegio.
-    if curso.id_colegio != current_user.id_colegio:
+    if curso.id_colegio != id_colegio:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No puedes gestionar cursos de otro colegio",
         )
 
-    # Verificar que usuario y curso sean del mismo colegio.
-    if usuario.id_colegio != curso.id_colegio:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El usuario y el curso deben pertenecer al mismo colegio",
-        )
-
-    # Evitar relación duplicada.
     existente = (
         db.query(UsuarioCurso)
         .filter(
-            UsuarioCurso.id_usuario == datos.id_usuario,
-            UsuarioCurso.id_curso == datos.id_curso,
+            UsuarioCurso.id_usuario == usuario.id_usuario,
+            UsuarioCurso.id_curso == curso.id_curso,
         )
         .first()
     )
 
-    if existente:
+    if existente is not None:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="El usuario ya pertenece a este curso",
         )
 
-    # Un estudiante solamente puede pertenecer a un curso.
+    # Un estudiante solo puede estar inscrito en un curso.
     if usuario.tipo_de_usuario == "estudiante":
-        otro_curso = (
+        otra_asignacion = (
             db.query(UsuarioCurso)
             .filter(
-                UsuarioCurso.id_usuario == datos.id_usuario
+                UsuarioCurso.id_usuario == usuario.id_usuario,
             )
             .first()
         )
 
-        if otro_curso:
+        if otra_asignacion is not None:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Un estudiante solo puede pertenecer a un curso",
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El estudiante ya está asignado a otro curso",
             )
 
     nueva_relacion = UsuarioCurso(
-        id_usuario=datos.id_usuario,
-        id_curso=datos.id_curso,
+        id_usuario=usuario.id_usuario,
+        id_curso=curso.id_curso,
     )
 
-    db.add(nueva_relacion)
-    db.commit()
-    db.refresh(nueva_relacion)
+    try:
+        db.add(nueva_relacion)
+        db.commit()
+        db.refresh(nueva_relacion)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo asignar el usuario al curso",
+        )
 
     return APIResponse(
         success=True,
@@ -140,63 +178,30 @@ def asignar_usuario_curso(
 def eliminar_usuario_curso(
     id_usuario_curso: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(require_role("administrador")),
+    current_user: Usuario = Depends(require_role("coordinador")),
 ):
-    relacion = (
-        db.query(UsuarioCurso)
-        .filter(
-            UsuarioCurso.id_usuario_curso == id_usuario_curso
-        )
-        .first()
+    id_colegio = verificar_colegio_coordinador(current_user)
+
+    relacion = obtener_relacion_del_colegio(
+        db=db,
+        id_usuario_curso=id_usuario_curso,
+        id_colegio=id_colegio,
     )
 
-    if not relacion:
+    try:
+        db.delete(relacion)
+        db.commit()
+    except Exception:
+        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Relación usuario-curso no encontrada",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo retirar al usuario del curso",
         )
-
-    # Obtener usuario y curso relacionados.
-    usuario = (
-        db.query(Usuario)
-        .filter(
-            Usuario.id_usuario == relacion.id_usuario
-        )
-        .first()
-    )
-
-    curso = (
-        db.query(Curso)
-        .filter(
-            Curso.id_curso == relacion.id_curso
-        )
-        .first()
-    )
-
-    if not usuario or not curso:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario o curso relacionado no encontrado",
-        )
-
-    # Solo se pueden gestionar relaciones
-    # del mismo colegio del administrador.
-    if (
-        usuario.id_colegio != current_user.id_colegio
-        or curso.id_colegio != current_user.id_colegio
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No puedes gestionar relaciones de otro colegio",
-        )
-
-    db.delete(relacion)
-    db.commit()
 
     return APIResponse(
         success=True,
         mensaje="Usuario retirado del curso correctamente",
         data={
-            "id_usuario_curso": id_usuario_curso
+            "id_usuario_curso": id_usuario_curso,
         },
     )

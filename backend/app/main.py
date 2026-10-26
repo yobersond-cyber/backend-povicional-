@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import (
     usuario,
+    colegio,
     curso,
     materia,
     usuario_curso,
@@ -72,6 +73,7 @@ def root():
 # 2. Lista de routers a incluir
 routers = [
     usuario.router,
+    colegio.router,  # NUEVO
     curso.router,
     materia.router,
     usuario_curso.router,

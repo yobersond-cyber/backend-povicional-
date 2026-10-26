@@ -1,8 +1,13 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.conection import get_db
-from app.dependencias.auth import get_current_user, require_role
+from app.dependencias.auth import (
+    get_current_user,
+    require_role,
+    obtener_rol_efectivo,
+)
 
 from app.models.actividad import Actividad
 from app.models.Usuarios import Usuario
@@ -25,6 +30,185 @@ router = APIRouter(
 
 
 # ============================================================
+# FUNCIONES AUXILIARES
+# ============================================================
+
+def obtener_materia_o_error(
+    db: Session,
+    id_materia: int,
+) -> Materia:
+    materia = (
+        db.query(Materia)
+        .filter(Materia.id_materia == id_materia)
+        .first()
+    )
+
+    if materia is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Materia no encontrada",
+        )
+
+    return materia
+
+
+def obtener_curso_o_error(
+    db: Session,
+    id_curso: int,
+) -> Curso:
+    curso = (
+        db.query(Curso)
+        .filter(Curso.id_curso == id_curso)
+        .first()
+    )
+
+    if curso is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Curso asociado a la materia no encontrado",
+        )
+
+    return curso
+
+
+def verificar_colegio(
+    curso: Curso,
+    usuario: Usuario,
+) -> None:
+    if (
+        usuario.id_colegio is None
+        or curso.id_colegio != usuario.id_colegio
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No puedes acceder a actividades de otro colegio",
+        )
+
+
+def verificar_asignacion_docente(
+    db: Session,
+    id_usuario: int,
+    id_materia: int,
+) -> None:
+    asignacion = (
+        db.query(DocenteMateria)
+        .filter(
+            DocenteMateria.id_usuario == id_usuario,
+            DocenteMateria.id_materia == id_materia,
+        )
+        .first()
+    )
+
+    if asignacion is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="El docente no está autorizado para esta materia",
+        )
+
+
+def obtener_actividad_o_error(
+    db: Session,
+    id_actividad: int,
+) -> Actividad:
+    actividad = (
+        db.query(Actividad)
+        .filter(Actividad.id_actividad == id_actividad)
+        .first()
+    )
+
+    if actividad is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Actividad no encontrada",
+        )
+
+    return actividad
+
+
+def obtener_materia_y_curso_de_actividad(
+    db: Session,
+    actividad: Actividad,
+) -> tuple[Materia, Curso]:
+    materia = obtener_materia_o_error(
+        db,
+        actividad.id_materia,
+    )
+
+    curso = obtener_curso_o_error(
+        db,
+        materia.id_curso,
+    )
+
+    return materia, curso
+
+
+def verificar_acceso_actividad(
+    db: Session,
+    actividad: Actividad,
+    current_user: Usuario,
+) -> None:
+    """
+    Comprueba el acceso a una actividad individual según el rol
+    efectivo del usuario y las relaciones académicas existentes.
+    """
+
+    rol = obtener_rol_efectivo(current_user)
+
+    materia, curso = obtener_materia_y_curso_de_actividad(
+        db,
+        actividad,
+    )
+
+    # COORDINADOR: únicamente puede consultar actividades
+    # del colegio al que está asociado.
+    if rol == "coordinador":
+        verificar_colegio(curso, current_user)
+        return
+
+    # DOCENTE: debe pertenecer al colegio correcto y estar
+    # asignado a la materia.
+    if rol == "docente":
+        verificar_colegio(curso, current_user)
+
+        verificar_asignacion_docente(
+            db,
+            current_user.id_usuario,
+            materia.id_materia,
+        )
+        return
+
+    # ESTUDIANTE: únicamente puede consultar actividades
+    # de su curso y de su colegio.
+    if rol == "estudiante":
+        verificar_colegio(curso, current_user)
+
+        usuario_curso = (
+            db.query(UsuarioCurso)
+            .filter(
+                UsuarioCurso.id_usuario
+                == current_user.id_usuario,
+                UsuarioCurso.id_curso == curso.id_curso,
+            )
+            .first()
+        )
+
+        if usuario_curso is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No puedes consultar actividades de otro curso",
+            )
+
+        return
+
+    # El administrador global no usa este endpoint para consultar
+    # actividades académicas de los colegios.
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Rol no autorizado para consultar esta actividad",
+    )
+
+
+# ============================================================
 # POST /actividades
 # Crear actividad
 # ============================================================
@@ -39,91 +223,31 @@ def crear_actividad(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("docente")),
 ):
-    # --------------------------------------------------------
-    # Seguridad:
-    # el usuario enviado debe coincidir con el usuario
-    # autenticado mediante JWT.
-    # --------------------------------------------------------
-
+    # La actividad debe quedar registrada a nombre del docente
+    # autenticado, nunca de otro usuario.
     if datos.id_usuario != current_user.id_usuario:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No puedes crear una actividad utilizando otro usuario",
         )
 
-    # --------------------------------------------------------
-    # Buscar materia
-    # --------------------------------------------------------
-
-    materia = (
-        db.query(Materia)
-        .filter(
-            Materia.id_materia == datos.id_materia
-        )
-        .first()
+    materia = obtener_materia_o_error(
+        db,
+        datos.id_materia,
     )
 
-    if not materia:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Materia no encontrada",
-        )
-
-    # --------------------------------------------------------
-    # Buscar curso
-    # --------------------------------------------------------
-
-    curso = (
-        db.query(Curso)
-        .filter(
-            Curso.id_curso == materia.id_curso
-        )
-        .first()
+    curso = obtener_curso_o_error(
+        db,
+        materia.id_curso,
     )
 
-    if not curso:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Curso asociado a la materia no encontrado",
-        )
+    verificar_colegio(curso, current_user)
 
-    # --------------------------------------------------------
-    # Verificar colegio
-    # --------------------------------------------------------
-
-    if curso.id_colegio != current_user.id_colegio:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No puedes crear actividades para otro colegio",
-        )
-
-    # --------------------------------------------------------
-    # Verificar que el docente esté asignado a la materia
-    # --------------------------------------------------------
-
-    asignacion = (
-        db.query(DocenteMateria)
-        .filter(
-            DocenteMateria.id_usuario
-            == current_user.id_usuario,
-            DocenteMateria.id_materia
-            == datos.id_materia,
-        )
-        .first()
+    verificar_asignacion_docente(
+        db,
+        current_user.id_usuario,
+        materia.id_materia,
     )
-
-    if not asignacion:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="El docente no está autorizado para esta materia",
-        )
-
-    # --------------------------------------------------------
-    # Validar fechas
-    #
-    # La fecha límite debe ser igual o posterior
-    # a la fecha de publicación.
-    # --------------------------------------------------------
 
     if datos.fecha_limite < datos.fecha_publicacion:
         raise HTTPException(
@@ -131,13 +255,9 @@ def crear_actividad(
             detail="La fecha límite no puede ser anterior a la fecha de publicación",
         )
 
-    # --------------------------------------------------------
-    # Crear actividad
-    # --------------------------------------------------------
-
     nueva_actividad = Actividad(
         id_usuario=current_user.id_usuario,
-        id_materia=datos.id_materia,
+        id_materia=materia.id_materia,
         titulo=datos.titulo,
         descripcion=datos.descripcion,
         fecha_publicacion=datos.fecha_publicacion,
@@ -164,13 +284,17 @@ def listar_actividades(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    # --------------------------------------------------------
-    # ADMINISTRADOR
-    # --------------------------------------------------------
+    rol = obtener_rol_efectivo(current_user)
 
-    if current_user.tipo_de_usuario == "administrador":
+    # COORDINADOR: actividades de su colegio.
+    if rol == "coordinador":
+        if current_user.id_colegio is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="El coordinador no tiene un colegio asignado",
+            )
 
-        actividades = (
+        return (
             db.query(Actividad)
             .join(
                 Materia,
@@ -181,21 +305,21 @@ def listar_actividades(
                 Materia.id_curso == Curso.id_curso,
             )
             .filter(
-                Curso.id_colegio == current_user.id_colegio
+                Curso.id_colegio == current_user.id_colegio,
             )
             .all()
         )
 
-        return actividades
+    # DOCENTE: actividades de sus materias asignadas,
+    # siempre dentro de su colegio.
+    if rol == "docente":
+        if current_user.id_colegio is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="El docente no tiene un colegio asignado",
+            )
 
-    # --------------------------------------------------------
-    # DOCENTE
-    # Solo actividades de sus materias asignadas.
-    # --------------------------------------------------------
-
-    if current_user.tipo_de_usuario == "docente":
-
-        actividades = (
+        return (
             db.query(Actividad)
             .join(
                 DocenteMateria,
@@ -204,69 +328,74 @@ def listar_actividades(
             )
             .join(
                 Materia,
-                Actividad.id_materia
-                == Materia.id_materia,
+                Actividad.id_materia == Materia.id_materia,
             )
             .join(
                 Curso,
-                Materia.id_curso
-                == Curso.id_curso,
+                Materia.id_curso == Curso.id_curso,
             )
             .filter(
                 DocenteMateria.id_usuario
                 == current_user.id_usuario,
-                Curso.id_colegio
-                == current_user.id_colegio,
+                Curso.id_colegio == current_user.id_colegio,
             )
+            .distinct()
             .all()
         )
 
-        return actividades
-
-    # --------------------------------------------------------
-    # ESTUDIANTE
-    # Solo actividades del curso al que pertenece.
-    # --------------------------------------------------------
-
-    if current_user.tipo_de_usuario == "estudiante":
+    # ESTUDIANTE: actividades de su curso y colegio.
+    if rol == "estudiante":
+        if current_user.id_colegio is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="El estudiante no tiene un colegio asignado",
+            )
 
         usuario_curso = (
             db.query(UsuarioCurso)
+            .join(
+                Curso,
+                UsuarioCurso.id_curso == Curso.id_curso,
+            )
             .filter(
                 UsuarioCurso.id_usuario
-                == current_user.id_usuario
+                == current_user.id_usuario,
+                Curso.id_colegio == current_user.id_colegio,
             )
             .first()
         )
 
-        if not usuario_curso:
+        if usuario_curso is None:
             return []
 
-        actividades = (
+        return (
             db.query(Actividad)
             .join(
                 Materia,
-                Actividad.id_materia
-                == Materia.id_materia,
+                Actividad.id_materia == Materia.id_materia,
+            )
+            .join(
+                Curso,
+                Materia.id_curso == Curso.id_curso,
             )
             .filter(
-                Materia.id_curso
-                == usuario_curso.id_curso
+                Curso.id_curso == usuario_curso.id_curso,
+                Curso.id_colegio == current_user.id_colegio,
             )
             .all()
         )
 
-        return actividades
-
+    # El administrador global no consulta aquí actividades
+    # de todos los colegios.
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail="Rol de usuario no autorizado",
+        detail="Rol no autorizado para consultar actividades",
     )
 
 
 # ============================================================
 # GET /actividades/{id_actividad}
-# Obtener actividad específica
+# Obtener una actividad específica
 # ============================================================
 
 @router.get(
@@ -278,134 +407,18 @@ def obtener_actividad(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    actividad = (
-        db.query(Actividad)
-        .filter(
-            Actividad.id_actividad == id_actividad
-        )
-        .first()
+    actividad = obtener_actividad_o_error(
+        db,
+        id_actividad,
     )
 
-    if not actividad:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Actividad no encontrada",
-        )
-
-    # --------------------------------------------------------
-    # Materia
-    # --------------------------------------------------------
-
-    materia = (
-        db.query(Materia)
-        .filter(
-            Materia.id_materia == actividad.id_materia
-        )
-        .first()
+    verificar_acceso_actividad(
+        db,
+        actividad,
+        current_user,
     )
 
-    if not materia:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Materia asociada a la actividad no encontrada",
-        )
-
-    # --------------------------------------------------------
-    # Curso
-    # --------------------------------------------------------
-
-    curso = (
-        db.query(Curso)
-        .filter(
-            Curso.id_curso == materia.id_curso
-        )
-        .first()
-    )
-
-    if not curso:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Curso asociado a la actividad no encontrado",
-        )
-
-    # --------------------------------------------------------
-    # ADMINISTRADOR
-    # --------------------------------------------------------
-
-    if current_user.tipo_de_usuario == "administrador":
-
-        if curso.id_colegio != current_user.id_colegio:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No puedes consultar actividades de otro colegio",
-            )
-
-        return actividad
-
-    # --------------------------------------------------------
-    # DOCENTE
-    # --------------------------------------------------------
-
-    if current_user.tipo_de_usuario == "docente":
-
-        asignacion = (
-            db.query(DocenteMateria)
-            .filter(
-                DocenteMateria.id_usuario
-                == current_user.id_usuario,
-                DocenteMateria.id_materia
-                == actividad.id_materia,
-            )
-            .first()
-        )
-
-        if not asignacion:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No estás autorizado para consultar esta actividad",
-            )
-
-        if curso.id_colegio != current_user.id_colegio:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No puedes consultar actividades de otro colegio",
-            )
-
-        return actividad
-
-    # --------------------------------------------------------
-    # ESTUDIANTE
-    # --------------------------------------------------------
-
-    if current_user.tipo_de_usuario == "estudiante":
-
-        usuario_curso = (
-            db.query(UsuarioCurso)
-            .filter(
-                UsuarioCurso.id_usuario
-                == current_user.id_usuario
-            )
-            .first()
-        )
-
-        if not usuario_curso:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="El estudiante no tiene un curso asignado",
-            )
-
-        if usuario_curso.id_curso != curso.id_curso:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No puedes consultar actividades de otro curso",
-            )
-
-        return actividad
-
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Rol de usuario no autorizado",
-    )
+    return actividad
 
 
 # ============================================================
@@ -423,99 +436,102 @@ def editar_actividad(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("docente")),
 ):
-    actividad = (
-        db.query(Actividad)
-        .filter(
-            Actividad.id_actividad == id_actividad
-        )
-        .first()
+    actividad = obtener_actividad_o_error(
+        db,
+        id_actividad,
     )
 
-    if not actividad:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Actividad no encontrada",
-        )
-
-    # --------------------------------------------------------
-    # Solo el docente que creó la actividad puede modificarla.
-    # --------------------------------------------------------
-
+    # Solo el docente creador puede modificar la actividad.
     if actividad.id_usuario != current_user.id_usuario:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No puedes editar una actividad creada por otro docente",
         )
 
-    materia = (
-        db.query(Materia)
-        .filter(
-            Materia.id_materia == actividad.id_materia
-        )
-        .first()
+    # Verificar que la actividad actual pertenece al colegio
+    # y a una materia que el docente aún tiene asignada.
+    _, curso_actual = obtener_materia_y_curso_de_actividad(
+        db,
+        actividad,
     )
 
-    if not materia:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Materia asociada a la actividad no encontrada",
-        )
+    verificar_colegio(curso_actual, current_user)
 
-    curso = (
-        db.query(Curso)
-        .filter(
-            Curso.id_curso == materia.id_curso
-        )
-        .first()
+    verificar_asignacion_docente(
+        db,
+        current_user.id_usuario,
+        actividad.id_materia,
     )
 
-    if not curso:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Curso asociado a la actividad no encontrado",
-        )
+    # Solo se modifican los campos enviados por el cliente.
+    cambios = datos.dict(exclude_unset=True)
 
-    if curso.id_colegio != current_user.id_colegio:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No puedes editar actividades de otro colegio",
-        )
+    # Los campos opcionales del esquema de actualización no
+    # pueden establecer como NULL valores requeridos en la BD.
+    campos_requeridos = {
+        "titulo",
+        "descripcion",
+        "fecha_publicacion",
+        "fecha_limite",
+        "id_materia",
+    }
 
-    asignacion = (
-        db.query(DocenteMateria)
-        .filter(
-            DocenteMateria.id_usuario
-            == current_user.id_usuario,
-            DocenteMateria.id_materia
-            == actividad.id_materia,
-        )
-        .first()
+    for campo in campos_requeridos.intersection(cambios):
+        if cambios[campo] is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El campo '{campo}' no puede ser nulo",
+            )
+
+    # Si se cambia la materia, validar también la nueva materia,
+    # su colegio y la asignación del docente.
+    id_materia_nueva = cambios.get(
+        "id_materia",
+        actividad.id_materia,
     )
 
-    if not asignacion:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="El docente no está autorizado para esta materia",
+    if id_materia_nueva != actividad.id_materia:
+        materia_nueva = obtener_materia_o_error(
+            db,
+            id_materia_nueva,
         )
 
-    # --------------------------------------------------------
-    # Validar fechas
-    # --------------------------------------------------------
+        curso_nuevo = obtener_curso_o_error(
+            db,
+            materia_nueva.id_curso,
+        )
 
-    if datos.fecha_limite < datos.fecha_publicacion:
+        verificar_colegio(curso_nuevo, current_user)
+
+        verificar_asignacion_docente(
+            db,
+            current_user.id_usuario,
+            materia_nueva.id_materia,
+        )
+
+    # Validar las fechas resultantes, combinando los valores
+    # nuevos con los que ya existen.
+    fecha_publicacion_final = cambios.get(
+        "fecha_publicacion",
+        actividad.fecha_publicacion,
+    )
+
+    fecha_limite_final = cambios.get(
+        "fecha_limite",
+        actividad.fecha_limite,
+    )
+
+    if fecha_limite_final < fecha_publicacion_final:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="La fecha límite no puede ser anterior a la fecha de publicación",
         )
 
-    # --------------------------------------------------------
-    # Actualizar
-    # --------------------------------------------------------
+    # No se permite modificar el creador mediante esta ruta.
+    cambios.pop("id_usuario", None)
 
-    actividad.titulo = datos.titulo
-    actividad.descripcion = datos.descripcion
-    actividad.fecha_publicacion = datos.fecha_publicacion
-    actividad.fecha_limite = datos.fecha_limite
+    for campo, valor in cambios.items():
+        setattr(actividad, campo, valor)
 
     db.commit()
     db.refresh(actividad)

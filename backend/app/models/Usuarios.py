@@ -13,10 +13,12 @@ class Usuario(Base):
         index=True
     )
 
+    # Puede ser NULL únicamente para el administrador global.
+    # Los demás roles deberán tener un colegio asignado.
     id_colegio = Column(
         Integer,
         ForeignKey("colegio.id_colegio"),
-        nullable=False
+        nullable=True
     )
 
     codigo_usuario = Column(
@@ -57,11 +59,14 @@ class Usuario(Base):
         nullable=False
     )
 
+    # Los cuatro roles admitidos por APRENZY.
     tipo_de_usuario = Column(
         Enum(
             "administrador",
+            "coordinador",
             "docente",
-            "estudiante"
+            "estudiante",
+            name="tipo_usuario_enum"
         ),
         nullable=False
     )
@@ -71,61 +76,61 @@ class Usuario(Base):
         nullable=True
     )
 
-    # Relación con colegio
+    # Colegio al que pertenece el usuario.
     colegio = relationship(
         "Colegio",
         back_populates="usuarios"
     )
 
-    # Relación con cursos
+    # Relación con cursos.
     cursos = relationship(
         "UsuarioCurso",
         back_populates="usuario"
     )
 
-    # Relación con materias que dicta el docente
+    # Materias asignadas al docente.
     materias = relationship(
         "DocenteMateria",
         back_populates="usuario"
     )
 
-    # Relación con incapacidades
+    # Incapacidades del usuario.
     incapacidades = relationship(
         "Incapacidad",
         back_populates="usuario"
     )
 
-    # Relación con historial de incapacidades
+    # Historial de incapacidades.
     historial_incapacidades = relationship(
         "HistorialIncapacidad",
         back_populates="usuario_cambio"
     )
 
-    # Relación con apelaciones revisadas
+    # Apelaciones revisadas.
     apelaciones_revisadas = relationship(
         "Apelacion",
         back_populates="revisor"
     )
 
-    # Relación con accesos académicos
+    # Accesos académicos.
     accesos_academicos = relationship(
         "AccesoAcademico",
         back_populates="usuario"
     )
 
-    # Relación con materiales académicos
+    # Material académico.
     materiales_academicos = relationship(
         "MaterialAcademico",
         back_populates="usuario"
     )
 
-    # Relación con actividades
+    # Actividades creadas o gestionadas por el usuario.
     actividades = relationship(
         "Actividad",
         back_populates="usuario"
     )
 
-    # Relación con entregas
+    # Entregas relacionadas con el usuario.
     entregas = relationship(
         "Entrega",
         back_populates="usuario"

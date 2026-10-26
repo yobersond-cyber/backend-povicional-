@@ -17,7 +17,28 @@ USE aprenzy;
 
 CREATE TABLE colegio (
     id_colegio INT AUTO_INCREMENT PRIMARY KEY,
-    nombre_colegio VARCHAR(250) NOT NULL
+
+    nombre_colegio VARCHAR(250) NOT NULL,
+
+    codigo_dane VARCHAR(20) NULL,
+    nit VARCHAR(20) NULL,
+    direccion VARCHAR(250) NULL,
+    telefono VARCHAR(20) NULL,
+    correo_institucional VARCHAR(100) NULL,
+    municipio VARCHAR(100) NULL,
+    departamento VARCHAR(100) NULL,
+
+    estado ENUM('activo', 'inactivo')
+        NOT NULL DEFAULT 'activo',
+
+    fecha_creacion DATETIME
+        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_colegio_codigo_dane
+        UNIQUE (codigo_dane),
+
+    CONSTRAINT uq_colegio_nit
+        UNIQUE (nit)
 ) ENGINE=InnoDB;
 
 
@@ -63,75 +84,33 @@ CREATE TABLE curso (
 CREATE TABLE usuario (
     id_usuario INT AUTO_INCREMENT PRIMARY KEY,
 
-    id_colegio INT NOT NULL,
+    -- NULL solo para el administrador global.
+    id_colegio INT NULL,
 
     codigo_usuario VARCHAR(20) NOT NULL UNIQUE,
-
     documento VARCHAR(20) NOT NULL UNIQUE,
 
     nombres_compl VARCHAR(80) NOT NULL,
-
     apellidos_compl VARCHAR(80) NOT NULL,
 
     telefono VARCHAR(20) NOT NULL,
-
     correo VARCHAR(100) NOT NULL UNIQUE,
-
     contrasena VARCHAR(255) NOT NULL,
 
     tipo_de_usuario ENUM(
         'administrador',
+        'coordinador',
         'docente',
         'estudiante'
     ) NOT NULL,
 
-    jornada VARCHAR(20),
+    jornada VARCHAR(20) NULL,
 
     CONSTRAINT fk_usuario_colegio
         FOREIGN KEY (id_colegio)
         REFERENCES colegio(id_colegio)
         ON UPDATE CASCADE
         ON DELETE RESTRICT
-) ENGINE=InnoDB;
-
-
--- 5. TABLA: USUARIO_CURSO
--- Relación N:M entre usuario y curso.
---
--- Estudiante:
---   Solo podrá pertenecer a un curso.
---
--- Docente:
---   Podrá pertenecer a varios cursos.
---
--- Administrador:
---   No necesita curso.
---
--- La restricción específica del estudiante será
--- controlada posteriormente mediante reglas de negocio
--- en el backend.
-
-CREATE TABLE usuario_curso (
-    id_usuario_curso INT AUTO_INCREMENT PRIMARY KEY,
-
-    id_usuario INT NOT NULL,
-
-    id_curso INT NOT NULL,
-
-    CONSTRAINT uq_usuario_curso
-        UNIQUE (id_usuario, id_curso),
-
-    CONSTRAINT fk_usuario_curso_usuario
-        FOREIGN KEY (id_usuario)
-        REFERENCES usuario(id_usuario)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_usuario_curso_curso
-        FOREIGN KEY (id_curso)
-        REFERENCES curso(id_curso)
-        ON UPDATE CASCADE
-        ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 

@@ -1,23 +1,19 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from app.database.conection import SessionLocal
-
-from app.models.acceso_academico import AccesoAcademico
-from app.models.incapacidad import Incapacidad
-from app.models.Usuarios import Usuario
-
-from app.schemas.acceso_academico import (
-    AccesoAcademicoCreate,
-    AccesoAcademicoResponse,
-    EstadoAcceso,
-)
-
-from app.services.acceso_service import finalizar_accesos_vencidos
-
+from app.database.conection import get_db
 from app.dependencias.auth import (
     get_current_user,
     require_role,
+    obtener_rol_efectivo,
+)
+from app.models.acceso_academico import AccesoAcademico
+from app.models.incapacidad import Incapacidad
+from app.models.Usuarios import Usuario
+from app.schemas.acceso_academico import (
+    AccesoAcademicoCreate,
+    AccesoAcademicoResponse,
 )
 
 
@@ -27,19 +23,38 @@ router = APIRouter(
 )
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def obtener_acceso_del_colegio(
+    db: Session,
+    id_acceso: int,
+    id_colegio: int,
+) -> AccesoAcademico:
+    """Busca un acceso y verifica que pertenezca al colegio indicado."""
 
+    acceso = (
+        db.query(AccesoAcademico)
+        .join(
+            Usuario,
+            AccesoAcademico.id_usuario == Usuario.id_usuario,
+        )
+        .options(
+            joinedload(AccesoAcademico.usuario),
+            joinedload(AccesoAcademico.incapacidad),
+        )
+        .filter(
+            AccesoAcademico.id_acceso == id_acceso,
+            Usuario.id_colegio == id_colegio,
+        )
+        .first()
+    )
 
-# ============================================================
-# POST /accesos
-# Crear un acceso académico
-# Solo administrador
-# ============================================================
+    if acceso is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Acceso académico no encontrado en tu colegio",
+        )
+
+    return acceso
+
 
 @router.post(
     "",
@@ -49,96 +64,100 @@ def get_db():
 def crear_acceso(
     datos: AccesoAcademicoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(
-        require_role("administrador")
-    ),
+    current_user: Usuario = Depends(require_role("coordinador")),
 ):
-    # Verificar que el usuario exista
-    usuario = (
-        db.query(Usuario)
-        .filter(
-            Usuario.id_usuario == datos.id_usuario
+    if current_user.id_colegio is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="El coordinador no tiene un colegio asignado",
         )
+
+    # El estudiante debe pertenecer al colegio del coordinador.
+    estudiante = (
+        db.query(Usuario)
+        .filter(Usuario.id_usuario == datos.id_usuario)
         .first()
     )
 
-    if not usuario:
+    if estudiante is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario no encontrado",
+            detail="Estudiante no encontrado",
         )
 
-    # El acceso académico es para estudiantes
-    if usuario.tipo_de_usuario != "estudiante":
+    if estudiante.tipo_de_usuario != "estudiante":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El acceso académico solo puede asignarse a un estudiante",
         )
 
-    # Verificar que la incapacidad exista
+    if estudiante.id_colegio != current_user.id_colegio:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No puedes gestionar estudiantes de otro colegio",
+        )
+
     incapacidad = (
         db.query(Incapacidad)
         .filter(
-            Incapacidad.id_incapacidad
-            == datos.id_incapacidad
+            Incapacidad.id_incapacidad == datos.id_incapacidad,
         )
         .first()
     )
 
-    if not incapacidad:
+    if incapacidad is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Incapacidad no encontrada",
         )
 
-    # La incapacidad debe pertenecer al mismo estudiante
-    if incapacidad.id_usuario != datos.id_usuario:
+    # La incapacidad debe pertenecer al estudiante indicado.
+    if incapacidad.id_usuario != estudiante.id_usuario:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La incapacidad no pertenece al usuario indicado",
+            detail="La incapacidad no pertenece al estudiante indicado",
         )
 
-    # La incapacidad debe estar aprobada
     if incapacidad.estado != "aprobada":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Solo se puede crear un acceso académico para una incapacidad aprobada",
+            detail="Solo se puede crear un acceso para una incapacidad aprobada",
         )
 
-    # Una incapacidad solo puede generar un acceso académico
     existente = (
         db.query(AccesoAcademico)
         .filter(
-            AccesoAcademico.id_incapacidad
-            == datos.id_incapacidad
+            AccesoAcademico.id_incapacidad == datos.id_incapacidad,
         )
         .first()
     )
 
-    if existente:
+    if existente is not None:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Esta incapacidad ya tiene un acceso académico",
         )
 
+    # El estado inicial lo determina el servidor, no el cliente.
     nuevo_acceso = AccesoAcademico(
-        id_usuario=datos.id_usuario,
-        id_incapacidad=datos.id_incapacidad,
-        estado=datos.estado,
+        id_usuario=estudiante.id_usuario,
+        id_incapacidad=incapacidad.id_incapacidad,
+        estado="activo",
     )
 
-    db.add(nuevo_acceso)
-    db.commit()
-    db.refresh(nuevo_acceso)
+    try:
+        db.add(nuevo_acceso)
+        db.commit()
+        db.refresh(nuevo_acceso)
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo crear el acceso académico",
+        )
 
     return nuevo_acceso
 
-
-# ============================================================
-# GET /accesos
-# Listar accesos académicos
-# Solo coordinador
-# ============================================================
 
 @router.get(
     "",
@@ -146,23 +165,44 @@ def crear_acceso(
 )
 def listar_accesos(
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(
-        require_role("administrador")
-    ),
+    current_user: Usuario = Depends(get_current_user),
 ):
-    # Finalizar automáticamente los accesos vencidos
-    finalizar_accesos_vencidos(db)
+    rol = obtener_rol_efectivo(current_user)
 
-    return db.query(AccesoAcademico).all()
+    # El coordinador solo puede listar accesos de su colegio.
+    if rol == "coordinador":
+        if current_user.id_colegio is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="El coordinador no tiene un colegio asignado",
+            )
 
+        return (
+            db.query(AccesoAcademico)
+            .join(
+                Usuario,
+                AccesoAcademico.id_usuario == Usuario.id_usuario,
+            )
+            .filter(Usuario.id_colegio == current_user.id_colegio)
+            .all()
+        )
 
-# ============================================================
-# GET /accesos/{id_acceso}
-# Consultar un acceso académico
-#
-# Coordinador: puede consultar cualquiera.
-# Estudiante: solamente el suyo.
-# ============================================================
+    # El estudiante solo puede ver sus propios accesos.
+    if rol == "estudiante":
+
+        return (
+            db.query(AccesoAcademico)
+            .filter(
+                AccesoAcademico.id_usuario == current_user.id_usuario,
+            )
+            .all()
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="No tienes permisos para consultar estos accesos académicos",
+    )
+
 
 @router.get(
     "/{id_acceso}",
@@ -173,30 +213,44 @@ def obtener_acceso(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    # Finalizar automáticamente los accesos vencidos
-    finalizar_accesos_vencidos(db)
 
-    acceso = (
-        db.query(AccesoAcademico)
-        .filter(
-            AccesoAcademico.id_acceso == id_acceso
+    rol = obtener_rol_efectivo(current_user)
+
+    if rol == "coordinador":
+        if current_user.id_colegio is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="El coordinador no tiene un colegio asignado",
+            )
+
+        return obtener_acceso_del_colegio(
+            db,
+            id_acceso,
+            current_user.id_colegio,
         )
-        .first()
+
+    if rol == "estudiante":
+        acceso = (
+            db.query(AccesoAcademico)
+            .filter(AccesoAcademico.id_acceso == id_acceso)
+            .first()
+        )
+
+        if acceso is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Acceso académico no encontrado",
+            )
+
+        if acceso.id_usuario != current_user.id_usuario:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo puedes consultar tus propios accesos académicos",
+            )
+
+        return acceso
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="No tienes permisos para consultar este acceso académico",
     )
-
-    if not acceso:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Acceso académico no encontrado",
-        )
-
-    # El coordinador puede consultar cualquier acceso
-    if current_user.tipo_de_usuario == "administrador":
-        return acceso
-
-    # El estudiante solamente puede consultar su propio acceso
-    if (
-        current_user.tipo_de_usuario == "estudiante"
-        and acceso.id_usuario == current_user.id_usuario
-    ):
-        return acceso

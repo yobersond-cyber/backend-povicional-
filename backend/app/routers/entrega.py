@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -25,8 +26,105 @@ router = APIRouter(
 )
 
 
+def obtener_colegio_de_actividad(
+    actividad: Actividad,
+    db: Session,
+):
+    """Obtiene el colegio al que pertenece una actividad."""
+
+    materia = (
+        db.query(Materia)
+        .filter(Materia.id_materia == actividad.id_materia)
+        .first()
+    )
+
+    if not materia:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Materia de la actividad no encontrada",
+        )
+
+    curso = (
+        db.query(Curso)
+        .filter(Curso.id_curso == materia.id_curso)
+        .first()
+    )
+
+    if not curso:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Curso de la actividad no encontrado",
+        )
+
+    return curso.id_colegio
+
+
+def obtener_entrega_o_error(
+    id_entrega: int,
+    db: Session,
+):
+    """Busca una entrega y sus datos principales."""
+
+    entrega = (
+        db.query(Entrega)
+        .filter(Entrega.id_entrega == id_entrega)
+        .first()
+    )
+
+    if not entrega:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Entrega no encontrada",
+        )
+
+    estudiante = (
+        db.query(Usuario)
+        .filter(Usuario.id_usuario == entrega.id_usuario)
+        .first()
+    )
+
+    if not estudiante:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Estudiante de la entrega no encontrado",
+        )
+
+    actividad = (
+        db.query(Actividad)
+        .filter(Actividad.id_actividad == entrega.id_actividad)
+        .first()
+    )
+
+    if not actividad:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Actividad de la entrega no encontrada",
+        )
+
+    colegio_id = obtener_colegio_de_actividad(actividad, db)
+
+    return entrega, estudiante, actividad, colegio_id
+
+
+def verificar_coordinador_del_colegio(
+    current_user: Usuario,
+    id_colegio: int,
+):
+    """Impide que un coordinador consulte entregas de otro colegio."""
+
+    if (
+        current_user.id_colegio is None
+        or current_user.id_colegio != id_colegio
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes acceso a entregas de otro colegio",
+        )
+
+
 # ============================================================
 # POST /entregas
+# El estudiante registra su propia entrega.
 # ============================================================
 
 @router.post(
@@ -39,25 +137,15 @@ def crear_entrega(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("estudiante")),
 ):
-    # --------------------------------------------------------
-    # El estudiante solamente puede crear su propia entrega
-    # --------------------------------------------------------
-
     if datos.id_usuario != current_user.id_usuario:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No puedes registrar una entrega a nombre de otro usuario",
         )
 
-    # --------------------------------------------------------
-    # Buscar actividad
-    # --------------------------------------------------------
-
     actividad = (
         db.query(Actividad)
-        .filter(
-            Actividad.id_actividad == datos.id_actividad
-        )
+        .filter(Actividad.id_actividad == datos.id_actividad)
         .first()
     )
 
@@ -67,51 +155,28 @@ def crear_entrega(
             detail="Actividad no encontrada",
         )
 
-    # --------------------------------------------------------
-    # Buscar materia de la actividad
-    # --------------------------------------------------------
+    colegio_id = obtener_colegio_de_actividad(actividad, db)
 
-    materia = (
-        db.query(Materia)
-        .filter(
-            Materia.id_materia == actividad.id_materia
-        )
-        .first()
-    )
-
-    if not materia:
+    if colegio_id != current_user.id_colegio:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Materia de la actividad no encontrada",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="La actividad no pertenece a tu colegio",
         )
-
-    # --------------------------------------------------------
-    # Buscar curso
-    # --------------------------------------------------------
-
-    curso = (
-        db.query(Curso)
-        .filter(
-            Curso.id_curso == materia.id_curso
-        )
-        .first()
-    )
-
-    if not curso:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Curso de la actividad no encontrado",
-        )
-
-    # --------------------------------------------------------
-    # Verificar que el estudiante pertenezca al curso
-    # --------------------------------------------------------
 
     pertenece_curso = (
         db.query(UsuarioCurso)
+        .join(
+            Curso,
+            UsuarioCurso.id_curso == Curso.id_curso,
+        )
+        .join(
+            Materia,
+            Materia.id_curso == Curso.id_curso,
+        )
         .filter(
             UsuarioCurso.id_usuario == current_user.id_usuario,
-            UsuarioCurso.id_curso == curso.id_curso,
+            Materia.id_materia == actividad.id_materia,
+            Curso.id_colegio == current_user.id_colegio,
         )
         .first()
     )
@@ -119,16 +184,8 @@ def crear_entrega(
     if not pertenece_curso:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="El estudiante no pertenece al curso de esta actividad",
+            detail="No perteneces al curso de esta actividad",
         )
-
-    # --------------------------------------------------------
-    # Verificar que no exista ya una entrega para la misma
-    # actividad por parte del estudiante
-    #
-    # No agregamos una regla nueva de negocio:
-    # simplemente evitamos duplicar una entrega existente.
-    # --------------------------------------------------------
 
     entrega_existente = (
         db.query(Entrega)
@@ -145,19 +202,17 @@ def crear_entrega(
             detail="Ya existe una entrega para esta actividad",
         )
 
-    # --------------------------------------------------------
-    # Crear entrega
-    # --------------------------------------------------------
-
+    # El estudiante no puede autoasignarse una nota ni
+    # comentarios del docente mediante el cuerpo de la petición.
     nueva_entrega = Entrega(
         id_actividad=actividad.id_actividad,
         id_usuario=current_user.id_usuario,
         fecha_entrega=datos.fecha_entrega,
         estado=datos.estado,
         descripcion=datos.descripcion,
-        comentario_docente=datos.comentario_docente,
         archivo=datos.archivo,
-        nota=datos.nota,
+        comentario_docente=None,
+        nota=None,
     )
 
     db.add(nueva_entrega)
@@ -169,6 +224,7 @@ def crear_entrega(
 
 # ============================================================
 # GET /entregas
+# Cada rol recibe únicamente las entregas autorizadas.
 # ============================================================
 
 @router.get(
@@ -179,31 +235,7 @@ def listar_entregas(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    # --------------------------------------------------------
-    # ADMINISTRADOR
-    # Puede consultar entregas de su colegio
-    # --------------------------------------------------------
-
-    if current_user.tipo_de_usuario == "administrador":
-
-        entregas = (
-            db.query(Entrega)
-            .join(Usuario, Entrega.id_usuario == Usuario.id_usuario)
-            .filter(
-                Usuario.id_colegio == current_user.id_colegio
-            )
-            .all()
-        )
-
-        return entregas
-
-    # --------------------------------------------------------
-    # ESTUDIANTE
-    # Solo sus propias entregas
-    # --------------------------------------------------------
-
     if current_user.tipo_de_usuario == "estudiante":
-
         return (
             db.query(Entrega)
             .filter(
@@ -212,15 +244,8 @@ def listar_entregas(
             .all()
         )
 
-    # --------------------------------------------------------
-    # DOCENTE
-    # Solo entregas de actividades de materias que tiene
-    # asignadas
-    # --------------------------------------------------------
-
     if current_user.tipo_de_usuario == "docente":
-
-        entregas = (
+        return (
             db.query(Entrega)
             .join(
                 Actividad,
@@ -229,6 +254,10 @@ def listar_entregas(
             .join(
                 Materia,
                 Actividad.id_materia == Materia.id_materia,
+            )
+            .join(
+                Curso,
+                Materia.id_curso == Curso.id_curso,
             )
             .join(
                 DocenteMateria,
@@ -240,12 +269,46 @@ def listar_entregas(
             )
             .filter(
                 DocenteMateria.id_usuario == current_user.id_usuario,
+                Curso.id_colegio == current_user.id_colegio,
                 Usuario.id_colegio == current_user.id_colegio,
             )
             .all()
         )
 
-        return entregas
+    if current_user.tipo_de_usuario in (
+        "administrador",
+        "coordinador",
+    ):
+        if current_user.id_colegio is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="El administrador global debe utilizar sus rutas administrativas",
+            )
+
+        return (
+            db.query(Entrega)
+            .join(
+                Actividad,
+                Entrega.id_actividad == Actividad.id_actividad,
+            )
+            .join(
+                Materia,
+                Actividad.id_materia == Materia.id_materia,
+            )
+            .join(
+                Curso,
+                Materia.id_curso == Curso.id_curso,
+            )
+            .join(
+                Usuario,
+                Entrega.id_usuario == Usuario.id_usuario,
+            )
+            .filter(
+                Curso.id_colegio == current_user.id_colegio,
+                Usuario.id_colegio == current_user.id_colegio,
+            )
+            .all()
+        )
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -255,6 +318,7 @@ def listar_entregas(
 
 # ============================================================
 # GET /entregas/{id_entrega}
+# Consultar una entrega concreta.
 # ============================================================
 
 @router.get(
@@ -266,109 +330,54 @@ def obtener_entrega(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    # --------------------------------------------------------
-    # Buscar entrega
-    # --------------------------------------------------------
-
-    entrega = (
-        db.query(Entrega)
-        .filter(
-            Entrega.id_entrega == id_entrega
-        )
-        .first()
+    entrega, estudiante, actividad, colegio_id = (
+        obtener_entrega_o_error(id_entrega, db)
     )
 
-    if not entrega:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Entrega no encontrada",
+    if current_user.tipo_de_usuario == "estudiante":
+        if entrega.id_usuario != current_user.id_usuario:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No puedes consultar la entrega de otro estudiante",
+            )
+
+        if colegio_id != current_user.id_colegio:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="La entrega no pertenece a tu colegio",
+            )
+
+        return entrega
+
+    if current_user.tipo_de_usuario in (
+        "administrador",
+        "coordinador",
+    ):
+        if current_user.id_colegio is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="El administrador global debe utilizar sus rutas administrativas",
+            )
+
+        verificar_coordinador_del_colegio(
+            current_user,
+            colegio_id,
         )
-
-    # --------------------------------------------------------
-    # Buscar estudiante propietario
-    # --------------------------------------------------------
-
-    estudiante = (
-        db.query(Usuario)
-        .filter(
-            Usuario.id_usuario == entrega.id_usuario
-        )
-        .first()
-    )
-
-    if not estudiante:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Estudiante de la entrega no encontrado",
-        )
-
-    # --------------------------------------------------------
-    # ADMINISTRADOR
-    # --------------------------------------------------------
-
-    if current_user.tipo_de_usuario == "administrador":
 
         if estudiante.id_colegio != current_user.id_colegio:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tienes acceso a esta entrega",
+                detail="El estudiante no pertenece a tu colegio",
             )
 
         return entrega
-
-    # --------------------------------------------------------
-    # ESTUDIANTE
-    # --------------------------------------------------------
-
-    if current_user.tipo_de_usuario == "estudiante":
-
-        if entrega.id_usuario != current_user.id_usuario:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tienes acceso a esta entrega",
-            )
-
-        return entrega
-
-    # --------------------------------------------------------
-    # DOCENTE
-    # --------------------------------------------------------
 
     if current_user.tipo_de_usuario == "docente":
-
-        actividad = (
-            db.query(Actividad)
-            .filter(
-                Actividad.id_actividad == entrega.id_actividad
-            )
-            .first()
-        )
-
-        if not actividad:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Actividad de la entrega no encontrada",
-            )
-
-        materia = (
-            db.query(Materia)
-            .filter(
-                Materia.id_materia == actividad.id_materia
-            )
-            .first()
-        )
-
-        if not materia:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Materia de la actividad no encontrada",
-            )
-
         asignacion = (
             db.query(DocenteMateria)
             .filter(
                 DocenteMateria.id_usuario == current_user.id_usuario,
-                DocenteMateria.id_materia == materia.id_materia,
+                DocenteMateria.id_materia == actividad.id_materia,
             )
             .first()
         )
@@ -376,13 +385,16 @@ def obtener_entrega(
         if not asignacion:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tienes acceso a esta entrega",
+                detail="No estás asignado a la materia de esta entrega",
             )
 
-        if estudiante.id_colegio != current_user.id_colegio:
+        if (
+            colegio_id != current_user.id_colegio
+            or estudiante.id_colegio != current_user.id_colegio
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tienes acceso a esta entrega",
+                detail="No puedes consultar entregas de otro colegio",
             )
 
         return entrega
@@ -395,6 +407,7 @@ def obtener_entrega(
 
 # ============================================================
 # PUT /entregas/{id_entrega}/calificacion
+# Solo el docente asignado puede calificar.
 # ============================================================
 
 @router.put(
@@ -407,69 +420,27 @@ def calificar_entrega(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("docente")),
 ):
-    # --------------------------------------------------------
-    # Buscar entrega
-    # --------------------------------------------------------
-
-    entrega = (
-        db.query(Entrega)
-        .filter(
-            Entrega.id_entrega == id_entrega
-        )
-        .first()
+    entrega, estudiante, actividad, colegio_id = (
+        obtener_entrega_o_error(id_entrega, db)
     )
 
-    if not entrega:
+    if colegio_id != current_user.id_colegio:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Entrega no encontrada",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No puedes calificar entregas de otro colegio",
         )
 
-    # --------------------------------------------------------
-    # Buscar actividad
-    # --------------------------------------------------------
-
-    actividad = (
-        db.query(Actividad)
-        .filter(
-            Actividad.id_actividad == entrega.id_actividad
-        )
-        .first()
-    )
-
-    if not actividad:
+    if estudiante.id_colegio != current_user.id_colegio:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Actividad de la entrega no encontrada",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="El estudiante no pertenece a tu colegio",
         )
-
-    # --------------------------------------------------------
-    # Buscar materia
-    # --------------------------------------------------------
-
-    materia = (
-        db.query(Materia)
-        .filter(
-            Materia.id_materia == actividad.id_materia
-        )
-        .first()
-    )
-
-    if not materia:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Materia de la actividad no encontrada",
-        )
-
-    # --------------------------------------------------------
-    # Verificar que el docente tenga asignada la materia
-    # --------------------------------------------------------
 
     asignacion = (
         db.query(DocenteMateria)
         .filter(
             DocenteMateria.id_usuario == current_user.id_usuario,
-            DocenteMateria.id_materia == materia.id_materia,
+            DocenteMateria.id_materia == actividad.id_materia,
         )
         .first()
     )
@@ -480,47 +451,16 @@ def calificar_entrega(
             detail="No tienes permisos para calificar esta entrega",
         )
 
-    # --------------------------------------------------------
-    # Verificar colegio
-    # --------------------------------------------------------
-
-    estudiante = (
-        db.query(Usuario)
-        .filter(
-            Usuario.id_usuario == entrega.id_usuario
-        )
-        .first()
-    )
-
-    if not estudiante:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Estudiante de la entrega no encontrado",
-        )
-
-    if estudiante.id_colegio != current_user.id_colegio:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permisos para calificar esta entrega",
-        )
-
-    # --------------------------------------------------------
-    # La validación 0-100 también está definida en el schema.
-    # Se vuelve a validar aquí para mantener la regla clara.
-    # --------------------------------------------------------
-
     if datos.nota < 0 or datos.nota > 100:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="La nota debe estar entre 0 y 100",
         )
 
-    # --------------------------------------------------------
-    # Registrar calificación
-    # --------------------------------------------------------
-
     entrega.nota = datos.nota
 
+    # Si el esquema incluye comentario_docente, se podrá
+    # asignar aquí después de verificar su nombre exacto.
     db.commit()
     db.refresh(entrega)
 
