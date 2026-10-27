@@ -203,6 +203,17 @@ export default function EstudianteForm({
       return;
     }
 
+    const idColegio = usuario.id_colegio;
+
+if (idColegio === null) {
+  setError(
+    "Tu cuenta no tiene un colegio asociado. " +
+    "No puedes crear ni editar estudiantes.",
+  );
+
+  return;
+}
+
     if (!formulario.id_curso) {
       setError(
         "Debes seleccionar un curso.",
@@ -223,8 +234,7 @@ export default function EstudianteForm({
         await actualizarUsuario(
           estudiante.id_usuario,
           {
-            id_colegio:
-              usuario.id_colegio,
+            id_colegio: idColegio,
 
             codigo_usuario:
               formulario.codigo_usuario.trim(),
@@ -303,8 +313,7 @@ export default function EstudianteForm({
 
       const nuevoEstudiante =
         await crearUsuario({
-          id_colegio:
-            usuario.id_colegio,
+          id_colegio: idColegio,
 
           codigo_usuario:
             formulario.codigo_usuario.trim(),

@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from typing import Optional, Literal
 
@@ -94,6 +93,15 @@ class CoordinadorCreate(BaseSchema):
         ...,
         min_length=6,
         max_length=255,
+    )
+
+
+# NUEVO:
+# Datos para crear un coordinador en un colegio existente.
+class CoordinadorConColegioCreate(CoordinadorCreate):
+    id_colegio: int = Field(
+        ...,
+        gt=0,
     )
 
 

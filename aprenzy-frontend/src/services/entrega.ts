@@ -1,29 +1,43 @@
-// Importa la función para comunicarse con FastAPI
 import { apiFetch } from "./api";
 
-// Representa una entrega académica
+// Estados posibles de una entrega.
+export type EstadoEntrega =
+  | "Pendiente"
+  | "Aprobado"
+  | "Reprobado";
+
+// Información completa de una entrega.
 export interface Entrega {
   id_entrega: number;
   id_actividad: number;
   id_usuario: number;
   fecha_entrega: string;
-  estado: "Aprobado" | "Reprobado";
+  estado: EstadoEntrega;
   descripcion: string;
   comentario_docente: string | null;
   archivo: string | null;
   nota: number | null;
 }
 
-// Obtiene las entregas permitidas para el usuario
-export async function obtenerEntregas(): Promise<
-  Entrega[]
-> {
+// Datos que puede enviar el estudiante.
+// El estado, la nota y el comentario del docente
+// son responsabilidad del backend.
+export interface CrearEntregaDatos {
+  id_actividad: number;
+  id_usuario: number;
+  fecha_entrega: string;
+  descripcion: string;
+  archivo?: string | null;
+}
+
+// Consulta las entregas permitidas para el usuario.
+export async function obtenerEntregas(): Promise<Entrega[]> {
   const respuesta = await apiFetch("/entregas");
 
   return respuesta.data ?? respuesta;
 }
 
-// Obtiene una entrega específica
+// Consulta una entrega específica.
 export async function obtenerEntrega(
   id: number,
 ): Promise<Entrega> {
@@ -34,19 +48,23 @@ export async function obtenerEntrega(
   return respuesta.data ?? respuesta;
 }
 
-// Crea una entrega
+// Registra una entrega.
+// El backend establece el estado inicial Pendiente.
 export async function crearEntrega(
-  datos: Omit<Entrega, "id_entrega">,
+  datos: CrearEntregaDatos,
 ): Promise<Entrega> {
-  const respuesta = await apiFetch("/entregas", {
-    method: "POST",
-    body: JSON.stringify(datos),
-  });
+  const respuesta = await apiFetch(
+    "/entregas",
+    {
+      method: "POST",
+      body: JSON.stringify(datos),
+    },
+  );
 
   return respuesta.data ?? respuesta;
 }
 
-// Registra una calificación
+// Registra la calificación del docente.
 export async function calificarEntrega(
   id: number,
   nota: number,
@@ -55,9 +73,7 @@ export async function calificarEntrega(
     `/entregas/${id}/calificacion`,
     {
       method: "PUT",
-      body: JSON.stringify({
-        nota,
-      }),
+      body: JSON.stringify({ nota }),
     },
   );
 

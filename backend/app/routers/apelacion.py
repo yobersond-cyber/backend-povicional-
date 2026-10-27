@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.database.conection import get_db
-from app.dependencias.auth import get_current_user, require_role
+from app.dependencias.auth import (
+    get_current_user,
+    obtener_rol_efectivo,
+    require_role,
+)
 from app.models.apelacion import Apelacion
 from app.models.incapacidad import Incapacidad
 from app.models.Usuarios import Usuario
@@ -89,7 +93,9 @@ def validar_revisor(
         .filter(
             Usuario.id_usuario == id_revisor,
             Usuario.id_colegio == id_colegio,
-            Usuario.tipo_de_usuario.in_(["coordinador", "docente"]),
+            Usuario.tipo_de_usuario.in_(
+    ["coordinador", "administrador", "docente"]
+),
         )
         .first()
     )
@@ -120,7 +126,7 @@ def verificar_acceso_apelacion(
     apelacion: Apelacion,
     current_user: Usuario,
 ) -> None:
-    rol = current_user.tipo_de_usuario
+    rol = obtener_rol_efectivo(current_user)
 
     if rol == "estudiante":
         if apelacion.incapacidad.id_usuario != current_user.id_usuario:

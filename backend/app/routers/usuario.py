@@ -6,12 +6,14 @@ from sqlalchemy.orm import Session, joinedload
 from app.database.conection import SessionLocal
 
 from app.models.Usuarios import Usuario
+from app.models.colegios import Colegio
 from app.models.entrega import Entrega
 from app.models.actividad import Actividad
 from app.models.usuario_curso import UsuarioCurso
 from app.models.curso import Curso
 from app.models.incapacidad import Incapacidad
 from app.models.materia import Materia
+from app.models.docente_materia import DocenteMateria
 from app.models.material_academico import MaterialAcademico
 from app.models.historial_incapacidad import HistorialIncapacidad
 from app.models.acceso_academico import AccesoAcademico
@@ -43,6 +45,11 @@ from app.dependencias.auth import (
     get_current_user,
     require_role,
     obtener_rol_efectivo,
+)
+
+from app.schemas.colegio import (
+    CoordinadorConColegioCreate,
+    CoordinadorResponse,
 )
 
 
@@ -115,6 +122,177 @@ def verificar_datos_unicos(
                 detail=mensaje,
             )
 
+# ============================================================
+# ADMINISTRACIÓN GLOBAL: COORDINADORES
+# ============================================================
+
+@router.get(
+    "/coordinadores",
+    response_model=APIResponse[list[CoordinadorResponse]],
+)
+def listar_coordinadores(
+    current_user: Usuario = Depends(
+        require_role("administrador")
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    Lista los coordinadores de todos los colegios.
+    Solo puede acceder el administrador global.
+    """
+
+    usuarios = (
+        db.query(Usuario)
+        .filter(
+            Usuario.tipo_de_usuario.in_(
+                ("coordinador", "administrador")
+            )
+        )
+        .order_by(
+            Usuario.apellidos_compl.asc(),
+            Usuario.nombres_compl.asc(),
+        )
+        .all()
+    )
+
+    resultado = []
+
+    for usuario in usuarios:
+        # Los administradores asociados a un colegio
+        # son coordinadores de cuentas antiguas.
+        es_coordinador = (
+            usuario.tipo_de_usuario == "coordinador"
+            or (
+                usuario.tipo_de_usuario == "administrador"
+                and usuario.id_colegio is not None
+            )
+        )
+
+        if not es_coordinador:
+            continue
+
+        resultado.append({
+            "id_usuario": usuario.id_usuario,
+            "id_colegio": usuario.id_colegio,
+            "codigo_usuario": usuario.codigo_usuario,
+            "documento": usuario.documento,
+            "nombres_compl": usuario.nombres_compl,
+            "apellidos_compl": usuario.apellidos_compl,
+            "telefono": usuario.telefono,
+            "correo": usuario.correo,
+            # Normaliza las cuentas antiguas en la respuesta.
+            "tipo_de_usuario": "coordinador",
+        })
+
+    return APIResponse(
+        success=True,
+        mensaje="Coordinadores recuperados exitosamente",
+        data=resultado,
+    )
+
+
+@router.post(
+    "/coordinadores",
+    response_model=APIResponse[CoordinadorResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+def crear_coordinador(
+    datos: CoordinadorConColegioCreate,
+    current_user: Usuario = Depends(
+        require_role("administrador")
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    Crea un coordinador en un colegio existente.
+    Solo puede hacerlo el administrador global.
+    """
+
+    colegio = (
+        db.query(Colegio)
+        .filter(
+            Colegio.id_colegio == datos.id_colegio
+        )
+        .first()
+    )
+
+    if colegio is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El colegio seleccionado no existe",
+        )
+
+    if colegio.estado != "activo":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No se puede asignar un coordinador "
+                "a un colegio inactivo"
+            ),
+        )
+
+    # Comprobar que el código sea único.
+    if db.query(Usuario).filter(
+        Usuario.codigo_usuario == datos.codigo_usuario
+    ).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El código de usuario ya está registrado",
+        )
+
+    # Comprobar que el documento sea único.
+    if db.query(Usuario).filter(
+        Usuario.documento == datos.documento
+    ).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El documento ya está registrado",
+        )
+
+    # Comprobar que el correo sea único.
+    if db.query(Usuario).filter(
+        Usuario.correo == str(datos.correo)
+    ).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El correo ya está registrado",
+        )
+
+    coordinador = Usuario(
+        id_colegio=datos.id_colegio,
+        codigo_usuario=datos.codigo_usuario,
+        documento=datos.documento,
+        nombres_compl=datos.nombres_compl,
+        apellidos_compl=datos.apellidos_compl,
+        telefono=datos.telefono,
+        correo=str(datos.correo),
+        contrasena=hash_password(datos.contrasena),
+        tipo_de_usuario="coordinador",
+        jornada=None,
+    )
+
+    try:
+        db.add(coordinador)
+        db.commit()
+        db.refresh(coordinador)
+
+    except IntegrityError as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "No se pudo crear el coordinador. "
+                "Verifica que el código, documento y "
+                "correo no estén registrados."
+            ),
+        ) from exc
+
+    return APIResponse(
+        success=True,
+        mensaje="Coordinador creado exitosamente",
+        data=coordinador,
+    )
 
 # ============================================================
 # 1. Crear usuario
@@ -351,7 +529,10 @@ def listar_usuarios(
 
 
 # ============================================================
-# 5. Listar estudiantes del colegio
+# 5. Listar estudiantes
+# Coordinador: estudiantes de su colegio.
+# Docente: estudiantes de los cursos donde tiene
+# materias asignadas.
 # ============================================================
 
 @router.get(
@@ -359,29 +540,69 @@ def listar_usuarios(
     response_model=APIResponse[list[EstudianteDetalleResponse]],
 )
 def listar_estudiantes(
-    current_user: Usuario = Depends(
-        require_role("coordinador")
-    ),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    rol = obtener_rol_efectivo(current_user)
+
+    if rol not in ("coordinador", "docente"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos para consultar estudiantes",
+        )
+
     if current_user.id_colegio is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="El coordinador no tiene un colegio asignado",
+            detail="Tu cuenta no tiene un colegio asignado",
+        )
+
+    # Consulta base: solo registros de estudiantes.
+    consulta = db.query(Usuario).filter(
+        Usuario.tipo_de_usuario == "estudiante",
+        Usuario.id_colegio == current_user.id_colegio,
+    )
+
+    if rol == "docente":
+        # El docente solo puede ver estudiantes inscritos
+        # en cursos que tengan una materia asignada a él.
+        consulta = (
+            consulta
+            .join(
+                UsuarioCurso,
+                UsuarioCurso.id_usuario == Usuario.id_usuario,
+            )
+            .join(
+                Curso,
+                Curso.id_curso == UsuarioCurso.id_curso,
+            )
+            .join(
+                Materia,
+                Materia.id_curso == Curso.id_curso,
+            )
+            .join(
+                DocenteMateria,
+                DocenteMateria.id_materia == Materia.id_materia,
+            )
+            .filter(
+                DocenteMateria.id_usuario == current_user.id_usuario,
+                Curso.id_colegio == current_user.id_colegio,
+            )
+            .distinct()
         )
 
     estudiantes = (
-        db.query(Usuario)
-        .filter(
-            Usuario.tipo_de_usuario == "estudiante",
-            Usuario.id_colegio == current_user.id_colegio,
-        )
+        consulta
         .options(
             joinedload(
                 Usuario.incapacidades
             ).joinedload(
                 Incapacidad.apelacion
             )
+        )
+        .order_by(
+            Usuario.apellidos_compl.asc(),
+            Usuario.nombres_compl.asc(),
         )
         .all()
     )

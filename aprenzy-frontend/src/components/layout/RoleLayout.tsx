@@ -32,7 +32,11 @@ interface RoleLayoutProps {
   seccionInicial: string;
   renderSeccion: (seccion: string) => ReactNode;
   children?: ReactNode;
-  variante: "admin" | "docente" | "estudiante";
+  variante:
+  | "admin"
+  | "coordinador"
+  | "docente"
+  | "estudiante";
 }
 
 export default function RoleLayout({

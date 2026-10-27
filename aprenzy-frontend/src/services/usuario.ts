@@ -1,19 +1,32 @@
 import { apiFetch } from "./api";
 
-// Representa la información básica de un usuario
+// Roles válidos de usuarios en Aprenzy.
+export type TipoUsuario =
+  | "administrador"
+  | "coordinador"
+  | "docente"
+  | "estudiante";
+
+// Información básica de un usuario.
 export interface Usuario {
   id_usuario: number;
-  id_colegio: number;
+  id_colegio: number | null;
   codigo_usuario: string;
   documento: string;
   nombres_compl: string;
   apellidos_compl: string;
   telefono: string;
   correo: string;
-  tipo_de_usuario: string;
+
+  // Ahora TypeScript reconoce los roles permitidos.
+  tipo_de_usuario: TipoUsuario;
+
   jornada: string | null;
 }
 
+// Datos permitidos para crear estudiantes y docentes.
+// No incluimos administrador ni coordinador aquí,
+// porque deben crearse mediante operaciones específicas.
 export interface UsuarioCreate {
   id_colegio: number;
   codigo_usuario: string;
@@ -22,15 +35,15 @@ export interface UsuarioCreate {
   apellidos_compl: string;
   telefono: string;
   correo: string;
-  tipo_de_usuario:
-    | "estudiante"
-    | "docente";
+
+  tipo_de_usuario: "estudiante" | "docente";
+
   jornada: string | null;
   contrasena: string;
   id_curso?: number | null;
 }
 
-// Representa una incapacidad asociada al estudiante
+// Resumen de una incapacidad asociada al estudiante.
 export interface IncapacidadResumen {
   id_incapacidad: number;
   numero_radicado: string;
@@ -42,22 +55,20 @@ export interface IncapacidadResumen {
   id_usuario: number;
 }
 
-// Representa un estudiante con sus incapacidades
+// Representa un estudiante con sus incapacidades.
 export interface Estudiante extends Usuario {
   incapacidades: IncapacidadResumen[];
 }
 
-// Obtiene el usuario autenticado
+// Obtiene el usuario autenticado.
 export async function obtenerUsuario(): Promise<Usuario> {
   const respuesta = await apiFetch("/usuarios/me");
 
   return respuesta.data;
 }
 
-// Obtiene todos los estudiantes
-export async function obtenerEstudiantes(): Promise<
-  Estudiante[]
-> {
+// Obtiene todos los estudiantes del colegio.
+export async function obtenerEstudiantes(): Promise<Estudiante[]> {
   const respuesta = await apiFetch(
     "/usuarios/estudiantes",
   );
@@ -80,7 +91,7 @@ export async function crearUsuario(
   return respuesta.data;
 }
 
-// Obtiene un usuario por su ID
+// Obtiene un usuario por su ID.
 export async function obtenerUsuarioPorId(
   id: number,
 ): Promise<Usuario> {
@@ -91,7 +102,7 @@ export async function obtenerUsuarioPorId(
   return respuesta.data;
 }
 
-// Actualiza un usuario
+// Actualiza un usuario.
 export async function actualizarUsuario(
   idUsuario: number,
   datos: Partial<UsuarioCreate>,
@@ -107,7 +118,7 @@ export async function actualizarUsuario(
   return respuesta.data;
 }
 
-// Elimina un estudiante o docente
+// Elimina un estudiante o docente.
 export async function eliminarUsuario(
   id: number,
 ): Promise<{
@@ -124,6 +135,7 @@ export async function eliminarUsuario(
   return respuesta.data;
 }
 
+// Obtiene los docentes del colegio.
 export async function obtenerDocentes(): Promise<Usuario[]> {
   const respuesta = await apiFetch(
     "/usuarios/docentes",
@@ -131,4 +143,3 @@ export async function obtenerDocentes(): Promise<Usuario[]> {
 
   return respuesta.data;
 }
-

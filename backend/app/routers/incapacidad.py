@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.database.conection import get_db
-from app.dependencias.auth import get_current_user, require_role
+from app.dependencias.auth import (
+    get_current_user,
+    obtener_rol_efectivo,
+    require_role,
+)
 from app.models.incapacidad import Incapacidad
 from app.models.historial_incapacidad import HistorialIncapacidad
 from app.models.Usuarios import Usuario
@@ -209,7 +213,7 @@ def obtener_incapacidad(
             detail="Incapacidad no encontrada",
         )
 
-    rol = current_user.tipo_de_usuario
+    rol = obtener_rol_efectivo(current_user)
 
     if rol == "estudiante":
         if incapacidad.id_usuario != current_user.id_usuario:

@@ -31,12 +31,15 @@ class Entrega(Base):
     )
 
     estado = Column(
-        Enum(
-            "Aprobado",
-            "Reprobado"
-        ),
-        nullable=False
-    )
+    Enum(
+        "Pendiente",
+        "Aprobado",
+        "Reprobado",
+    ),
+    nullable=False,
+    default="Pendiente",
+    server_default="Pendiente",
+)
 
     descripcion = Column(
         Text,

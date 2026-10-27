@@ -6,6 +6,7 @@ import {
   FiFileText,
   FiHome,
   FiUser,
+  FiUsers,
 } from "react-icons/fi";
 
 import RoleLayout, {
@@ -17,6 +18,7 @@ import Calificaciones from "../pages/calificaciones";
 import Entregas from "../pages/Entregas";
 import Materiales from "../pages/Material";
 import Materias from "../pages/materias";
+import EstudiantesDocente from "../pages/EstudiantesDocente";
 
 const menu: RoleMenuItem[] = [
   {
@@ -28,6 +30,11 @@ const menu: RoleMenuItem[] = [
     id: "materias",
     nombre: "Mis materias",
     icono: <FiBookOpen />,
+  },
+  {
+  id: "estudiantes",
+  nombre: "Mis estudiantes",
+  icono: <FiUsers />,
   },
   {
     id: "materiales",
@@ -172,6 +179,9 @@ export default function DocenteLayout() {
 
       case "materias":
         return <Materias />;
+        
+      case "estudiantes":
+        return <EstudiantesDocente />;
 
       case "materiales":
         return <Materiales />;

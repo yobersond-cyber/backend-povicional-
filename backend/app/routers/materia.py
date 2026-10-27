@@ -3,10 +3,16 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.conection import get_db
-from app.dependencias.auth import require_role
+from app.dependencias.auth import (
+    get_current_user,
+    obtener_rol_efectivo,
+    require_role,
+)
 from app.models.Usuarios import Usuario
 from app.models.curso import Curso
 from app.models.materia import Materia
+from app.models.docente_materia import DocenteMateria
+from app.models.usuario_curso import UsuarioCurso
 from app.schemas.materia import (
     MateriaCreate,
     MateriaUpdate,
@@ -88,28 +94,100 @@ def validar_codigo_materia(
         )
 
 
-@router.get("", response_model=APIResponse[list[MateriaResponse]])
+@router.get(
+    "",
+    response_model=APIResponse[list[MateriaResponse]],
+)
 def listar_materias(
-    current_user: Usuario = Depends(require_role("coordinador")),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.id_colegio is None:
-        raise HTTPException(
-            status_code=403,
-            detail="El coordinador no tiene un colegio asignado",
+    rol = obtener_rol_efectivo(current_user)
+
+    # COORDINADOR:
+    # Puede consultar todas las materias de su colegio.
+    if rol == "coordinador":
+        if current_user.id_colegio is None:
+            raise HTTPException(
+                status_code=403,
+                detail="El coordinador no tiene un colegio asignado",
+            )
+
+        materias = (
+            db.query(Materia)
+            .join(
+                Curso,
+                Materia.id_curso == Curso.id_curso,
+            )
+            .filter(
+                Curso.id_colegio == current_user.id_colegio,
+            )
+            .order_by(Materia.nombre_materia.asc())
+            .all()
         )
 
-    materias = (
-        db.query(Materia)
-        .join(Curso, Materia.id_curso == Curso.id_curso)
-        .filter(Curso.id_colegio == current_user.id_colegio)
-        .order_by(Materia.nombre_materia.asc())
-        .all()
-    )
+    # DOCENTE:
+    # Solo puede consultar las materias que tiene asignadas.
+    elif rol == "docente":
+        if current_user.id_colegio is None:
+            raise HTTPException(
+                status_code=403,
+                detail="El docente no tiene un colegio asignado",
+            )
+
+        materias = (
+            db.query(Materia)
+            .join(
+                Curso,
+                Materia.id_curso == Curso.id_curso,
+            )
+            .join(
+                DocenteMateria,
+                DocenteMateria.id_materia == Materia.id_materia,
+            )
+            .filter(
+                DocenteMateria.id_usuario == current_user.id_usuario,
+                Curso.id_colegio == current_user.id_colegio,
+            )
+            .order_by(Materia.nombre_materia.asc())
+            .all()
+        )
+        
+    elif rol == "estudiante":
+        if current_user.id_colegio is None:
+            raise HTTPException(
+                status_code=403,
+                detail="El estudiante no tiene un colegio asignado",
+            )
+
+        materias = (
+            db.query(Materia)
+            .join(
+                Curso,
+                Materia.id_curso == Curso.id_curso,
+            )
+            .join(
+                UsuarioCurso,
+                UsuarioCurso.id_curso == Curso.id_curso,
+            )
+            .filter(
+                UsuarioCurso.id_usuario == current_user.id_usuario,
+                Curso.id_colegio == current_user.id_colegio,
+            )
+            .distinct()
+            .order_by(Materia.nombre_materia.asc())
+            .all()
+        )
+
+    else:
+        raise HTTPException(
+            status_code=403,
+            detail="No tienes permisos para consultar estas materias",
+        )
 
     return APIResponse(
         success=True,
-        mensaje="Materias del colegio recuperadas correctamente",
+        mensaje="Materias recuperadas correctamente",
         data=materias,
     )
 
@@ -173,21 +251,87 @@ def crear_materia(
 )
 def obtener_materia(
     id_materia: int,
-    current_user: Usuario = Depends(require_role("coordinador")),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    materia = obtener_materia_del_colegio(
-        db,
-        id_materia,
-        current_user.id_colegio,
-    )
+    rol = obtener_rol_efectivo(current_user)
+
+    if current_user.id_colegio is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Tu cuenta no tiene un colegio asignado",
+        )
+
+    # El coordinador puede consultar materias de su colegio.
+    if rol == "coordinador":
+        materia = obtener_materia_del_colegio(
+            db,
+            id_materia,
+            current_user.id_colegio,
+        )
+
+    # El docente solo puede consultar materias que tiene asignadas.
+    elif rol == "docente":
+        materia = (
+            db.query(Materia)
+            .join(
+                Curso,
+                Materia.id_curso == Curso.id_curso,
+            )
+            .join(
+                DocenteMateria,
+                DocenteMateria.id_materia == Materia.id_materia,
+            )
+            .filter(
+                Materia.id_materia == id_materia,
+                DocenteMateria.id_usuario == current_user.id_usuario,
+                Curso.id_colegio == current_user.id_colegio,
+            )
+            .first()
+        )
+        
+    elif rol == "estudiante":
+        materia = (
+            db.query(Materia)
+            .join(
+                Curso,
+                Materia.id_curso == Curso.id_curso,
+            )
+            .join(
+                UsuarioCurso,
+                UsuarioCurso.id_curso == Curso.id_curso,
+            )
+            .filter(
+                Materia.id_materia == id_materia,
+                UsuarioCurso.id_usuario == current_user.id_usuario,
+                Curso.id_colegio == current_user.id_colegio,
+            )
+            .first()
+        )
+
+        if materia is None:
+            raise HTTPException(
+                status_code=404,
+                detail="La materia no pertenece a tu curso",
+            )    
+
+        if materia is None:
+            raise HTTPException(
+                status_code=404,
+                detail="La materia no existe entre tus asignaciones",
+            )
+
+    else:
+        raise HTTPException(
+            status_code=403,
+            detail="No tienes permisos para consultar esta materia",
+        )
 
     return APIResponse(
         success=True,
         mensaje="Materia obtenida correctamente",
         data=materia,
     )
-
 
 @router.put(
     "/{id_materia}",

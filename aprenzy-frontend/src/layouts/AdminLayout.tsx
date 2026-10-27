@@ -1,29 +1,19 @@
 import {
-  FiAlertCircle,
-  FiBookOpen,
-  FiCalendar,
-  FiFileText,
   FiHome,
-  FiPieChart,
-  FiShield,
-  FiUser,
   FiUsers,
+  FiShield,
+  FiBookOpen,
 } from "react-icons/fi";
 
 import RoleLayout, {
   type RoleMenuItem,
 } from "../components/layout/RoleLayout";
 
-import Accesos from "../pages/Accesos";
-import Apelaciones from "../pages/Apelaciones";
-import AsignarMaterias from "../pages/AsignarMaterias";
-import Cursos from "../pages/Curso";
-import Docentes from "../pages/Docentes";
-import Estadisticas from "../pages/Estadisticas";
-import Estudiantes from "../pages/Estudiantes";
-import Historial from "../pages/Historial";
-import Incapacidades from "../pages/Incapacidades";
-import Materias from "../pages/materias";
+import AdminInstituciones from "../pages/AdminInstituciones";
+
+// ============================================
+// MENÚ DEL ADMINISTRADOR GLOBAL
+// ============================================
 
 const menu: RoleMenuItem[] = [
   {
@@ -32,134 +22,83 @@ const menu: RoleMenuItem[] = [
     icono: <FiHome />,
   },
   {
-    id: "estudiantes",
-    nombre: "Estudiantes",
-    icono: <FiUsers />,
-  },
-  {
-    id: "docentes",
-    nombre: "Docentes",
-    icono: <FiUser />,
-  },
-  {
-    id: "asignar-materias",
-    nombre: "Asignar materias",
+    id: "instituciones",
+    nombre: "Colegios y coordinadores",
     icono: <FiBookOpen />,
-  },
-  {
-    id: "cursos",
-    nombre: "Cursos",
-    icono: <FiBookOpen />,
-  },
-  {
-    id: "materias",
-    nombre: "Materias",
-    icono: <FiBookOpen />,
-  },
-  {
-    id: "incapacidades",
-    nombre: "Incapacidades",
-    icono: <FiAlertCircle />,
-  },
-  {
-    id: "apelaciones",
-    nombre: "Apelaciones",
-    icono: <FiFileText />,
-  },
-  {
-    id: "accesos",
-    nombre: "Accesos",
-    icono: <FiShield />,
-  },
-  {
-    id: "historial",
-    nombre: "Historial",
-    icono: <FiCalendar />,
-  },
-  {
-    id: "estadisticas",
-    nombre: "Estadísticas",
-    icono: <FiPieChart />,
   },
 ];
+
+// ============================================
+// PÁGINA INICIAL
+// ============================================
 
 function InicioAdministrador() {
   return (
     <div className="role-home role-home-admin">
       <div className="role-home-header">
         <span className="role-home-badge">
-          Administración
+          Administración global
         </span>
 
-        <h1>
-          Panel administrativo
-        </h1>
+        <h1>Panel del administrador</h1>
 
         <p>
-          Gestiona estudiantes,
-          docentes, cursos,
-          materias y los procesos
-          académicos de Aprenzy.
+          Administra las instituciones educativas
+          de Aprenzy y las cuentas de sus
+          coordinadores desde un solo lugar.
         </p>
       </div>
 
       <div className="role-home-grid">
-        <div className="role-home-card">
-          <FiUsers />
-
-          <div>
-            <strong>
-              Estudiantes
-            </strong>
-
-            <span>
-              Crear y administrar
-              estudiantes.
-            </span>
-          </div>
-        </div>
-
-        <div className="role-home-card">
-          <FiUser />
-
-          <div>
-            <strong>
-              Docentes
-            </strong>
-
-            <span>
-              Gestionar docentes y
-              asignaciones.
-            </span>
-          </div>
-        </div>
-
-        <div className="role-home-card">
+        <button
+          type="button"
+          className="role-home-card"
+          onClick={() => {
+            window.location.href =
+              "/administrador/instituciones";
+          }}
+        >
           <FiBookOpen />
 
           <div>
-            <strong>
-              Cursos y materias
-            </strong>
+            <strong>Colegios</strong>
 
             <span>
-              Organizar la estructura
-              académica.
+              Consultar y registrar instituciones
+              educativas.
             </span>
           </div>
-        </div>
+        </button>
+
+        <button
+          type="button"
+          className="role-home-card"
+          onClick={() => {
+            window.location.href =
+              "/administrador/instituciones";
+          }}
+        >
+          <FiUsers />
+
+          <div>
+            <strong>Coordinadores</strong>
+
+            <span>
+              Consultar y crear cuentas de
+              coordinadores para los colegios.
+            </span>
+          </div>
+        </button>
 
         <div className="role-home-card">
           <FiShield />
 
           <div>
-            <strong>
-              Accesos
-            </strong>
+            <strong>Acceso administrativo</strong>
 
             <span>
-              Consultar los accesos
-              académicos.
+              Gestiona las instituciones desde
+              tu cuenta de administrador global.
             </span>
           </div>
         </div>
@@ -168,63 +107,32 @@ function InicioAdministrador() {
   );
 }
 
+// ============================================
+// CONTENIDO DEL PANEL
+// ============================================
+
 export default function AdminLayout() {
-  function renderSeccion(
-    seccion: string,
-  ) {
+  function renderSeccion(seccion: string) {
     switch (seccion) {
       case "inicio":
-        return (
-          <InicioAdministrador />
-        );
+        return <InicioAdministrador />;
 
-      case "estudiantes":
-        return <Estudiantes />;
-
-      case "docentes":
-        return <Docentes />;
-
-      case "asignar-materias":
-        return <AsignarMaterias />;
-
-      case "cursos":
-        return <Cursos />;
-
-      case "materias":
-        return <Materias />;
-
-      case "incapacidades":
-        return <Incapacidades />;
-
-      case "apelaciones":
-        return <Apelaciones />;
-
-      case "accesos":
-        return <Accesos />;
-
-      case "historial":
-        return <Historial />;
-
-      case "estadisticas":
-        return <Estadisticas />;
+      case "instituciones":
+        return <AdminInstituciones />;
 
       default:
-        return (
-          <InicioAdministrador />
-        );
+        return <InicioAdministrador />;
     }
   }
 
   return (
     <RoleLayout
-      titulo="Coordinador"
-      subtitulo="Gestión institucional"
+      titulo="Administrador global"
+      subtitulo="Gestión administrativa"
       variante="admin"
       menu={menu}
       seccionInicial="inicio"
-      renderSeccion={
-        renderSeccion
-      }
+      renderSeccion={renderSeccion}
     />
   );
 }

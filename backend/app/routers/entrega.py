@@ -3,7 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.conection import get_db
-from app.dependencias.auth import get_current_user, require_role
+from app.dependencias.auth import (
+    get_current_user,
+    obtener_rol_efectivo,
+    require_role,
+)
 
 from app.models.entrega import Entrega
 from app.models.actividad import Actividad
@@ -205,14 +209,14 @@ def crear_entrega(
     # El estudiante no puede autoasignarse una nota ni
     # comentarios del docente mediante el cuerpo de la petición.
     nueva_entrega = Entrega(
-        id_actividad=actividad.id_actividad,
-        id_usuario=current_user.id_usuario,
-        fecha_entrega=datos.fecha_entrega,
-        estado=datos.estado,
-        descripcion=datos.descripcion,
-        archivo=datos.archivo,
-        comentario_docente=None,
-        nota=None,
+    id_actividad=actividad.id_actividad,
+    id_usuario=current_user.id_usuario,
+    fecha_entrega=datos.fecha_entrega,
+    estado="Pendiente",
+    descripcion=datos.descripcion,
+    archivo=datos.archivo,
+    comentario_docente=None,
+    nota=None,
     )
 
     db.add(nueva_entrega)
@@ -235,7 +239,9 @@ def listar_entregas(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    if current_user.tipo_de_usuario == "estudiante":
+    rol = obtener_rol_efectivo(current_user)
+    
+    if rol == "estudiante":
         return (
             db.query(Entrega)
             .filter(
@@ -244,7 +250,7 @@ def listar_entregas(
             .all()
         )
 
-    if current_user.tipo_de_usuario == "docente":
+    if rol == "docente":
         return (
             db.query(Entrega)
             .join(
@@ -275,10 +281,7 @@ def listar_entregas(
             .all()
         )
 
-    if current_user.tipo_de_usuario in (
-        "administrador",
-        "coordinador",
-    ):
+    if rol in ("administrador", "coordinador"):
         if current_user.id_colegio is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -330,11 +333,12 @@ def obtener_entrega(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+    rol = obtener_rol_efectivo(current_user)
     entrega, estudiante, actividad, colegio_id = (
         obtener_entrega_o_error(id_entrega, db)
     )
 
-    if current_user.tipo_de_usuario == "estudiante":
+    if rol == "estudiante":
         if entrega.id_usuario != current_user.id_usuario:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -349,10 +353,7 @@ def obtener_entrega(
 
         return entrega
 
-    if current_user.tipo_de_usuario in (
-        "administrador",
-        "coordinador",
-    ):
+    if rol in ("administrador", "coordinador"):
         if current_user.id_colegio is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -372,7 +373,7 @@ def obtener_entrega(
 
         return entrega
 
-    if current_user.tipo_de_usuario == "docente":
+    if rol == "docente":
         asignacion = (
             db.query(DocenteMateria)
             .filter(

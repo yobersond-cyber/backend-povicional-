@@ -15,12 +15,12 @@ import RoleLayout, {
 } from "../components/layout/RoleLayout";
 
 import Accesos from "../pages/Accesos";
-import Actividades from "../pages/Actividades";
+import ActividadesEstudiante from "../pages/ActividadesEstudiante";
 import Apelaciones from "../pages/Apelaciones";
-import Calificaciones from "../pages/calificaciones";
+import CalificacionesEstudiante from "../pages/CalificacionesEstudiante";
 import Entregas from "../pages/Entregas";
 import Incapacidades from "../pages/Incapacidades";
-import Materiales from "../pages/Material";
+import MaterialesEstudiante from "../pages/MaterialesEstudiante";
 import Materias from "../pages/materias";
 
 const menu: RoleMenuItem[] = [
@@ -194,13 +194,13 @@ export default function EstudianteLayout() {
         return <Materias />;
 
       case "materiales":
-        return <Materiales />;
+        return <MaterialesEstudiante />;
 
       case "actividades":
-        return <Actividades />;
+        return <ActividadesEstudiante />;
 
       case "calificaciones":
-        return <Calificaciones />;
+        return <CalificacionesEstudiante />;
 
       case "entregas":
         return <Entregas />;

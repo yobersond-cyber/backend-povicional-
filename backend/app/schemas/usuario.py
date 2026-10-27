@@ -6,6 +6,8 @@ from app.schemas.base import BaseSchema
 from app.schemas.incapacidad import IncapacidadDetalleResponse
 
 
+
+
 # Roles que puede devolver la API.
 TipoUsuario = Literal[
     "administrador",
