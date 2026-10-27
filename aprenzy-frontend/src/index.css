@@ -1,12 +1,14 @@
 * {
   box-sizing: border-box;
+  font-size:24px;
 }
+
 
 body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
   background-color: #f5f7fb;
-  color: #f9fafc;
+  color: #1e293b;
 }
 
 button,
