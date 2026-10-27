@@ -1,13 +1,16 @@
 
 import {
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
 
 import {
+  FiCheck,
   FiChevronRight,
   FiLogOut,
   FiMenu,
+  FiShield,
   FiUser,
   FiX,
 } from "react-icons/fi";
@@ -33,10 +36,10 @@ interface RoleLayoutProps {
   renderSeccion: (seccion: string) => ReactNode;
   children?: ReactNode;
   variante:
-  | "admin"
-  | "coordinador"
-  | "docente"
-  | "estudiante";
+    | "admin"
+    | "coordinador"
+    | "docente"
+    | "estudiante";
 }
 
 export default function RoleLayout({
@@ -53,15 +56,16 @@ export default function RoleLayout({
   const navigate = useNavigate();
   const location = useLocation();
 
-const [menuAbierto, setMenuAbierto] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [confirmarCierre, setConfirmarCierre] = useState(false);
 
-const baseRuta =
-  variante === "admin"
-    ? "/administrador"
-    : `/${variante}`;
+  const baseRuta =
+    variante === "admin"
+      ? "/administrador"
+      : `/${variante}`;
 
-const rutaActual =
-  location.pathname.replace(/\/+$/, "") || "/";
+  const rutaActual =
+    location.pathname.replace(/\/+$/, "") || "/";
 
   const seccionDeRuta =
     rutaActual === baseRuta
@@ -98,24 +102,47 @@ const rutaActual =
     setMenuAbierto(false);
   }
 
+  // Abrir la ventana personalizada de confirmación.
   function cerrarSesion() {
-    const confirmar = window.confirm(
-      "¿Deseas cerrar sesión?",
-    );
-
-    if (!confirmar) return;
-
-    logout();
+    setConfirmarCierre(true);
   }
+
+  // Cerrar la sesión solamente cuando se confirme.
+  function confirmarCerrarSesion() {
+    setConfirmarCierre(false);
+    setMenuAbierto(false);
+    logout();
+    navigate("/", { replace: true });
+  }
+
+  // Permitir cerrar la ventana con la tecla Escape.
+  useEffect(() => {
+    if (!confirmarCierre) return;
+
+    function manejarTecla(evento: KeyboardEvent) {
+      if (evento.key === "Escape") {
+        setConfirmarCierre(false);
+      }
+    }
+
+    window.addEventListener("keydown", manejarTecla);
+
+    return () => {
+      window.removeEventListener("keydown", manejarTecla);
+    };
+  }, [confirmarCierre]);
 
   return (
     <div className={`role-layout role-${variante}`}>
+
       {menuAbierto && (
         <div
           className="role-layout-overlay"
           onClick={() => setMenuAbierto(false)}
         />
       )}
+
+      {/* MENÚ LATERAL */}
 
       <aside
         className={`role-layout-sidebar ${
@@ -194,6 +221,8 @@ const rutaActual =
         </div>
       </aside>
 
+      {/* CONTENIDO PRINCIPAL */}
+
       <main className="role-layout-main">
         <header className="role-layout-topbar">
           <div className="role-layout-topbar-left">
@@ -237,6 +266,90 @@ const rutaActual =
           {renderSeccion(seccionActiva)}
         </section>
       </main>
+
+      {/* VENTANA PERSONALIZADA PARA CERRAR SESIÓN */}
+
+      {confirmarCierre && (
+        <div
+          className="role-logout-modal-overlay"
+          onMouseDown={(evento) => {
+            if (evento.target === evento.currentTarget) {
+              setConfirmarCierre(false);
+            }
+          }}
+        >
+          <section
+            className="role-logout-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="role-logout-title"
+            aria-describedby="role-logout-description"
+          >
+            <button
+              type="button"
+              className="role-logout-modal-close"
+              onClick={() => setConfirmarCierre(false)}
+              aria-label="Cerrar ventana"
+              autoFocus
+            >
+              <FiX />
+            </button>
+
+            <div className="role-logout-modal-icon">
+              <FiLogOut aria-hidden="true" />
+            </div>
+
+            <span className="role-logout-modal-eyebrow">
+              APRENZY
+            </span>
+
+            <h2 id="role-logout-title">
+              ¿Deseas cerrar sesión?
+            </h2>
+
+            <p id="role-logout-description">
+              Tu sesión actual se cerrará y volverás a la
+              pantalla de inicio de sesión. Si todavía
+              necesitas trabajar, puedes continuar en Aprenzy.
+            </p>
+
+            <div className="role-logout-modal-user">
+              <span className="role-logout-modal-user-icon">
+                <FiShield aria-hidden="true" />
+              </span>
+
+              <span>
+                <strong>{nombreCompleto || nombreUsuario}</strong>
+                <small>{titulo}</small>
+              </span>
+            </div>
+
+            <div className="role-logout-modal-actions">
+              <button
+                type="button"
+                className="role-logout-cancel"
+                onClick={() => setConfirmarCierre(false)}
+              >
+                Seguir en Aprenzy
+              </button>
+
+              <button
+                type="button"
+                className="role-logout-confirm"
+                onClick={confirmarCerrarSesion}
+              >
+                <FiCheck aria-hidden="true" />
+                Sí, cerrar sesión
+              </button>
+            </div>
+
+            <div className="role-logout-modal-footer">
+              <FiShield aria-hidden="true" />
+              Tu sesión está bajo tu control.
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
