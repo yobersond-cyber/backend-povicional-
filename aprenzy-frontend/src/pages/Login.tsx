@@ -1,6 +1,11 @@
 import { useState, type FormEvent } from "react";
 import Registro from "./Registro";
-import { FiLock, FiMail } from "react-icons/fi";
+import {
+  FiLock,
+  FiMail,
+  FiEye,
+  FiEyeOff,
+} from "react-icons/fi";
 
 // Importa el servicio de autenticación
 /* import { login } from "../services/auth"; */
@@ -19,6 +24,9 @@ function Login() {
 
   // Guarda la contraseña escrita por el usuario
   const [password, setPassword] = useState("");
+
+  // Controla si la contraseña está visible
+  const [mostrarPassword, setMostrarPassword] = useState(false);
 
   // Guarda el mensaje de error del login
   const [error, setError] = useState("");
@@ -101,25 +109,52 @@ try {
             />
           </div>
 
-          {/* Campo de contraseña */}
-          <label htmlFor="password">
-            Contraseña
-          </label>
+          
+{/* Campo de contraseña */}
+<label htmlFor="password">
+  Contraseña
+</label>
 
-          <div className="input-container">
-            <FiLock />
+<div className="input-container password-input-container">
+  <FiLock aria-hidden="true" />
 
-            <input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(event) =>
-                setPassword(event.target.value)
-              }
-              required
-            />
-          </div>
+  <input
+    id="password"
+    type={mostrarPassword ? "text" : "password"}
+    placeholder="••••••••"
+    value={password}
+    onChange={(event) =>
+      setPassword(event.target.value)
+    }
+    autoComplete="current-password"
+    required
+  />
+
+  <button
+    type="button"
+    className="password-toggle"
+    onClick={() =>
+      setMostrarPassword((visible) => !visible)
+    }
+    aria-label={
+      mostrarPassword
+        ? "Ocultar contraseña"
+        : "Mostrar contraseña"
+    }
+    title={
+      mostrarPassword
+        ? "Ocultar contraseña"
+        : "Mostrar contraseña"
+    }
+  >
+    {mostrarPassword ? (
+      <FiEyeOff aria-hidden="true" />
+    ) : (
+      <FiEye aria-hidden="true" />
+    )}
+  </button>
+</div>
+
 
           {/* Mensaje de error */}
           {error && (

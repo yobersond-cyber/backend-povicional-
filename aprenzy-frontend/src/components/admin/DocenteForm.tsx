@@ -1,4 +1,10 @@
+
 import { useEffect, useState } from "react";
+import {
+  FiEye,
+  FiEyeOff,
+} from "react-icons/fi";
+
 import {
   actualizarUsuario,
   crearUsuario,
@@ -44,6 +50,8 @@ export default function DocenteForm({
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
+  const [mostrarContrasena, setMostrarContrasena] =
+    useState(false);
 
   const esEdicion = Boolean(docente);
 
@@ -60,14 +68,17 @@ export default function DocenteForm({
         contrasena: "",
       });
     } else {
-      setFormulario(formularioInicial);
+      setFormulario({ ...formularioInicial });
     }
 
     setError("");
+    setMostrarContrasena(false);
   }, [docente]);
 
   function manejarCambio(
-    evento: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    evento: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement
+    >,
   ) {
     const { name, value } = evento.target;
 
@@ -77,7 +88,9 @@ export default function DocenteForm({
     }));
   }
 
-  async function manejarSubmit(evento: React.FormEvent<HTMLFormElement>) {
+  async function manejarSubmit(
+    evento: React.FormEvent<HTMLFormElement>,
+  ) {
     evento.preventDefault();
 
     setError("");
@@ -149,7 +162,9 @@ export default function DocenteForm({
         await crearUsuario(datos);
       }
 
-      setFormulario(formularioInicial);
+      setFormulario({ ...formularioInicial });
+      setMostrarContrasena(false);
+
       onSuccess();
     } catch (error) {
       console.error("Error guardando docente:", error);
@@ -172,7 +187,9 @@ export default function DocenteForm({
     <form className="admin-form" onSubmit={manejarSubmit}>
       <div className="admin-form-grid">
         <div className="admin-form-group">
-          <label htmlFor="nombres_compl">Nombres</label>
+          <label htmlFor="nombres_compl">
+            Nombres
+          </label>
 
           <input
             id="nombres_compl"
@@ -186,7 +203,9 @@ export default function DocenteForm({
         </div>
 
         <div className="admin-form-group">
-          <label htmlFor="apellidos_compl">Apellidos</label>
+          <label htmlFor="apellidos_compl">
+            Apellidos
+          </label>
 
           <input
             id="apellidos_compl"
@@ -200,7 +219,9 @@ export default function DocenteForm({
         </div>
 
         <div className="admin-form-group">
-          <label htmlFor="documento">Documento</label>
+          <label htmlFor="documento">
+            Documento
+          </label>
 
           <input
             id="documento"
@@ -214,7 +235,9 @@ export default function DocenteForm({
         </div>
 
         <div className="admin-form-group">
-          <label htmlFor="codigo_usuario">Código de usuario</label>
+          <label htmlFor="codigo_usuario">
+            Código de usuario
+          </label>
 
           <input
             id="codigo_usuario"
@@ -228,7 +251,9 @@ export default function DocenteForm({
         </div>
 
         <div className="admin-form-group">
-          <label htmlFor="telefono">Teléfono</label>
+          <label htmlFor="telefono">
+            Teléfono
+          </label>
 
           <input
             id="telefono"
@@ -242,7 +267,9 @@ export default function DocenteForm({
         </div>
 
         <div className="admin-form-group">
-          <label htmlFor="correo">Correo</label>
+          <label htmlFor="correo">
+            Correo
+          </label>
 
           <input
             id="correo"
@@ -256,7 +283,9 @@ export default function DocenteForm({
         </div>
 
         <div className="admin-form-group">
-          <label htmlFor="jornada">Jornada</label>
+          <label htmlFor="jornada">
+            Jornada
+          </label>
 
           <select
             id="jornada"
@@ -265,13 +294,25 @@ export default function DocenteForm({
             onChange={manejarCambio}
             disabled={guardando}
           >
-            <option value="">Seleccione una jornada</option>
-            <option value="mañana">Mañana</option>
-            <option value="tarde">Tarde</option>
-            <option value="unica">Única</option>
+            <option value="">
+              Seleccione una jornada
+            </option>
+
+            <option value="mañana">
+              Mañana
+            </option>
+
+            <option value="tarde">
+              Tarde
+            </option>
+
+            <option value="unica">
+              Única
+            </option>
           </select>
         </div>
 
+        {/* CONTRASEÑA CON BOTÓN PARA MOSTRAR U OCULTAR */}
         <div className="admin-form-group">
           <label htmlFor="contrasena">
             {esEdicion
@@ -279,24 +320,68 @@ export default function DocenteForm({
               : "Contraseña"}
           </label>
 
-          <input
-            id="contrasena"
-            name="contrasena"
-            type="password"
-            value={formulario.contrasena}
-            onChange={manejarCambio}
-            placeholder={
-              esEdicion
-                ? "Dejar vacío para conservarla"
-                : "Ingrese una contraseña"
-            }
-            disabled={guardando}
-          />
+          <div className="admin-password-control">
+            <input
+              id="contrasena"
+              name="contrasena"
+              type={
+                mostrarContrasena
+                  ? "text"
+                  : "password"
+              }
+              autoComplete="new-password"
+              value={formulario.contrasena}
+              onChange={manejarCambio}
+              placeholder={
+                esEdicion
+                  ? "Dejar vacío para conservarla"
+                  : "Ingrese una contraseña"
+              }
+              disabled={guardando}
+            />
+
+            <button
+              type="button"
+              className="admin-password-toggle"
+              aria-label={
+                mostrarContrasena
+                  ? "Ocultar contraseña"
+                  : "Mostrar contraseña"
+              }
+              title={
+                mostrarContrasena
+                  ? "Ocultar contraseña"
+                  : "Mostrar contraseña"
+              }
+              onClick={() =>
+                setMostrarContrasena(
+                  (visible) => !visible,
+                )
+              }
+              disabled={guardando}
+            >
+              {mostrarContrasena ? (
+                <FiEyeOff aria-hidden="true" />
+              ) : (
+                <FiEye aria-hidden="true" />
+              )}
+            </button>
+          </div>
+
+          {esEdicion && (
+            <small className="admin-password-help">
+              Deja este campo vacío para conservar la contraseña
+              actual del docente.
+            </small>
+          )}
         </div>
       </div>
 
       {error && (
-        <div className="admin-form-error">
+        <div
+          className="admin-form-error"
+          role="alert"
+        >
           {error}
         </div>
       )}

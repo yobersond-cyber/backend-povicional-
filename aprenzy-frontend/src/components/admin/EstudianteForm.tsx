@@ -1,3 +1,4 @@
+
 import {
   useEffect,
   useState,
@@ -6,6 +7,8 @@ import {
 
 import {
   FiBookOpen,
+  FiEye,
+  FiEyeOff,
   FiLock,
   FiMail,
   FiPhone,
@@ -68,15 +71,14 @@ export default function EstudianteForm({
 }: EstudianteFormProps) {
   const { usuario } = useAuth();
 
-  const esEdicion =
-    estudiante !== null;
+  const esEdicion = estudiante !== null;
 
   const [
     formulario,
     setFormulario,
-  ] = useState<FormularioEstudiante>(
-    formularioInicial,
-  );
+  ] = useState<FormularioEstudiante>({
+    ...formularioInicial,
+  });
 
   const [
     cursos,
@@ -103,11 +105,21 @@ export default function EstudianteForm({
     setAdvertencia,
   ] = useState("");
 
+  // Control de visibilidad de la contraseña.
+  const [
+    mostrarContrasena,
+    setMostrarContrasena,
+  ] = useState(false);
+
   useEffect(() => {
+    setMostrarContrasena(false);
+    setError("");
+    setAdvertencia("");
+
     if (!estudiante) {
-      setFormulario(
-        formularioInicial,
-      );
+      setFormulario({
+        ...formularioInicial,
+      });
 
       return;
     }
@@ -134,6 +146,7 @@ export default function EstudianteForm({
       jornada:
         estudiante.jornada ?? "",
 
+      // Nunca rellenamos la contraseña anterior.
       contrasena: "",
 
       id_curso: "",
@@ -145,22 +158,9 @@ export default function EstudianteForm({
       try {
         setCargandoCursos(true);
 
-        const datos =
-          await obtenerCursos();
+        const datos = await obtenerCursos();
 
         setCursos(datos);
-
-        /*
-         * Si estamos editando y el estudiante
-         * ya tiene una relación con un curso,
-         * intentamos identificarla desde los
-         * datos disponibles.
-         *
-         * Si el backend no devuelve el curso
-         * dentro de Estudiante, se mantiene
-         * vacío para que el administrador
-         * pueda seleccionar uno.
-         */
       } catch (err) {
         setError(
           err instanceof Error
@@ -179,12 +179,10 @@ export default function EstudianteForm({
     campo: keyof FormularioEstudiante,
     valor: string,
   ) {
-    setFormulario(
-      (actual) => ({
-        ...actual,
-        [campo]: valor,
-      }),
-    );
+    setFormulario((actual) => ({
+      ...actual,
+      [campo]: valor,
+    }));
   }
 
   async function guardarEstudiante(
@@ -205,18 +203,41 @@ export default function EstudianteForm({
 
     const idColegio = usuario.id_colegio;
 
-if (idColegio === null) {
-  setError(
-    "Tu cuenta no tiene un colegio asociado. " +
-    "No puedes crear ni editar estudiantes.",
-  );
+    if (idColegio == null) {
+      setError(
+        "Tu cuenta no tiene un colegio asociado. " +
+        "No puedes crear ni editar estudiantes.",
+      );
 
-  return;
-}
+      return;
+    }
 
     if (!formulario.id_curso) {
+      setError("Debes seleccionar un curso.");
+      return;
+    }
+
+    if (
+      !formulario.nombres_compl.trim() ||
+      !formulario.apellidos_compl.trim() ||
+      !formulario.documento.trim() ||
+      !formulario.codigo_usuario.trim() ||
+      !formulario.telefono.trim() ||
+      !formulario.correo.trim()
+    ) {
       setError(
-        "Debes seleccionar un curso.",
+        "Completa todos los campos obligatorios.",
+      );
+
+      return;
+    }
+
+    if (
+      !esEdicion &&
+      formulario.contrasena.length < 6
+    ) {
+      setError(
+        "La contraseña debe tener al menos 6 caracteres.",
       );
 
       return;
@@ -254,12 +275,12 @@ if (idColegio === null) {
             correo:
               formulario.correo.trim(),
 
-            tipo_de_usuario:
-              "estudiante",
+            tipo_de_usuario: "estudiante",
 
             jornada:
               formulario.jornada || null,
 
+            // Solo cambia la contraseña si se escribió una nueva.
             ...(formulario.contrasena
               ? {
                   contrasena:
@@ -270,22 +291,17 @@ if (idColegio === null) {
         );
 
         /*
-         * Intentamos asignar el nuevo curso.
-         *
-         * Si ya existe la relación, el backend
-         * puede devolver error por duplicado.
-         * En ese caso no impedimos que la
-         * actualización del usuario quede guardada.
+         * Intentamos asignar el curso seleccionado.
+         * Si la asignación falla, informamos al usuario
+         * sin ocultar que los datos ya se actualizaron.
          */
         try {
           await asignarUsuarioCurso({
-            id_usuario:
-              estudiante.id_usuario,
+            id_usuario: estudiante.id_usuario,
 
-            id_curso:
-              Number(
-                formulario.id_curso,
-              ),
+            id_curso: Number(
+              formulario.id_curso,
+            ),
           });
         } catch (err) {
           const mensaje =
@@ -294,7 +310,9 @@ if (idColegio === null) {
               : "No fue posible actualizar el curso.";
 
           setAdvertencia(
-            `Los datos del estudiante fueron actualizados, pero no se pudo actualizar la asignación del curso: ${mensaje}`,
+            "Los datos del estudiante fueron actualizados, " +
+            "pero no se pudo actualizar la asignación del curso: " +
+            mensaje,
           );
 
           return;
@@ -311,50 +329,47 @@ if (idColegio === null) {
        * ========================================
        */
 
-      const nuevoEstudiante =
-        await crearUsuario({
-          id_colegio: idColegio,
+      const nuevoEstudiante = await crearUsuario({
+        id_colegio: idColegio,
 
-          codigo_usuario:
-            formulario.codigo_usuario.trim(),
+        codigo_usuario:
+          formulario.codigo_usuario.trim(),
 
-          documento:
-            formulario.documento.trim(),
+        documento:
+          formulario.documento.trim(),
 
-          nombres_compl:
-            formulario.nombres_compl.trim(),
+        nombres_compl:
+          formulario.nombres_compl.trim(),
 
-          apellidos_compl:
-            formulario.apellidos_compl.trim(),
+        apellidos_compl:
+          formulario.apellidos_compl.trim(),
 
-          telefono:
-            formulario.telefono.trim(),
+        telefono:
+          formulario.telefono.trim(),
 
-          correo:
-            formulario.correo.trim(),
+        correo:
+          formulario.correo.trim(),
 
-          tipo_de_usuario:
-            "estudiante",
+        tipo_de_usuario: "estudiante",
 
-          jornada:
-            formulario.jornada || null,
+        jornada:
+          formulario.jornada || null,
 
-          contrasena:
-            formulario.contrasena,
-        });
+        contrasena:
+          formulario.contrasena,
+      });
 
       /*
-       * Asignar curso al nuevo estudiante.
+       * Asignar el curso al nuevo estudiante.
        */
       try {
         await asignarUsuarioCurso({
           id_usuario:
             nuevoEstudiante.id_usuario,
 
-          id_curso:
-            Number(
-              formulario.id_curso,
-            ),
+          id_curso: Number(
+            formulario.id_curso,
+          ),
         });
       } catch (err) {
         const mensaje =
@@ -363,15 +378,19 @@ if (idColegio === null) {
             : "No fue posible asignar el curso.";
 
         setAdvertencia(
-          `El estudiante fue creado correctamente, pero no se pudo asignar al curso: ${mensaje}`,
+          "El estudiante fue creado correctamente, " +
+          "pero no se pudo asignar al curso: " +
+          mensaje,
         );
 
         return;
       }
 
-      setFormulario(
-        formularioInicial,
-      );
+      setFormulario({
+        ...formularioInicial,
+      });
+
+      setMostrarContrasena(false);
 
       onSuccess();
     } catch (err) {
@@ -443,24 +462,19 @@ if (idColegio === null) {
           className="admin-form"
         >
           <div className="admin-form-section">
-            <h3>
-              Información personal
-            </h3>
+            <h3>Información personal</h3>
 
             <div className="admin-form-grid">
               <label>
-                <span>
-                  Nombres
-                </span>
+                <span>Nombres</span>
 
                 <div className="admin-input">
-                  <FiUser />
+                  <FiUser aria-hidden="true" />
 
                   <input
                     type="text"
-                    value={
-                      formulario.nombres_compl
-                    }
+                    autoComplete="given-name"
+                    value={formulario.nombres_compl}
                     onChange={(event) =>
                       actualizarCampo(
                         "nombres_compl",
@@ -468,23 +482,21 @@ if (idColegio === null) {
                       )
                     }
                     required
+                    disabled={guardando}
                   />
                 </div>
               </label>
 
               <label>
-                <span>
-                  Apellidos
-                </span>
+                <span>Apellidos</span>
 
                 <div className="admin-input">
-                  <FiUser />
+                  <FiUser aria-hidden="true" />
 
                   <input
                     type="text"
-                    value={
-                      formulario.apellidos_compl
-                    }
+                    autoComplete="family-name"
+                    value={formulario.apellidos_compl}
                     onChange={(event) =>
                       actualizarCampo(
                         "apellidos_compl",
@@ -492,20 +504,17 @@ if (idColegio === null) {
                       )
                     }
                     required
+                    disabled={guardando}
                   />
                 </div>
               </label>
 
               <label>
-                <span>
-                  Documento
-                </span>
+                <span>Documento</span>
 
                 <input
                   type="text"
-                  value={
-                    formulario.documento
-                  }
+                  value={formulario.documento}
                   onChange={(event) =>
                     actualizarCampo(
                       "documento",
@@ -513,19 +522,16 @@ if (idColegio === null) {
                     )
                   }
                   required
+                  disabled={guardando}
                 />
               </label>
 
               <label>
-                <span>
-                  Código de estudiante
-                </span>
+                <span>Código de estudiante</span>
 
                 <input
                   type="text"
-                  value={
-                    formulario.codigo_usuario
-                  }
+                  value={formulario.codigo_usuario}
                   onChange={(event) =>
                     actualizarCampo(
                       "codigo_usuario",
@@ -533,22 +539,20 @@ if (idColegio === null) {
                     )
                   }
                   required
+                  disabled={guardando}
                 />
               </label>
 
               <label>
-                <span>
-                  Teléfono
-                </span>
+                <span>Teléfono</span>
 
                 <div className="admin-input">
-                  <FiPhone />
+                  <FiPhone aria-hidden="true" />
 
                   <input
                     type="tel"
-                    value={
-                      formulario.telefono
-                    }
+                    autoComplete="tel"
+                    value={formulario.telefono}
                     onChange={(event) =>
                       actualizarCampo(
                         "telefono",
@@ -556,23 +560,21 @@ if (idColegio === null) {
                       )
                     }
                     required
+                    disabled={guardando}
                   />
                 </div>
               </label>
 
               <label>
-                <span>
-                  Correo
-                </span>
+                <span>Correo</span>
 
                 <div className="admin-input">
-                  <FiMail />
+                  <FiMail aria-hidden="true" />
 
                   <input
                     type="email"
-                    value={
-                      formulario.correo
-                    }
+                    autoComplete="email"
+                    value={formulario.correo}
                     onChange={(event) =>
                       actualizarCampo(
                         "correo",
@@ -580,6 +582,7 @@ if (idColegio === null) {
                       )
                     }
                     required
+                    disabled={guardando}
                   />
                 </div>
               </label>
@@ -587,20 +590,14 @@ if (idColegio === null) {
           </div>
 
           <div className="admin-form-section">
-            <h3>
-              Información académica
-            </h3>
+            <h3>Información académica</h3>
 
             <div className="admin-form-grid">
               <label>
-                <span>
-                  Jornada
-                </span>
+                <span>Jornada</span>
 
                 <select
-                  value={
-                    formulario.jornada
-                  }
+                  value={formulario.jornada}
                   onChange={(event) =>
                     actualizarCampo(
                       "jornada",
@@ -608,6 +605,7 @@ if (idColegio === null) {
                     )
                   }
                   required
+                  disabled={guardando}
                 >
                   <option value="">
                     Seleccionar jornada
@@ -628,17 +626,13 @@ if (idColegio === null) {
               </label>
 
               <label>
-                <span>
-                  Curso
-                </span>
+                <span>Curso</span>
 
                 <div className="admin-input">
-                  <FiBookOpen />
+                  <FiBookOpen aria-hidden="true" />
 
                   <select
-                    value={
-                      formulario.id_curso
-                    }
+                    value={formulario.id_curso}
                     onChange={(event) =>
                       actualizarCampo(
                         "id_curso",
@@ -647,7 +641,8 @@ if (idColegio === null) {
                     }
                     required
                     disabled={
-                      cargandoCursos
+                      cargandoCursos ||
+                      guardando
                     }
                   >
                     <option value="">
@@ -656,43 +651,38 @@ if (idColegio === null) {
                         : "Seleccionar curso"}
                     </option>
 
-                    {cursos.map(
-                      (curso) => (
-                        <option
-                          key={
-                            curso.id_curso
-                          }
-                          value={
-                            curso.id_curso
-                          }
-                        >
-                          {curso.grado} -{" "}
-                          {
-                            curso.numero_curso
-                          }{" "}
-                          ({curso.jornada})
-                        </option>
-                      ),
-                    )}
+                    {cursos.map((curso) => (
+                      <option
+                        key={curso.id_curso}
+                        value={curso.id_curso}
+                      >
+                        {curso.grado} -{" "}
+                        {curso.numero_curso}{" "}
+                        ({curso.jornada})
+                      </option>
+                    ))}
                   </select>
                 </div>
               </label>
 
+              {/* CONTRASEÑA CON BOTÓN DE VISIBILIDAD */}
               <label>
                 <span>
                   Contraseña
-                  {esEdicion &&
-                    " (opcional)"}
+                  {esEdicion && " (opcional)"}
                 </span>
 
-                <div className="admin-input">
-                  <FiLock />
+                <div className="admin-input admin-password-control">
+                  <FiLock aria-hidden="true" />
 
                   <input
-                    type="password"
-                    value={
-                      formulario.contrasena
+                    type={
+                      mostrarContrasena
+                        ? "text"
+                        : "password"
                     }
+                    autoComplete="new-password"
+                    value={formulario.contrasena}
                     onChange={(event) =>
                       actualizarCampo(
                         "contrasena",
@@ -704,10 +694,44 @@ if (idColegio === null) {
                     placeholder={
                       esEdicion
                         ? "Dejar vacío para conservarla"
-                        : ""
+                        : "Ingrese una contraseña"
                     }
+                    disabled={guardando}
                   />
+
+                  <button
+                    type="button"
+                    className="admin-password-toggle"
+                    aria-label={
+                      mostrarContrasena
+                        ? "Ocultar contraseña"
+                        : "Mostrar contraseña"
+                    }
+                    title={
+                      mostrarContrasena
+                        ? "Ocultar contraseña"
+                        : "Mostrar contraseña"
+                    }
+                    onClick={() =>
+                      setMostrarContrasena(
+                        (visible) => !visible,
+                      )
+                    }
+                    disabled={guardando}
+                  >
+                    {mostrarContrasena ? (
+                      <FiEyeOff aria-hidden="true" />
+                    ) : (
+                      <FiEye aria-hidden="true" />
+                    )}
+                  </button>
                 </div>
+
+                {esEdicion && (
+                  <small className="admin-password-help">
+                    Deja el campo vacío para conservar la contraseña actual.
+                  </small>
+                )}
               </label>
             </div>
           </div>
@@ -730,7 +754,7 @@ if (idColegio === null) {
                 cargandoCursos
               }
             >
-              <FiSave />
+              <FiSave aria-hidden="true" />
 
               {guardando
                 ? esEdicion

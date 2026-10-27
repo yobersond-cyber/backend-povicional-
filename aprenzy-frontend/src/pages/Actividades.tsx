@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from "react";
 
 import {
   FiCalendar,
-  FiCheckCircle,
   FiClipboard,
   FiClock,
   FiPlus,

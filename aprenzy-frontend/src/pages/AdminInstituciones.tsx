@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 
 import {
   crearColegio,
@@ -83,6 +84,12 @@ export default function AdminInstituciones() {
 
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
+
+  const [mostrarContrasenaInicial, setMostrarContrasenaInicial] =
+    useState(false);
+
+  const [mostrarContrasenaNueva, setMostrarContrasenaNueva] =
+    useState(false);
 
   async function cargarDatos() {
     setCargando(true);
@@ -192,6 +199,7 @@ export default function AdminInstituciones() {
 
       setColegioForm(colegioVacio());
       setCoordinadorInicial(coordinadorVacio());
+      setMostrarContrasenaInicial(false);
 
       await cargarDatos();
 
@@ -257,6 +265,7 @@ export default function AdminInstituciones() {
 
       setCoordinadorForm(coordinadorVacio());
       setIdColegioSeleccionado("");
+      setMostrarContrasenaNueva(false);
 
       await cargarDatos();
 
@@ -720,6 +729,7 @@ export default function AdminInstituciones() {
           <div className="ai-stat-label">
             Total de colegios
           </div>
+
           <div className="ai-stat-number">
             {colegios.length}
           </div>
@@ -729,6 +739,7 @@ export default function AdminInstituciones() {
           <div className="ai-stat-label">
             Colegios activos
           </div>
+
           <div className="ai-stat-number">
             {colegiosActivos.length}
           </div>
@@ -738,6 +749,7 @@ export default function AdminInstituciones() {
           <div className="ai-stat-label">
             Coordinadores registrados
           </div>
+
           <div className="ai-stat-number">
             {coordinadores.length}
           </div>
@@ -855,6 +867,7 @@ export default function AdminInstituciones() {
                           <strong>
                             {colegio.nombre_colegio}
                           </strong>
+
                           <div className="ai-muted">
                             ID: {colegio.id_colegio}
                           </div>
@@ -864,6 +877,7 @@ export default function AdminInstituciones() {
                           <div>
                             NIT: {colegio.nit || "No registrado"}
                           </div>
+
                           <div className="ai-muted">
                             DANE: {colegio.codigo_dane || "No registrado"}
                           </div>
@@ -932,6 +946,7 @@ export default function AdminInstituciones() {
                   <h2>
                     {colegioSeleccionado.nombre_colegio}
                   </h2>
+
                   <p>
                     Detalle de la institución seleccionada.
                   </p>
@@ -1026,6 +1041,7 @@ export default function AdminInstituciones() {
               <div className="ai-panel-heading">
                 <div>
                   <h2>Registrar colegio</h2>
+
                   <p>
                     Se creará el colegio y su coordinador inicial
                     en una sola operación.
@@ -1039,6 +1055,7 @@ export default function AdminInstituciones() {
               >
                 <div className="ai-form-section">
                   <h3>Datos de la institución</h3>
+
                   <p>
                     El nombre es obligatorio. Los demás datos
                     institucionales son opcionales.
@@ -1049,6 +1066,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-nombre-colegio">
                     Nombre del colegio *
                   </label>
+
                   <input
                     id="ai-nombre-colegio"
                     required
@@ -1065,6 +1083,7 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-dane">Código DANE</label>
+
                   <input
                     id="ai-dane"
                     maxLength={20}
@@ -1080,6 +1099,7 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-nit">NIT</label>
+
                   <input
                     id="ai-nit"
                     maxLength={20}
@@ -1095,6 +1115,7 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-direccion">Dirección</label>
+
                   <input
                     id="ai-direccion"
                     maxLength={250}
@@ -1112,6 +1133,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-telefono-colegio">
                     Teléfono institucional
                   </label>
+
                   <input
                     id="ai-telefono-colegio"
                     maxLength={20}
@@ -1127,6 +1149,7 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-municipio">Municipio</label>
+
                   <input
                     id="ai-municipio"
                     maxLength={100}
@@ -1144,6 +1167,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-departamento">
                     Departamento
                   </label>
+
                   <input
                     id="ai-departamento"
                     maxLength={100}
@@ -1161,6 +1185,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-correo-colegio">
                     Correo institucional
                   </label>
+
                   <input
                     id="ai-correo-colegio"
                     type="email"
@@ -1176,6 +1201,7 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-estado-colegio">Estado</label>
+
                   <select
                     id="ai-estado-colegio"
                     value={colegioForm.estado}
@@ -1195,6 +1221,7 @@ export default function AdminInstituciones() {
 
                 <div className="ai-form-section">
                   <h3>Coordinador inicial</h3>
+
                   <p>
                     Esta cuenta quedará asociada al colegio
                     que estás creando.
@@ -1205,6 +1232,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-coord-codigo">
                     Código de usuario *
                   </label>
+
                   <input
                     id="ai-coord-codigo"
                     required
@@ -1223,6 +1251,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-coord-documento">
                     Documento *
                   </label>
+
                   <input
                     id="ai-coord-documento"
                     required
@@ -1239,6 +1268,7 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-coord-nombres">Nombres *</label>
+
                   <input
                     id="ai-coord-nombres"
                     required
@@ -1257,6 +1287,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-coord-apellidos">
                     Apellidos *
                   </label>
+
                   <input
                     id="ai-coord-apellidos"
                     required
@@ -1275,6 +1306,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-coord-telefono">
                     Teléfono *
                   </label>
+
                   <input
                     id="ai-coord-telefono"
                     required
@@ -1291,6 +1323,7 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-coord-correo">Correo *</label>
+
                   <input
                     id="ai-coord-correo"
                     type="email"
@@ -1305,25 +1338,59 @@ export default function AdminInstituciones() {
                   />
                 </div>
 
+                {/* CONTRASEÑA DEL COORDINADOR INICIAL */}
                 <div className="ai-field ai-span">
                   <label htmlFor="ai-coord-contrasena">
                     Contraseña inicial *
                   </label>
-                  <input
-                    id="ai-coord-contrasena"
-                    type="password"
-                    required
-                    minLength={6}
-                    maxLength={255}
-                    autoComplete="new-password"
-                    value={coordinadorInicial.contrasena}
-                    onChange={(evento) =>
-                      setCoordinadorInicial({
-                        ...coordinadorInicial,
-                        contrasena: evento.target.value,
-                      })
-                    }
-                  />
+
+                  <div className="ai-password-control">
+                    <input
+                      id="ai-coord-contrasena"
+                      type={
+                        mostrarContrasenaInicial
+                          ? "text"
+                          : "password"
+                      }
+                      required
+                      minLength={6}
+                      maxLength={255}
+                      autoComplete="new-password"
+                      value={coordinadorInicial.contrasena}
+                      onChange={(evento) =>
+                        setCoordinadorInicial({
+                          ...coordinadorInicial,
+                          contrasena: evento.target.value,
+                        })
+                      }
+                    />
+
+                    <button
+                      type="button"
+                      className="ai-password-toggle"
+                      aria-label={
+                        mostrarContrasenaInicial
+                          ? "Ocultar contraseña"
+                          : "Mostrar contraseña"
+                      }
+                      title={
+                        mostrarContrasenaInicial
+                          ? "Ocultar contraseña"
+                          : "Mostrar contraseña"
+                      }
+                      onClick={() =>
+                        setMostrarContrasenaInicial(
+                          (visible) => !visible,
+                        )
+                      }
+                    >
+                      {mostrarContrasenaInicial ? (
+                        <FiEyeOff aria-hidden="true" />
+                      ) : (
+                        <FiEye aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="ai-form-actions">
@@ -1355,6 +1422,7 @@ export default function AdminInstituciones() {
               <div className="ai-panel-heading">
                 <div>
                   <h2>Coordinadores registrados</h2>
+
                   <p>
                     Consulta las cuentas y las instituciones
                     a las que pertenecen.
@@ -1400,6 +1468,7 @@ export default function AdminInstituciones() {
                                 {coordinador.nombres_compl}{" "}
                                 {coordinador.apellidos_compl}
                               </strong>
+
                               <div className="ai-muted">
                                 Código: {coordinador.codigo_usuario}
                               </div>
@@ -1438,6 +1507,7 @@ export default function AdminInstituciones() {
               <div className="ai-panel-heading">
                 <div>
                   <h2>Registrar coordinador</h2>
+
                   <p>
                     Selecciona un colegio activo y crea una
                     cuenta para su coordinador.
@@ -1489,6 +1559,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-nuevo-codigo">
                     Código de usuario *
                   </label>
+
                   <input
                     id="ai-nuevo-codigo"
                     required
@@ -1507,6 +1578,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-nuevo-documento">
                     Documento *
                   </label>
+
                   <input
                     id="ai-nuevo-documento"
                     required
@@ -1523,6 +1595,7 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-nuevo-nombres">Nombres *</label>
+
                   <input
                     id="ai-nuevo-nombres"
                     required
@@ -1541,6 +1614,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-nuevo-apellidos">
                     Apellidos *
                   </label>
+
                   <input
                     id="ai-nuevo-apellidos"
                     required
@@ -1559,6 +1633,7 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-nuevo-telefono">
                     Teléfono *
                   </label>
+
                   <input
                     id="ai-nuevo-telefono"
                     required
@@ -1575,6 +1650,7 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-nuevo-correo">Correo *</label>
+
                   <input
                     id="ai-nuevo-correo"
                     type="email"
@@ -1589,25 +1665,59 @@ export default function AdminInstituciones() {
                   />
                 </div>
 
+                {/* CONTRASEÑA DEL NUEVO COORDINADOR */}
                 <div className="ai-field ai-span">
                   <label htmlFor="ai-nuevo-contrasena">
                     Contraseña inicial *
                   </label>
-                  <input
-                    id="ai-nuevo-contrasena"
-                    type="password"
-                    required
-                    minLength={6}
-                    maxLength={255}
-                    autoComplete="new-password"
-                    value={coordinadorForm.contrasena}
-                    onChange={(evento) =>
-                      setCoordinadorForm({
-                        ...coordinadorForm,
-                        contrasena: evento.target.value,
-                      })
-                    }
-                  />
+
+                  <div className="ai-password-control">
+                    <input
+                      id="ai-nuevo-contrasena"
+                      type={
+                        mostrarContrasenaNueva
+                          ? "text"
+                          : "password"
+                      }
+                      required
+                      minLength={6}
+                      maxLength={255}
+                      autoComplete="new-password"
+                      value={coordinadorForm.contrasena}
+                      onChange={(evento) =>
+                        setCoordinadorForm({
+                          ...coordinadorForm,
+                          contrasena: evento.target.value,
+                        })
+                      }
+                    />
+
+                    <button
+                      type="button"
+                      className="ai-password-toggle"
+                      aria-label={
+                        mostrarContrasenaNueva
+                          ? "Ocultar contraseña"
+                          : "Mostrar contraseña"
+                      }
+                      title={
+                        mostrarContrasenaNueva
+                          ? "Ocultar contraseña"
+                          : "Mostrar contraseña"
+                      }
+                      onClick={() =>
+                        setMostrarContrasenaNueva(
+                          (visible) => !visible,
+                        )
+                      }
+                    >
+                      {mostrarContrasenaNueva ? (
+                        <FiEyeOff aria-hidden="true" />
+                      ) : (
+                        <FiEye aria-hidden="true" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="ai-form-actions">

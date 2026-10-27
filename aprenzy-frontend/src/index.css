@@ -4083,3 +4083,587 @@ input {
 .role-admin .role-layout-nav::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #8b5cf6, #4338ca);
 }
+
+
+/* =====================================================
+   CAMPO DE CONTRASEÑA CON BOTÓN DE VISIBILIDAD
+   ===================================================== */
+
+.password-input-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.password-input-container input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+/* Botón del ojo */
+.login-card .password-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: auto;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 6px;
+
+  margin: 0;
+
+  border: none;
+  border-radius: 8px;
+
+  background: transparent;
+  color: #64748b;
+
+  cursor: pointer;
+  box-shadow: none;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.login-card .password-toggle:hover {
+  background: #e8edff;
+  color: #2448c7;
+}
+
+.login-card .password-toggle:focus-visible {
+  outline: 2px solid #3156d8;
+  outline-offset: 2px;
+}
+
+.login-card .password-toggle svg {
+  width: 19px;
+  height: 19px;
+  color: inherit;
+  flex-shrink: 0;
+}
+
+
+/* CORRECCIÓN: VISIBILIDAD DEL BOTÓN MOSTRAR CONTRASEÑA */
+
+.login-card .input-container.password-input-container button.password-toggle {
+  color: #1e293b !important;
+  background-color: #e2e8f0 !important;
+
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+
+  padding: 8px !important;
+  margin: 0 !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  opacity: 1 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+}
+
+.login-card .input-container.password-input-container button.password-toggle svg {
+  display: block !important;
+  width: 20px !important;
+  height: 20px !important;
+
+  color: #1e293b !important;
+  stroke: currentColor !important;
+  opacity: 1 !important;
+}
+
+.login-card .input-container.password-input-container button.password-toggle:hover {
+  color: #ffffff !important;
+  background-color: #3156d8 !important;
+  border-color: #3156d8 !important;
+}
+
+.login-card .input-container.password-input-container button.password-toggle:hover svg {
+  color: #ffffff !important;
+}
+
+
+
+/* ===== BOTONES PARA MOSTRAR CONTRASEÑAS EN REGISTRO ===== */
+
+.register-card .register-password-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-right: 8px;
+
+    background: #eef3fb;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+}
+
+.register-card .register-password-control:focus-within {
+    border-color: #526ee8;
+    box-shadow: 0 0 0 3px rgba(82, 110, 232, 0.15);
+}
+
+.register-card .register-password-control input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    margin: 0;
+
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none;
+}
+
+.register-card .register-password-control input:focus {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.register-card button.register-password-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    width: 38px !important;
+    min-width: 38px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+
+    margin: 0 !important;
+    padding: 8px !important;
+
+    color: #1e293b !important;
+    background: #dbe5f3 !important;
+    border: 1px solid #b8c7dd !important;
+    border-radius: 8px !important;
+
+    cursor: pointer;
+    box-shadow: none !important;
+}
+
+.register-card button.register-password-toggle svg {
+    width: 20px;
+    height: 20px;
+    color: #1e293b !important;
+}
+
+.register-card button.register-password-toggle:hover {
+    background: #3156d8 !important;
+    border-color: #3156d8 !important;
+}
+
+.register-card button.register-password-toggle:hover svg {
+    color: #ffffff !important;
+}
+
+
+/* ==========================================
+   APRENZY - CONTRASEÑAS EN ADMINISTRACIÓN
+   ========================================== */
+
+.ai-password-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 6px 4px 0;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.ai-password-control:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.ai-field .ai-password-control input,
+.ai-field .ai-password-control input:focus {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  border: none !important;
+  outline: none;
+  box-shadow: none !important;
+  background: transparent;
+  color: #0f172a;
+}
+
+.ai-field .ai-password-control input:focus {
+  border-color: transparent !important;
+}
+
+.ai-field .ai-password-control .ai-password-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+
+  margin: 0;
+  padding: 8px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+
+  background: #e2e8f0;
+  color: #1e293b;
+
+  cursor: pointer;
+  box-shadow: none;
+  opacity: 1;
+}
+
+.ai-field .ai-password-control .ai-password-toggle svg {
+  display: block;
+  width: 19px;
+  height: 19px;
+  color: #1e293b;
+  stroke: currentColor;
+}
+
+.ai-field .ai-password-control .ai-password-toggle:hover {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #ffffff;
+}
+
+.ai-field .ai-password-control .ai-password-toggle:hover svg {
+  color: #ffffff;
+}
+
+.ai-field .ai-password-control .ai-password-toggle:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+
+/* ==========================================
+   APRENZY - CONTRASEÑAS EN ADMINISTRACIÓN
+   ========================================== */
+
+.admin-instituciones .ai-password-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px 4px 0;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.admin-instituciones .ai-password-control:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.admin-instituciones .ai-field .ai-password-control input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 11px 8px 11px 12px !important;
+  border: none !important;
+  background: transparent !important;
+  color: #0f172a !important;
+  box-shadow: none !important;
+  outline: none;
+}
+
+.admin-instituciones .ai-field .ai-password-control input:focus {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.admin-instituciones .ai-field .ai-password-control button.ai-password-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 38px !important;
+  min-width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+
+  margin: 0 !important;
+  padding: 8px !important;
+
+  background: #e2e8f0 !important;
+  color: #1e293b !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 7px !important;
+
+  cursor: pointer;
+  opacity: 1 !important;
+  box-shadow: none !important;
+}
+
+.admin-instituciones .ai-field .ai-password-control button.ai-password-toggle svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  color: #1e293b !important;
+}
+
+.admin-instituciones .ai-field .ai-password-control button.ai-password-toggle:hover {
+  background: #4f46e5 !important;
+  border-color: #4f46e5 !important;
+}
+
+.admin-instituciones .ai-field .ai-password-control button.ai-password-toggle:hover svg {
+  color: #ffffff !important;
+}
+
+.admin-instituciones .ai-field .ai-password-control button.ai-password-toggle:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+
+/* ===============================================
+   APRENZY - MOSTRAR CONTRASEÑA EN FORMULARIO DOCENTE
+   =============================================== */
+
+.admin-form .admin-password-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 3px 5px 3px 0;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.admin-form .admin-password-control:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.13);
+}
+
+.admin-form .admin-password-control input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 41px;
+  padding: 0 12px !important;
+  margin: 0;
+  color: #172033 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 8px;
+  outline: none;
+  box-shadow: none !important;
+}
+
+.admin-form .admin-password-control input:focus {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.admin-form .admin-password-control .admin-password-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 38px;
+
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+
+  margin: 0;
+  padding: 8px;
+
+  color: #1e293b;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+
+  cursor: pointer;
+  opacity: 1;
+  box-shadow: none;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.admin-form .admin-password-control .admin-password-toggle svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  color: #1e293b;
+  stroke: currentColor;
+}
+
+.admin-form .admin-password-control .admin-password-toggle:hover:not(:disabled) {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #ffffff;
+}
+
+.admin-form .admin-password-control .admin-password-toggle:hover:not(:disabled) svg {
+  color: #ffffff;
+}
+
+.admin-form .admin-password-control .admin-password-toggle:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.admin-form .admin-password-control .admin-password-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-form .admin-password-help {
+  display: block;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+
+/* ==============================================
+   APRENZY - CONTRASEÑA EN FORMULARIO ESTUDIANTE
+   ============================================== */
+
+.admin-modal .admin-form .admin-input.admin-password-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  width: 100%;
+  min-width: 0;
+  padding: 4px 6px 4px 12px;
+
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.admin-modal .admin-input.admin-password-control:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+}
+
+.admin-modal .admin-input.admin-password-control > svg {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+.admin-modal .admin-form .admin-input.admin-password-control input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+
+  margin: 0;
+  padding: 0 4px !important;
+
+  background: transparent !important;
+  color: #0f172a !important;
+
+  border: none !important;
+  outline: none;
+  box-shadow: none !important;
+}
+
+.admin-modal .admin-form .admin-input.admin-password-control input:focus {
+  border: none !important;
+  outline: none;
+  box-shadow: none !important;
+}
+
+.admin-modal .admin-form .admin-input.admin-password-control button.admin-password-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 38px;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+
+  margin: 0;
+  padding: 8px;
+
+  background: #e2e8f0 !important;
+  color: #1e293b !important;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+
+  opacity: 1;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.admin-modal .admin-form .admin-input.admin-password-control button.admin-password-toggle svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+
+  color: #1e293b !important;
+  stroke: currentColor;
+}
+
+.admin-modal .admin-form .admin-input.admin-password-control button.admin-password-toggle:hover:not(:disabled) {
+  background: #4f46e5 !important;
+  border-color: #4f46e5;
+}
+
+.admin-modal .admin-form .admin-input.admin-password-control button.admin-password-toggle:hover:not(:disabled) svg {
+  color: #ffffff !important;
+}
+
+.admin-modal .admin-form .admin-input.admin-password-control button.admin-password-toggle:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.admin-modal .admin-form .admin-input.admin-password-control button.admin-password-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-modal .admin-password-help {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+
+

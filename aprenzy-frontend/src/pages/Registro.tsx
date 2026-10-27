@@ -7,6 +7,8 @@ import {
     FiHash,
     FiPhone,
     FiBookOpen,
+    FiEye,
+    FiEyeOff,
 } from "react-icons/fi";
 import { crearUsuario } from "../services/usuario";
 
@@ -35,6 +37,13 @@ interface Props {
 
 export default function Registro({ onBackToLogin }: Props) {
     const [rol, setRol] = useState<RolRegistro>("estudiante");
+
+    const [mostrarContrasena, setMostrarContrasena] = useState(false);
+
+    const [
+        mostrarConfirmarContrasena,
+        setMostrarConfirmarContrasena,
+    ] = useState(false);
 
     const [form, setForm] = useState({
         id_colegio: "",
@@ -83,16 +92,24 @@ export default function Registro({ onBackToLogin }: Props) {
             return;
         }
 
-        if (!form.id_colegio.trim() || Number(form.id_colegio) < 1) {
+        if (
+            !form.id_colegio.trim() ||
+            Number(form.id_colegio) < 1
+        ) {
             setError("Ingresa un ID de institución válido.");
             return;
         }
 
         if (
             rol === "estudiante" &&
-            (!form.id_curso.trim() || Number(form.id_curso) < 1)
+            (
+                !form.id_curso.trim() ||
+                Number(form.id_curso) < 1
+            )
         ) {
-            setError("El estudiante debe indicar un ID de curso válido.");
+            setError(
+                "El estudiante debe indicar un ID de curso válido."
+            );
             return;
         }
 
@@ -133,6 +150,9 @@ export default function Registro({ onBackToLogin }: Props) {
                 jornada: "",
                 id_curso: "",
             });
+
+            setMostrarContrasena(false);
+            setMostrarConfirmarContrasena(false);
         } catch (e) {
             setError(
                 e instanceof Error
@@ -172,22 +192,32 @@ export default function Registro({ onBackToLogin }: Props) {
                     }}
                 >
                     {roles.map((item) => (
-                        <option value={item.value} key={item.value}>
+                        <option
+                            value={item.value}
+                            key={item.value}
+                        >
                             {item.label}
                         </option>
                     ))}
                 </select>
 
                 <p className="role-description">
-                    {roles.find((item) => item.value === rol)?.description}
+                    {
+                        roles.find(
+                            (item) => item.value === rol
+                        )?.description
+                    }
                 </p>
 
                 <form onSubmit={handleSubmit} autoComplete="off">
                     <div className="register-grid">
+
+                        {/* NOMBRES */}
                         <div className="register-field">
                             <label htmlFor="nombres">
                                 <FiUser /> Nombres
                             </label>
+
                             <input
                                 id="nombres"
                                 name="given-name"
@@ -195,17 +225,22 @@ export default function Registro({ onBackToLogin }: Props) {
                                 autoComplete="given-name"
                                 value={form.nombres_compl}
                                 onChange={(e) =>
-                                    update("nombres_compl", e.target.value)
+                                    update(
+                                        "nombres_compl",
+                                        e.target.value
+                                    )
                                 }
                                 maxLength={80}
                                 required
                             />
                         </div>
 
+                        {/* APELLIDOS */}
                         <div className="register-field">
                             <label htmlFor="apellidos">
                                 <FiUser /> Apellidos
                             </label>
+
                             <input
                                 id="apellidos"
                                 name="family-name"
@@ -213,17 +248,22 @@ export default function Registro({ onBackToLogin }: Props) {
                                 autoComplete="family-name"
                                 value={form.apellidos_compl}
                                 onChange={(e) =>
-                                    update("apellidos_compl", e.target.value)
+                                    update(
+                                        "apellidos_compl",
+                                        e.target.value
+                                    )
                                 }
                                 maxLength={80}
                                 required
                             />
                         </div>
 
+                        {/* DOCUMENTO */}
                         <div className="register-field">
                             <label htmlFor="documento">
                                 <FiHash /> Documento
                             </label>
+
                             <input
                                 id="documento"
                                 name="documento"
@@ -231,17 +271,22 @@ export default function Registro({ onBackToLogin }: Props) {
                                 autoComplete="off"
                                 value={form.documento}
                                 onChange={(e) =>
-                                    update("documento", e.target.value)
+                                    update(
+                                        "documento",
+                                        e.target.value
+                                    )
                                 }
                                 maxLength={20}
                                 required
                             />
                         </div>
 
+                        {/* CÓDIGO DE USUARIO */}
                         <div className="register-field">
                             <label htmlFor="codigo">
                                 <FiHash /> Código de usuario
                             </label>
+
                             <input
                                 id="codigo"
                                 name="codigo_usuario"
@@ -249,17 +294,22 @@ export default function Registro({ onBackToLogin }: Props) {
                                 autoComplete="off"
                                 value={form.codigo_usuario}
                                 onChange={(e) =>
-                                    update("codigo_usuario", e.target.value)
+                                    update(
+                                        "codigo_usuario",
+                                        e.target.value
+                                    )
                                 }
                                 maxLength={20}
                                 required
                             />
                         </div>
 
+                        {/* CORREO */}
                         <div className="register-field">
                             <label htmlFor="correo">
                                 <FiMail /> Correo electrónico
                             </label>
+
                             <input
                                 id="correo"
                                 name="email"
@@ -267,16 +317,21 @@ export default function Registro({ onBackToLogin }: Props) {
                                 autoComplete="email"
                                 value={form.correo}
                                 onChange={(e) =>
-                                    update("correo", e.target.value)
+                                    update(
+                                        "correo",
+                                        e.target.value
+                                    )
                                 }
                                 required
                             />
                         </div>
 
+                        {/* TELÉFONO */}
                         <div className="register-field">
                             <label htmlFor="telefono">
                                 <FiPhone /> Teléfono
                             </label>
+
                             <input
                                 id="telefono"
                                 name="tel"
@@ -284,17 +339,22 @@ export default function Registro({ onBackToLogin }: Props) {
                                 autoComplete="tel"
                                 value={form.telefono}
                                 onChange={(e) =>
-                                    update("telefono", e.target.value)
+                                    update(
+                                        "telefono",
+                                        e.target.value
+                                    )
                                 }
                                 maxLength={20}
                                 required
                             />
                         </div>
 
+                        {/* INSTITUCIÓN */}
                         <div className="register-field">
                             <label htmlFor="colegio">
                                 <FiBookOpen /> ID de institución/colegio
                             </label>
+
                             <input
                                 id="colegio"
                                 name="id_colegio"
@@ -303,38 +363,62 @@ export default function Registro({ onBackToLogin }: Props) {
                                 autoComplete="off"
                                 value={form.id_colegio}
                                 onChange={(e) =>
-                                    update("id_colegio", e.target.value)
+                                    update(
+                                        "id_colegio",
+                                        e.target.value
+                                    )
                                 }
                                 required
                             />
                         </div>
 
+                        {/* JORNADA */}
                         <div className="register-field">
-                            <label htmlFor="jornada">Jornada</label>
+                            <label htmlFor="jornada">
+                                Jornada
+                            </label>
+
                             <select
                                 id="jornada"
                                 name="jornada"
                                 value={form.jornada}
                                 onChange={(e) =>
-                                    update("jornada", e.target.value)
+                                    update(
+                                        "jornada",
+                                        e.target.value
+                                    )
                                 }
                                 required
                             >
                                 <option value="">
                                     Selecciona una jornada
                                 </option>
-                                <option value="mañana">Mañana</option>
-                                <option value="tarde">Tarde</option>
-                                <option value="noche">Noche</option>
-                                <option value="única">Única</option>
+
+                                <option value="mañana">
+                                    Mañana
+                                </option>
+
+                                <option value="tarde">
+                                    Tarde
+                                </option>
+
+                                <option value="noche">
+                                    Noche
+                                </option>
+
+                                <option value="única">
+                                    Única
+                                </option>
                             </select>
                         </div>
 
+                        {/* CURSO: SOLO PARA ESTUDIANTES */}
                         {rol === "estudiante" && (
                             <div className="register-field">
                                 <label htmlFor="curso">
                                     <FiBookOpen /> ID del curso
                                 </label>
+
                                 <input
                                     id="curso"
                                     name="id_curso"
@@ -343,10 +427,14 @@ export default function Registro({ onBackToLogin }: Props) {
                                     autoComplete="off"
                                     value={form.id_curso}
                                     onChange={(e) =>
-                                        update("id_curso", e.target.value)
+                                        update(
+                                            "id_curso",
+                                            e.target.value
+                                        )
                                     }
                                     required
                                 />
+
                                 <small>
                                     Usa el identificador de un curso
                                     que ya exista en APRENZY.
@@ -354,65 +442,158 @@ export default function Registro({ onBackToLogin }: Props) {
                             </div>
                         )}
 
+                        {/* CONTRASEÑA CON BOTÓN DE VISIBILIDAD */}
                         <div className="register-field">
                             <label htmlFor="contrasena">
                                 <FiLock /> Contraseña
                             </label>
-                            <input
-                                id="contrasena"
-                                name="new-password"
-                                type="password"
-                                autoComplete="new-password"
-                                value={form.contrasena}
-                                onChange={(e) =>
-                                    update("contrasena", e.target.value)
-                                }
-                                minLength={6}
-                                required
-                            />
+
+                            <div className="register-password-control">
+                                <input
+                                    id="contrasena"
+                                    name="new-password"
+                                    type={
+                                        mostrarContrasena
+                                            ? "text"
+                                            : "password"
+                                    }
+                                    autoComplete="new-password"
+                                    value={form.contrasena}
+                                    onChange={(e) =>
+                                        update(
+                                            "contrasena",
+                                            e.target.value
+                                        )
+                                    }
+                                    minLength={6}
+                                    required
+                                />
+
+                                <button
+                                    type="button"
+                                    className="register-password-toggle"
+                                    aria-label={
+                                        mostrarContrasena
+                                            ? "Ocultar contraseña"
+                                            : "Mostrar contraseña"
+                                    }
+                                    title={
+                                        mostrarContrasena
+                                            ? "Ocultar contraseña"
+                                            : "Mostrar contraseña"
+                                    }
+                                    onClick={() =>
+                                        setMostrarContrasena(
+                                            (visible) => !visible
+                                        )
+                                    }
+                                >
+                                    {mostrarContrasena ? (
+                                        <FiEyeOff aria-hidden="true" />
+                                    ) : (
+                                        <FiEye aria-hidden="true" />
+                                    )}
+                                </button>
+                            </div>
+
+                            <small>
+                                La contraseña debe tener al menos
+                                6 caracteres.
+                            </small>
                         </div>
 
+                        {/* CONFIRMAR CONTRASEÑA */}
                         <div className="register-field">
                             <label htmlFor="confirmar">
                                 <FiLock /> Confirmar contraseña
                             </label>
-                            <input
-                                id="confirmar"
-                                name="confirmarContrasena"
-                                type="password"
-                                autoComplete="new-password"
-                                value={form.confirmarContrasena}
-                                onChange={(e) =>
-                                    update(
-                                        "confirmarContrasena",
-                                        e.target.value
-                                    )
-                                }
-                                minLength={6}
-                                required
-                            />
+
+                            <div className="register-password-control">
+                                <input
+                                    id="confirmar"
+                                    name="confirmarContrasena"
+                                    type={
+                                        mostrarConfirmarContrasena
+                                            ? "text"
+                                            : "password"
+                                    }
+                                    autoComplete="new-password"
+                                    value={form.confirmarContrasena}
+                                    onChange={(e) =>
+                                        update(
+                                            "confirmarContrasena",
+                                            e.target.value
+                                        )
+                                    }
+                                    minLength={6}
+                                    required
+                                />
+
+                                <button
+                                    type="button"
+                                    className="register-password-toggle"
+                                    aria-label={
+                                        mostrarConfirmarContrasena
+                                            ? "Ocultar confirmación"
+                                            : "Mostrar confirmación"
+                                    }
+                                    title={
+                                        mostrarConfirmarContrasena
+                                            ? "Ocultar confirmación"
+                                            : "Mostrar confirmación"
+                                    }
+                                    onClick={() =>
+                                        setMostrarConfirmarContrasena(
+                                            (visible) => !visible
+                                        )
+                                    }
+                                >
+                                    {mostrarConfirmarContrasena ? (
+                                        <FiEyeOff aria-hidden="true" />
+                                    ) : (
+                                        <FiEye aria-hidden="true" />
+                                    )}
+                                </button>
+                            </div>
                         </div>
+
                     </div>
 
+                    {/* MENSAJE DE ERROR */}
                     {error && (
-                        <p className="login-error" role="alert">
+                        <p
+                            className="login-error"
+                            role="alert"
+                        >
                             {error}
                         </p>
                     )}
 
+                    {/* MENSAJE DE ÉXITO */}
                     {mensaje && (
-                        <p className="register-success" role="status">
+                        <p
+                            className="register-success"
+                            role="status"
+                        >
                             {mensaje}
                         </p>
                     )}
 
-                    <button type="submit" disabled={loading}>
-                        {loading ? "Creando cuenta..." : "Crear cuenta"}
+                    {/* BOTÓN DE REGISTRO */}
+                    <button
+                        type="submit"
+                        disabled={loading}
+                    >
+                        {loading
+                            ? "Creando cuenta..."
+                            : "Crear cuenta"}
                     </button>
                 </form>
 
+                {/* REGRESAR AL LOGIN */}
                 <p className="register-switch">
                     ¿Ya tienes cuenta?{" "}
+
                     <button
                         type="button"
                         className="text-button"

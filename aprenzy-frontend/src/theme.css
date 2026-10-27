@@ -1211,3 +1211,2971 @@ body .login-card .login-error {
       24px;
   }
 }
+
+
+/* =========================================================
+   APRENZY - CORRECCIONES VISUALES DE LOS PANELES
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   COORDINADOR
+   Identidad: gestión académica, tonos oscuros y dorados
+   --------------------------------------------------------- */
+
+.role-coordinador {
+  --role-primary: #d97706;
+  --role-secondary: #f59e0b;
+  --role-accent: #fcd34d;
+  --role-glow: rgba(245, 158, 11, 0.18);
+}
+
+.role-coordinador .role-layout-sidebar {
+  background: linear-gradient(
+    180deg,
+    #21180b 0%,
+    #17130c 55%,
+    #0e0c08 100%
+  ) !important;
+
+  border-right: 1px solid
+    rgba(251, 191, 36, 0.18) !important;
+}
+
+.role-coordinador .role-layout-logo {
+  background: linear-gradient(
+    135deg,
+    #b45309,
+    #f59e0b,
+    #fcd34d
+  ) !important;
+
+  color: #241302 !important;
+
+  box-shadow: 0 0 24px
+    rgba(245, 158, 11, 0.25) !important;
+}
+
+.role-coordinador .role-layout-brand-info strong {
+  color: #fff7ed !important;
+}
+
+.role-coordinador .role-layout-brand-info span {
+  color: #fcd34d !important;
+}
+
+.role-coordinador .role-layout-role-card {
+  background: rgba(245, 158, 11, 0.09) !important;
+  border: 1px solid rgba(251, 191, 36, 0.18) !important;
+}
+
+.role-coordinador .role-layout-role-icon {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fcd34d !important;
+}
+
+.role-coordinador .role-layout-role-card strong {
+  color: #ffffff !important;
+}
+
+.role-coordinador .role-layout-role-card span {
+  color: #e7d8bd !important;
+}
+
+.role-coordinador .role-layout-nav-title {
+  color: #fed7aa !important;
+}
+
+.role-coordinador .role-layout-nav-button {
+  color: #d6d3d1 !important;
+}
+
+.role-coordinador .role-layout-nav-button:hover {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #fff7ed !important;
+}
+
+.role-coordinador .role-layout-nav-active {
+  background: linear-gradient(
+    90deg,
+    rgba(245, 158, 11, 0.24),
+    rgba(251, 191, 36, 0.07)
+  ) !important;
+
+  color: #ffffff !important;
+  border-left: 3px solid #fbbf24 !important;
+}
+
+.role-coordinador .role-layout-nav-icon,
+.role-coordinador .role-layout-nav-arrow {
+  color: #fbbf24 !important;
+}
+
+.role-coordinador .role-layout-main {
+  background: linear-gradient(
+    145deg,
+    #13110c 0%,
+    #191409 50%,
+    #0e0c08 100%
+  ) !important;
+}
+
+.role-coordinador .role-layout-topbar {
+  background: rgba(19, 17, 12, 0.94) !important;
+  border-bottom: 1px solid
+    rgba(251, 191, 36, 0.16) !important;
+}
+
+.role-coordinador .role-layout-section-title {
+  color: #fff7ed !important;
+}
+
+.role-coordinador .role-layout-section-subtitle {
+  color: #d6c6a8 !important;
+}
+
+.role-coordinador .role-layout-user-text strong {
+  color: #ffffff !important;
+}
+
+.role-coordinador .role-layout-user-text span {
+  color: #fcd34d !important;
+}
+
+.role-coordinador .role-layout-avatar {
+  background: rgba(245, 158, 11, 0.14) !important;
+  border: 1px solid rgba(251, 191, 36, 0.22) !important;
+  color: #fcd34d !important;
+}
+
+/* Inicio del coordinador */
+
+.role-coordinador .role-home-header {
+  background:
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(245, 158, 11, 0.20),
+      transparent 32%
+    ),
+    linear-gradient(
+      135deg,
+      #2a1b08,
+      #17130c
+    ) !important;
+
+  border: 1px solid
+    rgba(251, 191, 36, 0.20) !important;
+  box-shadow: 0 14px 35px
+    rgba(0, 0, 0, 0.15) !important;
+}
+
+.role-coordinador .role-home-badge {
+  background: rgba(245, 158, 11, 0.13) !important;
+  color: #fcd34d !important;
+  border: 1px solid
+    rgba(251, 191, 36, 0.22) !important;
+}
+
+.role-coordinador .role-home-card {
+  background: linear-gradient(
+    145deg,
+    rgba(42, 29, 12, 0.98),
+    rgba(20, 16, 10, 0.98)
+  ) !important;
+
+  border: 1px solid
+    rgba(251, 191, 36, 0.18) !important;
+}
+
+.role-coordinador .role-home-card > svg {
+  color: #fbbf24 !important;
+}
+
+.role-coordinador .role-home-card:hover {
+  border-color: rgba(251, 191, 36, 0.45) !important;
+  box-shadow: 0 14px 35px
+    rgba(245, 158, 11, 0.10) !important;
+}
+
+.role-coordinador .role-layout-logout:hover {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #fcd34d !important;
+}
+
+/* ---------------------------------------------------------
+   CONTRASTE DE LOS CUATRO PANELES
+   Evita que el texto oscuro se pierda sobre tarjetas oscuras
+   --------------------------------------------------------- */
+
+.role-admin .role-home-card strong,
+.role-coordinador .role-home-card strong,
+.role-docente .role-home-card strong,
+.role-estudiante .role-home-card strong {
+  color: #f8fafc !important;
+}
+
+.role-admin .role-home-card span,
+.role-coordinador .role-home-card span,
+.role-docente .role-home-card span,
+.role-estudiante .role-home-card span {
+  color: #cbd5e1 !important;
+  line-height: 1.6;
+}
+
+/* Tarjetas con más profundidad visual */
+
+.role-admin .role-home-card,
+.role-coordinador .role-home-card,
+.role-docente .role-home-card,
+.role-estudiante .role-home-card {
+  border-radius: 18px !important;
+  box-shadow: 0 10px 28px
+    rgba(0, 0, 0, 0.14) !important;
+}
+
+/* Navegación del coordinador en pantallas pequeñas */
+
+@media (max-width: 800px) {
+  .role-coordinador .role-layout-sidebar {
+    box-shadow: 12px 0 40px
+      rgba(0, 0, 0, 0.45) !important;
+  }
+}
+
+
+
+/* =========================================================
+   APRENZY - MEJORA VISUAL Y CONTRASTE DE LOS PANELES
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   1. CONTRASTE GENERAL
+   --------------------------------------------------------- */
+
+.role-admin .role-layout-role-card strong,
+.role-coordinador .role-layout-role-card strong,
+.role-docente .role-layout-role-card strong,
+.role-estudiante .role-layout-role-card strong {
+  color: #ffffff !important;
+}
+
+.role-admin .role-layout-role-card span,
+.role-coordinador .role-layout-role-card span,
+.role-docente .role-layout-role-card span,
+.role-estudiante .role-layout-role-card span {
+  color: #cbd5e1 !important;
+}
+
+.role-admin .role-layout-user-text strong,
+.role-coordinador .role-layout-user-text strong,
+.role-docente .role-layout-user-text strong,
+.role-estudiante .role-layout-user-text strong {
+  color: #ffffff !important;
+}
+
+.role-admin .role-layout-user-text span {
+  color: #a5b4fc !important;
+}
+
+.role-coordinador .role-layout-user-text span {
+  color: #fcd34d !important;
+}
+
+.role-docente .role-layout-user-text span {
+  color: #67e8f9 !important;
+}
+
+.role-estudiante .role-layout-user-text span {
+  color: #6ee7b7 !important;
+}
+
+/* ---------------------------------------------------------
+   2. ENCABEZADOS Y DESCRIPCIONES
+   --------------------------------------------------------- */
+
+.role-admin .role-home-header p,
+.role-coordinador .role-home-header p,
+.role-docente .role-home-header p,
+.role-estudiante .role-home-header p {
+  color: #d1d5db !important;
+  line-height: 1.8;
+  font-size: 14px;
+}
+
+.role-admin .role-home-header h1,
+.role-coordinador .role-home-header h1,
+.role-docente .role-home-header h1,
+.role-estudiante .role-home-header h1 {
+  color: #ffffff !important;
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+/* ---------------------------------------------------------
+   3. TARJETAS DE INICIO
+   --------------------------------------------------------- */
+
+.role-admin .role-home-card,
+.role-coordinador .role-home-card,
+.role-docente .role-home-card,
+.role-estudiante .role-home-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+
+  width: 100%;
+  min-width: 0;
+  padding: 24px;
+
+  text-align: left;
+  color: #f8fafc !important;
+
+  border-radius: 18px !important;
+  backdrop-filter: blur(8px);
+
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.role-admin .role-home-card strong,
+.role-coordinador .role-home-card strong,
+.role-docente .role-home-card strong,
+.role-estudiante .role-home-card strong {
+  display: block;
+  color: #ffffff !important;
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.role-admin .role-home-card span,
+.role-coordinador .role-home-card span,
+.role-docente .role-home-card span,
+.role-estudiante .role-home-card span {
+  display: block;
+  margin-top: 7px;
+
+  color: #cbd5e1 !important;
+  font-size: 13px;
+  line-height: 1.75;
+
+  overflow-wrap: anywhere;
+}
+
+.role-admin .role-home-card > div,
+.role-coordinador .role-home-card > div,
+.role-docente .role-home-card > div,
+.role-estudiante .role-home-card > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.role-admin .role-home-card > svg,
+.role-coordinador .role-home-card > svg,
+.role-docente .role-home-card > svg,
+.role-estudiante .role-home-card > svg {
+  flex-shrink: 0;
+  width: 25px;
+  height: 25px;
+  margin-top: 2px;
+}
+
+/* ---------------------------------------------------------
+   4. ADMINISTRADOR
+   Conserva su identidad índigo
+   --------------------------------------------------------- */
+
+.role-admin {
+  --role-primary: #6366f1;
+  --role-secondary: #818cf8;
+  --role-accent: #a5b4fc;
+  --role-glow: rgba(99, 102, 241, 0.18);
+}
+
+.role-admin .role-home-card {
+  background: linear-gradient(
+    145deg,
+    #171e3b 0%,
+    #0d1329 100%
+  ) !important;
+
+  border: 1px solid
+    rgba(129, 140, 248, 0.22) !important;
+}
+
+.role-admin .role-home-card:hover {
+  border-color: #818cf8 !important;
+  box-shadow: 0 14px 32px
+    rgba(99, 102, 241, 0.16) !important;
+  transform: translateY(-4px);
+}
+
+/* ---------------------------------------------------------
+   5. COORDINADOR
+   Identidad propia: negro cálido y dorado
+   --------------------------------------------------------- */
+
+.role-coordinador {
+  --role-primary: #d97706;
+  --role-secondary: #f59e0b;
+  --role-accent: #fcd34d;
+  --role-glow: rgba(245, 158, 11, 0.18);
+}
+
+.role-coordinador .role-home-header {
+  background:
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(245, 158, 11, 0.18),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      #292010 0%,
+      #17130c 100%
+    ) !important;
+
+  border: 1px solid
+    rgba(251, 191, 36, 0.24) !important;
+
+  border-radius: 22px !important;
+}
+
+.role-coordinador .role-home-badge {
+  color: #fcd34d !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+  border: 1px solid
+    rgba(251, 191, 36, 0.25) !important;
+}
+
+.role-coordinador .role-home-card {
+  background: linear-gradient(
+    145deg,
+    #2a2114 0%,
+    #17130c 100%
+  ) !important;
+
+  border: 1px solid
+    rgba(251, 191, 36, 0.20) !important;
+}
+
+.role-coordinador .role-home-card > svg {
+  color: #fbbf24 !important;
+}
+
+.role-coordinador .role-home-card:hover {
+  border-color: #f59e0b !important;
+  box-shadow: 0 14px 32px
+    rgba(245, 158, 11, 0.14) !important;
+  transform: translateY(-4px);
+}
+
+.role-coordinador .role-layout-nav-title {
+  color: #fcd34d !important;
+}
+
+.role-coordinador .role-layout-nav-button {
+  color: #e7dfcf !important;
+}
+
+.role-coordinador .role-layout-nav-button:hover,
+.role-coordinador .role-layout-nav-active {
+  color: #ffffff !important;
+}
+
+.role-coordinador .role-layout-nav-icon,
+.role-coordinador .role-layout-nav-arrow {
+  color: #fbbf24 !important;
+}
+
+/* ---------------------------------------------------------
+   6. DOCENTE
+   Identidad turquesa y azul petróleo
+   --------------------------------------------------------- */
+
+.role-docente .role-home-card {
+  background: linear-gradient(
+    145deg,
+    #0a3944 0%,
+    #06232c 100%
+  ) !important;
+
+  border: 1px solid
+    rgba(34, 211, 238, 0.22) !important;
+}
+
+.role-docente .role-home-card:hover {
+  border-color: #22d3ee !important;
+  box-shadow: 0 14px 32px
+    rgba(6, 182, 212, 0.15) !important;
+  transform: translateY(-4px);
+}
+
+/* ---------------------------------------------------------
+   7. ESTUDIANTE
+   Identidad verde y aprendizaje
+   --------------------------------------------------------- */
+
+.role-estudiante {
+  --role-primary: #059669;
+  --role-secondary: #10b981;
+  --role-accent: #6ee7b7;
+  --role-glow: rgba(16, 185, 129, 0.18);
+}
+
+.role-estudiante .role-home-card {
+  background: linear-gradient(
+    145deg,
+    #0a4032 0%,
+    #06271f 100%
+  ) !important;
+
+  border: 1px solid
+    rgba(52, 211, 153, 0.22) !important;
+}
+
+.role-estudiante .role-home-card:hover {
+  border-color: #34d399 !important;
+  box-shadow: 0 14px 32px
+    rgba(16, 185, 129, 0.15) !important;
+  transform: translateY(-4px);
+}
+
+/* ---------------------------------------------------------
+   8. BOTONES Y ACCESIBILIDAD
+   --------------------------------------------------------- */
+
+.role-admin .role-home-card:focus-visible,
+.role-coordinador .role-home-card:focus-visible,
+.role-docente .role-home-card:focus-visible,
+.role-estudiante .role-home-card:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 4px;
+}
+
+.role-admin .role-layout-nav-button:focus-visible,
+.role-coordinador .role-layout-nav-button:focus-visible,
+.role-docente .role-layout-nav-button:focus-visible,
+.role-estudiante .role-layout-nav-button:focus-visible {
+  outline: 2px solid var(--role-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  .role-admin .role-home-card,
+  .role-coordinador .role-home-card,
+  .role-docente .role-home-card,
+  .role-estudiante .role-home-card {
+    padding: 19px;
+  }
+
+  .role-admin .role-home-header,
+  .role-coordinador .role-home-header,
+  .role-docente .role-home-header,
+  .role-estudiante .role-home-header {
+    padding: 23px;
+  }
+}
+
+
+
+/* =========================================================
+   APRENZY - PANEL ESTUDIANTE
+   Inicio, accesos rápidos y perfil
+   ========================================================= */
+
+.role-estudiante .student-dashboard,
+.role-estudiante .student-profile-page {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-bottom: 28px;
+}
+
+/* ==========================================
+   BIENVENIDA
+   ========================================== */
+
+.role-estudiante .student-welcome {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+
+  min-height: 260px;
+  padding: clamp(25px, 4vw, 42px);
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(52, 211, 153, 0.20),
+      transparent 34%
+    ),
+    linear-gradient(
+      135deg,
+      #0b4033 0%,
+      #082b24 58%,
+      #061e1a 100%
+    ) !important;
+
+  border: 1px solid
+    rgba(52, 211, 153, 0.24) !important;
+
+  border-radius: 24px !important;
+
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.role-estudiante .student-welcome-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 700px;
+  min-width: 0;
+}
+
+.role-estudiante .student-welcome-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 8px 12px;
+
+  color: #bbf7d0 !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+
+  border: 1px solid
+    rgba(110, 231, 183, 0.23);
+
+  border-radius: 30px;
+}
+
+.role-estudiante .student-welcome-badge svg {
+  width: 15px;
+  height: 15px;
+}
+
+.role-estudiante .student-welcome-eyebrow {
+  margin: 24px 0 8px !important;
+
+  color: #86efac !important;
+
+  font-size: 12px !important;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.role-estudiante .student-welcome h1 {
+  margin: 0 0 12px !important;
+
+  color: #ffffff !important;
+
+  font-size: clamp(30px, 4vw, 42px);
+  font-weight: 850;
+  letter-spacing: -1.2px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.role-estudiante .student-welcome .student-welcome-description {
+  max-width: 610px;
+  margin: 0 !important;
+
+  color: #d1fae5 !important;
+
+  font-size: 15px !important;
+  line-height: 1.8;
+}
+
+.role-estudiante .student-welcome-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+
+  margin-top: 24px;
+  padding: 10px 13px;
+
+  color: #ecfdf5;
+
+  background: rgba(2, 20, 15, 0.30);
+
+  border: 1px solid
+    rgba(167, 243, 208, 0.17);
+
+  border-radius: 10px;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.role-estudiante .student-welcome-date svg {
+  flex-shrink: 0;
+  color: #6ee7b7;
+}
+
+/* Decoración de la bienvenida */
+
+.role-estudiante .student-welcome-art {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 190px;
+  width: 190px;
+  height: 190px;
+}
+
+.role-estudiante .student-welcome-art-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 150px;
+  height: 150px;
+
+  color: #d1fae5;
+
+  background: linear-gradient(
+    145deg,
+    rgba(52, 211, 153, 0.25),
+    rgba(6, 78, 59, 0.50)
+  );
+
+  border: 1px solid
+    rgba(110, 231, 183, 0.32);
+
+  border-radius: 42px;
+
+  box-shadow:
+    0 20px 45px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  transform: rotate(-8deg);
+}
+
+.role-estudiante .student-welcome-art-circle svg {
+  width: 68px;
+  height: 68px;
+  transform: rotate(8deg);
+}
+
+.role-estudiante .student-welcome-art-dot {
+  position: absolute;
+
+  width: 14px;
+  height: 14px;
+
+  background: #6ee7b7;
+
+  border: 3px solid #0b4033;
+  border-radius: 50%;
+}
+
+.role-estudiante .student-welcome-art-dot-one {
+  top: 16px;
+  right: 18px;
+}
+
+.role-estudiante .student-welcome-art-dot-two {
+  bottom: 14px;
+  left: 20px;
+
+  width: 20px;
+  height: 20px;
+
+  background: #34d399;
+}
+
+/* ==========================================
+   TÍTULOS DE SECCIÓN
+   ========================================== */
+
+.role-estudiante .student-shortcuts-section {
+  margin-top: 32px;
+}
+
+.role-estudiante .student-section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+
+  margin-bottom: 19px;
+}
+
+.role-estudiante .student-section-eyebrow {
+  display: block;
+  margin-bottom: 7px;
+
+  color: #6ee7b7;
+
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.role-estudiante .student-section-heading h2 {
+  margin: 0 0 7px;
+
+  color: #f8fafc;
+
+  font-size: clamp(21px, 3vw, 26px);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.role-estudiante .student-section-heading p {
+  max-width: 650px;
+  margin: 0;
+
+  color: #cbd5e1;
+
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.role-estudiante .student-section-count {
+  display: inline-flex;
+  align-items: center;
+
+  padding: 8px 11px;
+
+  color: #a7f3d0;
+
+  background: rgba(16, 185, 129, 0.09);
+
+  border: 1px solid
+    rgba(52, 211, 153, 0.18);
+
+  border-radius: 30px;
+
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ==========================================
+   TARJETAS DE ACCESO RÁPIDO
+   ========================================== */
+
+.role-estudiante .student-quick-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 17px;
+  margin-top: 0;
+}
+
+.role-estudiante .student-quick-card {
+  position: relative;
+
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+
+  min-width: 0;
+  min-height: 185px;
+
+  padding: 21px;
+
+  color: #f8fafc !important;
+  text-align: left;
+  font: inherit;
+
+  background: linear-gradient(
+    145deg,
+    #0b352c 0%,
+    #08281f 100%
+  ) !important;
+
+  border: 1px solid
+    rgba(52, 211, 153, 0.19) !important;
+
+  border-radius: 18px !important;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.10);
+
+  transition:
+    transform 0.22s ease,
+    border-color 0.22s ease,
+    box-shadow 0.22s ease,
+    background-color 0.22s ease;
+}
+
+.role-estudiante .student-quick-card:hover {
+  transform: translateY(-4px);
+
+  background: linear-gradient(
+    145deg,
+    #10483a 0%,
+    #092f24 100%
+  ) !important;
+
+  border-color:
+    rgba(110, 231, 183, 0.52) !important;
+
+  box-shadow:
+    0 15px 32px rgba(0, 0, 0, 0.18),
+    0 0 25px rgba(16, 185, 129, 0.07);
+}
+
+.role-estudiante .student-quick-card:focus-visible {
+  outline: 2px solid #6ee7b7;
+  outline-offset: 4px;
+}
+
+.role-estudiante .student-quick-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 43px;
+  width: 43px;
+  height: 43px;
+
+  color: #a7f3d0;
+
+  background: rgba(16, 185, 129, 0.15);
+
+  border: 1px solid
+    rgba(110, 231, 183, 0.13);
+
+  border-radius: 12px;
+}
+
+.role-estudiante .student-quick-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.role-estudiante .student-quick-copy {
+  display: flex;
+  flex-direction: column;
+
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+.role-estudiante .student-quick-copy strong {
+  display: block;
+  margin: 2px 0 8px;
+
+  color: #f0fdf4 !important;
+
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+
+  overflow-wrap: anywhere;
+}
+
+.role-estudiante .student-quick-copy > span {
+  display: block;
+  margin: 0 !important;
+
+  color: #cbd5e1 !important;
+
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.75;
+
+  overflow-wrap: anywhere;
+}
+
+.role-estudiante .student-quick-copy em {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+
+  margin-top: auto;
+  padding-top: 17px;
+
+  color: #6ee7b7;
+
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.role-estudiante .student-quick-copy em svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+
+  transition: transform 0.2s ease;
+}
+
+.role-estudiante .student-quick-card:hover .student-quick-copy em svg {
+  transform: translateX(4px);
+}
+
+/* ==========================================
+   CONSEJO DE ESTUDIO
+   ========================================== */
+
+.role-estudiante .student-study-note {
+  display: flex;
+  align-items: center;
+  gap: 17px;
+
+  margin-top: 25px;
+  padding: 23px;
+
+  background: linear-gradient(
+    110deg,
+    rgba(16, 185, 129, 0.12),
+    rgba(6, 78, 59, 0.10)
+  );
+
+  border: 1px solid
+    rgba(52, 211, 153, 0.20);
+
+  border-radius: 17px;
+}
+
+.role-estudiante .student-study-note-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 43px;
+  width: 43px;
+  height: 43px;
+
+  color: #6ee7b7;
+
+  background: rgba(16, 185, 129, 0.13);
+
+  border-radius: 12px;
+}
+
+.role-estudiante .student-study-note-icon svg {
+  width: 23px;
+  height: 23px;
+}
+
+.role-estudiante .student-study-note > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.role-estudiante .student-study-note h2 {
+  margin: 0 0 6px;
+
+  color: #f0fdf4;
+
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.role-estudiante .student-study-note p {
+  margin: 0;
+
+  color: #cbd5e1;
+
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.role-estudiante .student-study-note-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  flex-shrink: 0;
+
+  padding: 11px 13px;
+
+  color: #042f24 !important;
+  background: #6ee7b7 !important;
+
+  border: 1px solid #6ee7b7 !important;
+  border-radius: 9px;
+
+  font-size: 12px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.role-estudiante .student-study-note-button:hover {
+  background: #a7f3d0 !important;
+  border-color: #a7f3d0 !important;
+  transform: translateY(-2px);
+}
+
+.role-estudiante .student-study-note-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ==========================================
+   PERFIL DEL ESTUDIANTE
+   ========================================== */
+
+.role-estudiante .student-profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 19px;
+
+  padding: 28px;
+
+  background: linear-gradient(
+    135deg,
+    #0b4033,
+    #08251e
+  );
+
+  border: 1px solid
+    rgba(52, 211, 153, 0.22);
+
+  border-radius: 21px;
+}
+
+.role-estudiante .student-profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 70px;
+  width: 70px;
+  height: 70px;
+
+  color: #a7f3d0;
+
+  background: rgba(16, 185, 129, 0.17);
+
+  border: 1px solid
+    rgba(110, 231, 183, 0.22);
+
+  border-radius: 20px;
+}
+
+.role-estudiante .student-profile-avatar svg {
+  width: 32px;
+  height: 32px;
+}
+
+.role-estudiante .student-profile-hero h1 {
+  margin: 0 0 8px;
+
+  color: #ffffff;
+
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 800;
+
+  overflow-wrap: anywhere;
+}
+
+.role-estudiante .student-profile-hero p {
+  margin: 0;
+
+  color: #d1fae5;
+
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.role-estudiante .student-profile-panel {
+  margin-top: 23px;
+  padding: 25px;
+
+  background: linear-gradient(
+    145deg,
+    #10251f,
+    #0a1915
+  );
+
+  border: 1px solid
+    rgba(52, 211, 153, 0.16);
+
+  border-radius: 19px;
+}
+
+.role-estudiante .student-profile-panel .student-section-heading h2 {
+  color: #f0fdf4;
+}
+
+.role-estudiante .student-profile-panel .student-section-heading p {
+  color: #cbd5e1;
+}
+
+.role-estudiante .student-profile-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 13px;
+}
+
+.role-estudiante .student-profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  min-width: 0;
+  padding: 17px;
+
+  background: rgba(255, 255, 255, 0.025);
+
+  border: 1px solid
+    rgba(148, 163, 184, 0.13);
+
+  border-radius: 12px;
+}
+
+.role-estudiante .student-profile-field span {
+  color: #94a3b8;
+
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.role-estudiante .student-profile-field strong {
+  color: #f8fafc;
+
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.6;
+
+  overflow-wrap: anywhere;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+
+@media (max-width: 1100px) {
+  .role-estudiante .student-quick-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .role-estudiante .student-welcome {
+    padding: 25px;
+  }
+
+  .role-estudiante .student-welcome-art {
+    display: none;
+  }
+
+  .role-estudiante .student-quick-card {
+    min-height: 155px;
+    padding: 18px;
+  }
+
+  .role-estudiante .student-study-note {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .role-estudiante .student-study-note-button {
+    width: 100%;
+  }
+
+  .role-estudiante .student-profile-panel {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 520px) {
+  .role-estudiante .student-quick-grid,
+  .role-estudiante .student-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-estudiante .student-welcome h1 {
+    font-size: 30px;
+  }
+
+  .role-estudiante .student-welcome-date {
+    align-items: flex-start;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  .role-estudiante .student-profile-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 23px;
+  }
+
+  .role-estudiante .student-study-note {
+    padding: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .role-estudiante .student-quick-card,
+  .role-estudiante .student-quick-copy em svg,
+  .role-estudiante .student-study-note-button {
+    transition: none;
+  }
+
+  .role-estudiante .student-quick-card:hover,
+  .role-estudiante .student-study-note-button:hover {
+    transform: none;
+  }
+}
+
+
+/* =========================================================
+   APRENZY - PANEL DOCENTE
+   ========================================================= */
+
+.role-docente .teacher-dashboard,
+.role-docente .teacher-profile {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-bottom: 28px;
+}
+
+/* BIENVENIDA */
+
+.role-docente .teacher-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+
+  position: relative;
+  min-height: 250px;
+  padding: clamp(24px, 4vw, 40px);
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 88% 12%,
+      rgba(34, 211, 238, 0.20),
+      transparent 34%
+    ),
+    linear-gradient(
+      135deg,
+      #104452,
+      #082934 60%,
+      #061c25
+    ) !important;
+
+  border: 1px solid rgba(34, 211, 238, 0.24) !important;
+  border-radius: 23px !important;
+
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.17);
+}
+
+.role-docente .teacher-welcome-content {
+  position: relative;
+  z-index: 1;
+  max-width: 700px;
+  min-width: 0;
+}
+
+.role-docente .teacher-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 8px 12px;
+
+  color: #a5f3fc !important;
+  background: rgba(6, 182, 212, 0.13) !important;
+  border: 1px solid rgba(103, 232, 249, 0.24);
+  border-radius: 30px;
+}
+
+.role-docente .teacher-eyebrow {
+  margin: 23px 0 8px !important;
+
+  color: #67e8f9 !important;
+
+  font-size: 11px !important;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+
+.role-docente .teacher-welcome h1 {
+  margin: 0 0 12px !important;
+
+  color: #ffffff !important;
+  font-size: clamp(29px, 4vw, 42px);
+  font-weight: 850;
+  letter-spacing: -1px;
+  line-height: 1.2;
+
+  overflow-wrap: anywhere;
+}
+
+.role-docente .teacher-description {
+  max-width: 620px;
+  margin: 0 !important;
+
+  color: #d5f3f7 !important;
+  font-size: 14px !important;
+  line-height: 1.85;
+}
+
+.role-docente .teacher-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+
+  margin-top: 22px;
+  padding: 10px 13px;
+
+  color: #ecfeff;
+  background: rgba(0, 15, 24, 0.32);
+  border: 1px solid rgba(165, 243, 252, 0.16);
+  border-radius: 10px;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.role-docente .teacher-date svg {
+  color: #67e8f9;
+}
+
+/* DECORACIÓN */
+
+.role-docente .teacher-hero-art {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 175px;
+  width: 175px;
+  height: 175px;
+}
+
+.role-docente .teacher-hero-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 140px;
+  height: 140px;
+
+  color: #a5f3fc;
+
+  background: linear-gradient(
+    145deg,
+    rgba(34, 211, 238, 0.24),
+    rgba(8, 47, 63, 0.60)
+  );
+
+  border: 1px solid rgba(103, 232, 249, 0.27);
+  border-radius: 38px;
+
+  transform: rotate(-8deg);
+}
+
+.role-docente .teacher-hero-icon svg {
+  width: 64px;
+  height: 64px;
+  transform: rotate(8deg);
+}
+
+.role-docente .teacher-hero-dot {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+
+  background: #67e8f9;
+  border: 3px solid #104452;
+  border-radius: 50%;
+}
+
+.role-docente .teacher-dot-one {
+  top: 12px;
+  right: 15px;
+}
+
+.role-docente .teacher-dot-two {
+  left: 17px;
+  bottom: 12px;
+
+  width: 20px;
+  height: 20px;
+
+  background: #22d3ee;
+}
+
+/* ENCABEZADOS DE SECCIÓN */
+
+.role-docente .teacher-access-section {
+  margin-top: 31px;
+}
+
+.role-docente .teacher-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  margin-bottom: 19px;
+}
+
+.role-docente .teacher-section-eyebrow {
+  display: block;
+  margin-bottom: 7px;
+
+  color: #67e8f9;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.role-docente .teacher-section-heading h2 {
+  margin: 0 0 7px;
+
+  color: #f8fafc;
+  font-size: clamp(21px, 3vw, 26px);
+  font-weight: 800;
+}
+
+.role-docente .teacher-section-heading p {
+  margin: 0;
+
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.role-docente .teacher-section-count {
+  padding: 8px 11px;
+
+  color: #a5f3fc;
+  background: rgba(6, 182, 212, 0.09);
+  border: 1px solid rgba(34, 211, 238, 0.19);
+  border-radius: 30px;
+
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* TARJETAS DE ACCESO */
+
+.role-docente .teacher-access-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 17px;
+  margin-top: 0;
+}
+
+.role-docente .teacher-access-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+
+  min-width: 0;
+  min-height: 175px;
+  padding: 21px;
+
+  text-align: left;
+  font: inherit;
+
+  background: linear-gradient(
+    145deg,
+    #103945,
+    #082832
+  ) !important;
+
+  border: 1px solid rgba(34, 211, 238, 0.19) !important;
+  border-radius: 17px !important;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.role-docente .teacher-access-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(103, 232, 249, 0.55) !important;
+
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.19);
+}
+
+.role-docente .teacher-access-card:focus-visible {
+  outline: 2px solid #67e8f9;
+  outline-offset: 4px;
+}
+
+.role-docente .teacher-access-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 43px;
+  width: 43px;
+  height: 43px;
+
+  color: #a5f3fc;
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(103, 232, 249, 0.16);
+  border-radius: 12px;
+}
+
+.role-docente .teacher-access-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.role-docente .teacher-access-copy {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+}
+
+.role-docente .teacher-access-copy strong {
+  color: #f0fdff !important;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.role-docente .teacher-access-copy > span {
+  margin-top: 7px !important;
+
+  color: #cbd5e1 !important;
+  font-size: 12px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.role-docente .teacher-access-copy em {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+
+  margin-top: auto;
+  padding-top: 16px;
+
+  color: #67e8f9;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.role-docente .teacher-access-copy em svg {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  transition: transform 0.2s ease;
+}
+
+.role-docente .teacher-access-card:hover .teacher-access-copy em svg {
+  transform: translateX(4px);
+}
+
+/* RECORDATORIO */
+
+.role-docente .teacher-reminder {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  margin-top: 25px;
+  padding: 22px;
+
+  background: linear-gradient(
+    110deg,
+    rgba(6, 182, 212, 0.12),
+    rgba(8, 47, 63, 0.15)
+  );
+
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  border-radius: 16px;
+}
+
+.role-docente .teacher-reminder-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 43px;
+  width: 43px;
+  height: 43px;
+
+  color: #67e8f9;
+  background: rgba(6, 182, 212, 0.13);
+  border-radius: 12px;
+}
+
+.role-docente .teacher-reminder-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.role-docente .teacher-reminder-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.role-docente .teacher-reminder-copy h2 {
+  margin: 0 0 6px;
+  color: #f0fdff;
+  font-size: 15px;
+}
+
+.role-docente .teacher-reminder-copy p {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.role-docente .teacher-reminder-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  flex-shrink: 0;
+  padding: 11px 13px;
+
+  color: #062d38 !important;
+  background: #67e8f9 !important;
+  border: 1px solid #67e8f9;
+  border-radius: 9px;
+
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.role-docente .teacher-reminder-button:hover {
+  background: #a5f3fc !important;
+}
+
+.role-docente .teacher-reminder-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* PERFIL */
+
+.role-docente .teacher-profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+
+  padding: 27px;
+
+  background: linear-gradient(
+    135deg,
+    #104452,
+    #082934
+  );
+
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  border-radius: 21px;
+}
+
+.role-docente .teacher-profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 68px;
+  width: 68px;
+  height: 68px;
+
+  color: #a5f3fc;
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(103, 232, 249, 0.20);
+  border-radius: 19px;
+}
+
+.role-docente .teacher-profile-avatar svg {
+  width: 31px;
+  height: 31px;
+}
+
+.role-docente .teacher-profile-hero h1 {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.role-docente .teacher-profile-hero p {
+  margin: 0;
+  color: #d5f3f7;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.role-docente .teacher-profile-panel {
+  margin-top: 23px;
+  padding: 25px;
+
+  background: linear-gradient(
+    145deg,
+    #102b34,
+    #091e25
+  );
+
+  border: 1px solid rgba(34, 211, 238, 0.16);
+  border-radius: 19px;
+}
+
+.role-docente .teacher-profile-panel .teacher-section-heading h2 {
+  color: #f0fdff;
+}
+
+.role-docente .teacher-profile-panel .teacher-section-heading p {
+  color: #cbd5e1;
+}
+
+.role-docente .teacher-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.role-docente .teacher-profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  min-width: 0;
+  padding: 17px;
+
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 12px;
+}
+
+.role-docente .teacher-profile-field span {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.role-docente .teacher-profile-field strong {
+  color: #f8fafc;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1050px) {
+  .role-docente .teacher-access-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .role-docente .teacher-welcome {
+    padding: 24px;
+  }
+
+  .role-docente .teacher-hero-art {
+    display: none;
+  }
+
+  .role-docente .teacher-reminder {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .role-docente .teacher-reminder-button {
+    width: 100%;
+  }
+
+  .role-docente .teacher-profile-panel {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 520px) {
+  .role-docente .teacher-access-grid,
+  .role-docente .teacher-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-docente .teacher-welcome h1 {
+    font-size: 29px;
+  }
+
+  .role-docente .teacher-profile-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 22px;
+  }
+
+  .role-docente .teacher-reminder {
+    padding: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .role-docente .teacher-access-card,
+  .role-docente .teacher-access-copy em svg {
+    transition: none;
+  }
+
+  .role-docente .teacher-access-card:hover {
+    transform: none;
+  }
+}
+
+
+/* =========================================================
+   APRENZY - COORDINADOR
+   Diseño dorado, contraste y perfil
+   ========================================================= */
+
+.role-coordinador .coordinator-dashboard,
+.role-coordinador .coordinator-profile {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-bottom: 28px;
+}
+
+/* BIENVENIDA */
+
+.role-coordinador .coordinator-welcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+
+  min-height: 250px;
+  padding: clamp(24px, 4vw, 40px);
+
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(245, 158, 11, 0.20),
+      transparent 34%
+    ),
+    linear-gradient(135deg, #30210b, #191309 65%, #100d08);
+
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  border-radius: 23px;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.2);
+}
+
+.role-coordinador .coordinator-welcome-content {
+  max-width: 700px;
+  min-width: 0;
+}
+
+.role-coordinador .coordinator-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 8px 12px;
+
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  border-radius: 30px;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.role-coordinador .coordinator-eyebrow {
+  margin: 23px 0 8px;
+  color: #fcd34d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.role-coordinador .coordinator-welcome h1 {
+  margin: 0 0 12px;
+  color: #ffffff;
+  font-size: clamp(29px, 4vw, 42px);
+  font-weight: 850;
+  letter-spacing: -1px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.role-coordinador .coordinator-description {
+  max-width: 620px;
+  margin: 0;
+  color: #e7dcc5;
+  font-size: 14px;
+  line-height: 1.85;
+}
+
+.role-coordinador .coordinator-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+
+  margin-top: 22px;
+  padding: 10px 13px;
+
+  color: #fff7ed;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(253, 230, 138, 0.18);
+  border-radius: 10px;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.role-coordinador .coordinator-date svg {
+  color: #fcd34d;
+}
+
+/* DECORACIÓN */
+
+.role-coordinador .coordinator-hero-art {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 175px;
+  width: 175px;
+  height: 175px;
+}
+
+.role-coordinador .coordinator-hero-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 140px;
+  height: 140px;
+
+  color: #fde68a;
+  background: linear-gradient(
+    145deg,
+    rgba(245, 158, 11, 0.25),
+    rgba(66, 40, 9, 0.6)
+  );
+
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 38px;
+  transform: rotate(-8deg);
+}
+
+.role-coordinador .coordinator-hero-icon svg {
+  width: 64px;
+  height: 64px;
+  transform: rotate(8deg);
+}
+
+.role-coordinador .coordinator-dot {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  background: #fcd34d;
+  border: 3px solid #30210b;
+  border-radius: 50%;
+}
+
+.role-coordinador .coordinator-dot-one {
+  top: 12px;
+  right: 15px;
+}
+
+.role-coordinador .coordinator-dot-two {
+  left: 17px;
+  bottom: 12px;
+  width: 20px;
+  height: 20px;
+}
+
+/* ENCABEZADO DE SECCIONES */
+
+.role-coordinador .coordinator-access-section {
+  margin-top: 31px;
+}
+
+.role-coordinador .coordinator-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 19px;
+}
+
+.role-coordinador .coordinator-section-eyebrow {
+  display: block;
+  margin-bottom: 7px;
+  color: #fcd34d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.role-coordinador .coordinator-section-heading h2 {
+  margin: 0 0 7px;
+  color: #f8fafc;
+  font-size: clamp(21px, 3vw, 26px);
+  font-weight: 800;
+}
+
+.role-coordinador .coordinator-section-heading p {
+  margin: 0;
+  color: #d6d3d1;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.role-coordinador .coordinator-section-count {
+  padding: 8px 11px;
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.09);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 30px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ACCESOS */
+
+.role-coordinador .coordinator-access-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 17px;
+}
+
+.role-coordinador .coordinator-access-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+
+  min-width: 0;
+  min-height: 175px;
+  padding: 21px;
+
+  color: #fff7ed;
+  text-align: left;
+  font: inherit;
+
+  background: linear-gradient(145deg, #302410, #1b150b);
+  border: 1px solid rgba(251, 191, 36, 0.19);
+  border-radius: 17px;
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.role-coordinador .coordinator-access-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(251, 191, 36, 0.55);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.2);
+}
+
+.role-coordinador .coordinator-access-card:focus-visible {
+  outline: 2px solid #fcd34d;
+  outline-offset: 4px;
+}
+
+.role-coordinador .coordinator-access-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 43px;
+  width: 43px;
+  height: 43px;
+
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.16);
+  border-radius: 12px;
+}
+
+.role-coordinador .coordinator-access-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.role-coordinador .coordinator-access-copy {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 130px;
+}
+
+.role-coordinador .coordinator-access-copy strong {
+  color: #fff7ed;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.role-coordinador .coordinator-access-copy > span {
+  margin-top: 7px;
+  color: #d6d3d1;
+  font-size: 12px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.role-coordinador .coordinator-access-copy em {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+
+  margin-top: auto;
+  padding-top: 16px;
+
+  color: #fcd34d;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.role-coordinador .coordinator-access-copy em svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.role-coordinador .coordinator-access-card:hover .coordinator-access-copy em svg {
+  transform: translateX(4px);
+}
+
+/* RECORDATORIO */
+
+.role-coordinador .coordinator-reminder {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+
+  margin-top: 25px;
+  padding: 22px;
+
+  background: linear-gradient(
+    110deg,
+    rgba(245, 158, 11, 0.11),
+    rgba(66, 40, 9, 0.14)
+  );
+
+  border: 1px solid rgba(251, 191, 36, 0.18);
+  border-radius: 16px;
+}
+
+.role-coordinador .coordinator-reminder-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 43px;
+  width: 43px;
+  height: 43px;
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.13);
+  border-radius: 12px;
+}
+
+.role-coordinador .coordinator-reminder-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.role-coordinador .coordinator-reminder-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.role-coordinador .coordinator-reminder-copy h2 {
+  margin: 0 0 6px;
+  color: #fff7ed;
+  font-size: 15px;
+}
+
+.role-coordinador .coordinator-reminder-copy p {
+  margin: 0;
+  color: #d6d3d1;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.role-coordinador .coordinator-reminder-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+
+  padding: 11px 13px;
+
+  color: #241302;
+  background: #fcd34d;
+  border: 1px solid #fcd34d;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.role-coordinador .coordinator-reminder-button:hover {
+  background: #fde68a;
+}
+
+.role-coordinador .coordinator-reminder-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* PERFIL */
+
+.role-coordinador .coordinator-profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 27px;
+
+  background: linear-gradient(135deg, #30210b, #191309);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  border-radius: 21px;
+}
+
+.role-coordinador .coordinator-profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 68px;
+  width: 68px;
+  height: 68px;
+
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 19px;
+}
+
+.role-coordinador .coordinator-profile-avatar svg {
+  width: 31px;
+  height: 31px;
+}
+
+.role-coordinador .coordinator-profile-hero h1 {
+  margin: 0 0 8px;
+  color: #ffffff;
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.role-coordinador .coordinator-profile-hero p {
+  margin: 0;
+  color: #e7dcc5;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.role-coordinador .coordinator-profile-panel {
+  margin-top: 23px;
+  padding: 25px;
+  background: linear-gradient(145deg, #211b10, #151109);
+  border: 1px solid rgba(251, 191, 36, 0.16);
+  border-radius: 19px;
+}
+
+.role-coordinador .coordinator-profile-panel h2 {
+  margin: 0 0 8px;
+  color: #fff7ed;
+  font-size: 20px;
+}
+
+.role-coordinador .coordinator-profile-description {
+  margin: 0 0 20px;
+  color: #d6d3d1;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.role-coordinador .coordinator-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.role-coordinador .coordinator-profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 17px;
+
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(148, 163, 184, 0.13);
+  border-radius: 12px;
+}
+
+.role-coordinador .coordinator-profile-field span {
+  color: #c4b5a5;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.role-coordinador .coordinator-profile-field strong {
+  color: #fff7ed;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* ADAPTACIÓN A CELULARES */
+
+@media (max-width: 1000px) {
+  .role-coordinador .coordinator-access-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .role-coordinador .coordinator-welcome {
+    padding: 24px;
+  }
+
+  .role-coordinador .coordinator-hero-art {
+    display: none;
+  }
+
+  .role-coordinador .coordinator-reminder {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .role-coordinador .coordinator-reminder-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .role-coordinador .coordinator-access-grid,
+  .role-coordinador .coordinator-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-coordinador .coordinator-welcome h1 {
+    font-size: 29px;
+  }
+
+  .role-coordinador .coordinator-profile-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 22px;
+  }
+
+  .role-coordinador .coordinator-reminder {
+    padding: 18px;
+  }
+
+  .role-coordinador .coordinator-profile-panel {
+    padding: 18px;
+  }
+}
+
+
+/* =========================================================
+   APRENZY - AJUSTES FINALES DE ADMINISTRADOR Y DOCENTE
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   ADMINISTRADOR: MEJORAR LEGIBILIDAD SIN CAMBIAR SU ESTILO
+   --------------------------------------------------------- */
+
+.role-admin .role-home-header h1 {
+  color: #ffffff !important;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.role-admin .role-home-header p {
+  color: #cbd5e1 !important;
+  line-height: 1.8;
+}
+
+.role-admin .role-home-badge {
+  color: #c7d2fe !important;
+  background: rgba(99, 102, 241, 0.16) !important;
+  border: 1px solid rgba(129, 140, 248, 0.28) !important;
+}
+
+.role-admin .role-home-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.role-admin .role-home-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  min-width: 0;
+  min-height: 145px;
+  padding: 23px;
+
+  color: #f8fafc !important;
+
+  background: linear-gradient(
+    145deg,
+    #171e3b 0%,
+    #0d1329 100%
+  ) !important;
+
+  border: 1px solid rgba(129, 140, 248, 0.22) !important;
+  border-radius: 17px !important;
+
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.role-admin .role-home-card > svg {
+  flex-shrink: 0;
+  width: 25px;
+  height: 25px;
+  color: #a5b4fc !important;
+}
+
+.role-admin .role-home-card strong {
+  display: block;
+  color: #ffffff !important;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.role-admin .role-home-card span {
+  display: block;
+  margin-top: 7px;
+  color: #cbd5e1 !important;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.role-admin .role-home-card:hover {
+  transform: translateY(-3px);
+  border-color: #818cf8 !important;
+  box-shadow: 0 14px 32px rgba(99, 102, 241, 0.16) !important;
+}
+
+.role-admin .role-home-card:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 4px;
+}
+
+/* ---------------------------------------------------------
+   DOCENTE: COLORES DE SUS TABLAS
+   Azul petróleo + turquesa
+   --------------------------------------------------------- */
+
+/* Contenedores de tablas */
+
+.role-docente .role-layout-content .admin-table-card,
+.role-docente .role-layout-content .edoc-table-wrap,
+.role-docente .role-layout-content .cursos-table-wrapper,
+.role-docente .role-layout-content .historial-table-wrapper,
+.role-docente .role-layout-content .accesos-table-wrapper,
+.role-docente .role-layout-content .estudiantes-table-card {
+  background: #082832 !important;
+  border: 1px solid rgba(34, 211, 238, 0.20) !important;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* Tabla completa */
+
+.role-docente .role-layout-content table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #e6f7fa !important;
+  background: transparent !important;
+}
+
+/* Encabezados */
+
+.role-docente .role-layout-content table thead th {
+  padding: 14px 16px !important;
+
+  color: #a5f3fc !important;
+  background: #0b3b47 !important;
+
+  border-bottom: 1px solid rgba(34, 211, 238, 0.25) !important;
+
+  font-size: 11px;
+  font-weight: 800;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Celdas */
+
+.role-docente .role-layout-content table tbody td {
+  padding: 14px 16px !important;
+
+  color: #e2f2f5 !important;
+  background: transparent !important;
+
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* Filas alternadas */
+
+.role-docente .role-layout-content table tbody tr:nth-child(odd) {
+  background: #082832 !important;
+}
+
+.role-docente .role-layout-content table tbody tr:nth-child(even) {
+  background: #0b303a !important;
+}
+
+/* Efecto al pasar el cursor */
+
+.role-docente .role-layout-content table tbody tr:hover {
+  background: #10414c !important;
+}
+
+/* Nombres dentro de las tablas */
+
+.role-docente .role-layout-content table tbody td strong {
+  color: #ffffff !important;
+}
+
+/* Texto secundario */
+
+.role-docente .role-layout-content table tbody td .ai-muted,
+.role-docente .role-layout-content table tbody td small {
+  color: #b7d4da !important;
+}
+
+/* Separación y desplazamiento en pantallas pequeñas */
+
+.role-docente .role-layout-content .admin-table-wrapper,
+.role-docente .role-layout-content .edoc-table-wrap,
+.role-docente .role-layout-content .cursos-table-wrapper,
+.role-docente .role-layout-content .historial-table-wrapper,
+.role-docente .role-layout-content .accesos-table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* ---------------------------------------------------------
+   RESPONSIVE
+   --------------------------------------------------------- */
+
+@media (max-width: 1000px) {
+  .role-admin .role-home-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .role-admin .role-home-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-admin .role-home-card {
+    min-height: auto;
+    padding: 19px;
+  }
+
+  .role-docente .role-layout-content table thead th,
+  .role-docente .role-layout-content table tbody td {
+    padding: 11px 12px !important;
+  }
+}
+
+
+
+/* =====================================================
+   APRENZY - CORRECCION DEFINITIVA DE TABLAS DEL DOCENTE
+   Tablas claras, encabezados turquesa y texto legible
+   ===================================================== */
+
+/* Contenedores de tablas */
+.role-layout.role-docente .role-layout-content .admin-table-card,
+.role-layout.role-docente .role-layout-content .edoc-panel,
+.role-layout.role-docente .role-layout-content .cursos-card {
+  background: #ffffff !important;
+  border: 1px solid #d8e7e8 !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+}
+
+/* Fondo general de las tablas */
+.role-layout.role-docente .role-layout-content table,
+.role-layout.role-docente .role-layout-content table tbody {
+  background: #ffffff !important;
+  color: #334155 !important;
+}
+
+/* Encabezados: turquesa claro en lugar de azul */
+.role-layout.role-docente .role-layout-content table thead th,
+.role-layout.role-docente .role-layout-content table th {
+  background: #d9f3ef !important;
+  background-color: #d9f3ef !important;
+  color: #164e4a !important;
+
+  border-bottom: 1px solid #b7dfd9 !important;
+
+  font-weight: 800 !important;
+}
+
+/* Filas alternadas */
+.role-layout.role-docente .role-layout-content table tbody tr,
+.role-layout.role-docente .role-layout-content table tbody tr:nth-child(odd),
+.role-layout.role-docente .role-layout-content table tbody tr:nth-child(even) {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+/* Celdas */
+.role-layout.role-docente .role-layout-content table tbody td {
+  background: transparent !important;
+  color: #334155 !important;
+
+  border-bottom: 1px solid #e5eeee !important;
+}
+
+/* Resaltar la fila al pasar el cursor */
+.role-layout.role-docente .role-layout-content table tbody tr:hover,
+.role-layout.role-docente .role-layout-content table tbody tr:hover td {
+  background: #effaf8 !important;
+}
+
+/* Nombres y títulos */
+.role-layout.role-docente .role-layout-content table strong {
+  color: #0f2929 !important;
+}
+
+/* Texto secundario */
+.role-layout.role-docente .role-layout-content table small,
+.role-layout.role-docente .role-layout-content table .edoc-muted {
+  color: #64748b !important;
+}
+
+/* Estilo específico para la tabla de estudiantes */
+.role-layout.role-docente .role-layout-content .edoc-table th {
+  background: #d9f3ef !important;
+  color: #164e4a !important;
+}
+
+.role-layout.role-docente .role-layout-content .edoc-table td {
+  color: #334155 !important;
+  background: #ffffff !important;
+}
+
+/* Adaptación a pantallas pequeñas */
+.role-layout.role-docente .role-layout-content .edoc-table-wrap,
+.role-layout.role-docente .role-layout-content .admin-table-wrapper,
+.role-layout.role-docente .role-layout-content .cursos-table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+
+
+/* =====================================================
+   APRENZY - CORRECCIÓN REAL DE TABLAS DEL COORDINADOR
+   Reemplaza el azul oscuro por tonos crema y dorados
+   ===================================================== */
+
+.role-layout.role-coordinador .role-layout-content
+.admin-table-card,
+.role-layout.role-coordinador .role-layout-content
+.cursos-card,
+.role-layout.role-coordinador .role-layout-content
+.historial-table-wrapper,
+.role-layout.role-coordinador .role-layout-content
+.accesos-table-wrapper {
+  background: #fffdf7 !important;
+  background-color: #fffdf7 !important;
+  border: 1px solid #ead9ad !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+}
+
+/* Tablas de estudiantes, docentes y asignaciones */
+
+.role-layout.role-coordinador .role-layout-content
+table.admin-table {
+  background: #fffdf7 !important;
+  color: #292524 !important;
+  border-collapse: collapse !important;
+}
+
+.role-layout.role-coordinador .role-layout-content
+.admin-table th {
+  background: #fef0c7 !important;
+  background-color: #fef0c7 !important;
+  color: #713f12 !important;
+  border-bottom: 1px solid #ead9ad !important;
+}
+
+.role-layout.role-coordinador .role-layout-content
+.admin-table td {
+  background: #fffdf7 !important;
+  background-color: #fffdf7 !important;
+  color: #44403c !important;
+  border-bottom: 1px solid #f1e8d5 !important;
+}
+
+.role-layout.role-coordinador .role-layout-content
+.admin-table tbody tr:hover,
+.role-layout.role-coordinador .role-layout-content
+.admin-table tbody tr:hover td {
+  background: #fff7df !important;
+}
+
+/* CURSOS: corrige el CSS que está dentro de Curso.tsx */
+
+.role-layout.role-coordinador .role-layout-content
+.cursos-table th {
+  background: #fef0c7 !important;
+  background-color: #fef0c7 !important;
+  color: #713f12 !important;
+  border-bottom: 1px solid #ead9ad !important;
+}
+
+.role-layout.role-coordinador .role-layout-content
+.cursos-table td {
+  background: #fffdf7 !important;
+  background-color: #fffdf7 !important;
+  color: #44403c !important;
+  border-bottom: 1px solid #f1e8d5 !important;
+}
+
+.role-layout.role-coordinador .role-layout-content
+.cursos-table td strong {
+  color: #292524 !important;
+}
+
+.role-layout.role-coordinador .role-layout-content
+.cursos-table tbody tr:hover,
+.role-layout.role-coordinador .role-layout-content
+.cursos-table tbody tr:hover td {
+  background: #fff7df !important;
+}
+
+/* HISTORIAL */
+
+.role-layout.role-coordinador .role-layout-content
+.historial-table th {
+  background: #fef0c7 !important;
+  color: #713f12 !important;
+  border-bottom-color: #ead9ad !important;
+}
+
+.role-layout.role-coordinador .role-layout-content
+.historial-table td {
+  background: #fffdf7 !important;
+  color: #44403c !important;
+}
+
+/* ACCESOS */
+
+.role-layout.role-coordinador .role-layout-content
+.accesos-table th {
+  background: #fef0c7 !important;
+  color: #713f12 !important;
+  border-bottom-color: #ead9ad !important;
+}
+
+.role-layout.role-coordinador .role-layout-content
+.accesos-table td {
+  background: #fffdf7 !important;
+  color: #44403c !important;
+}
+
+.role-layout.role-coordinador .role-layout-content
+.historial-table tbody tr:hover td,
+.role-layout.role-coordinador .role-layout-content
+.accesos-table tbody tr:hover td {
+  background: #fff7df !important;
+}
+
+/* Texto secundario */
+
+.role-layout.role-coordinador .role-layout-content
+.admin-table .admin-muted,
+.role-layout.role-coordinador .role-layout-content
+.admin-table small {
+  color: #78716c !important;
+}
+
+/* Desplazamiento horizontal en móviles */
+
+.role-layout.role-coordinador .role-layout-content
+.admin-table-wrapper,
+.role-layout.role-coordinador .role-layout-content
+.cursos-table-wrapper,
+.role-layout.role-coordinador .role-layout-content
+.historial-table-wrapper,
+.role-layout.role-coordinador .role-layout-content
+.accesos-table-wrapper {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+
