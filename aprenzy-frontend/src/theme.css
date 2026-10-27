@@ -20,14 +20,14 @@
   --role-primary: #6366f1;
   --role-secondary: #818cf8;
   --role-accent: #a5b4fc;
-  --role-glow: rgba(99, 102, 241, 0.18);
+  --role-glow: rgba(189, 112, 61, 0.812);
 }
 
 .role-admin .role-layout-sidebar {
   background:
     linear-gradient(
       180deg,
-      #11152b 0%,
+      #121422 0%,
       #0b1020 55%,
       #080c18 100%
     ) !important;
@@ -46,11 +46,11 @@
       #8b5cf6
     ) !important;
 
-  color: #ffffff !important;
+  color: #e8d0d0 !important;
 
   box-shadow:
     0 0 24px
-    rgba(99, 102, 241, 0.28) !important;
+    rgba(15, 15, 247, 0.28) !important;
 }
 
 .role-admin .role-layout-brand-info strong {
@@ -63,7 +63,7 @@
 
 .role-admin .role-layout-role-card {
   background:
-    rgba(99, 102, 241, 0.09) !important;
+    rgba(37, 34, 76, 0.09) !important;
 
   border:
     1px solid
@@ -80,7 +80,7 @@
 
 .role-admin .role-layout-nav-title {
   color:
-    #737ba3 !important;
+    #fff !important;
 }
 
 .role-admin .role-layout-nav-button {
@@ -100,7 +100,7 @@
   background:
     linear-gradient(
       90deg,
-      rgba(99, 102, 241, 0.22),
+      rgba(241, 135, 99, 0.22),
       rgba(129, 140, 248, 0.08)
     ) !important;
 
@@ -423,7 +423,7 @@
   --role-primary: #059669;
   --role-secondary: #10b981;
   --role-accent: #6ee7b7;
-  --role-glow: rgba(16, 185, 129, 0.18);
+  --role-glow: rgba(185, 120, 16, 0.18);
 }
 
 .role-estudiante .role-layout-sidebar {

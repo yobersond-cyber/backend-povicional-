@@ -717,6 +717,7 @@ const estilos = `
   margin-bottom: 24px;
 }
 
+
 .estadistica-card {
   display: flex;
   align-items: center;
@@ -724,85 +725,64 @@ const estilos = `
   min-height: 110px;
   padding: 20px;
   border-radius: 14px;
-  background: white;
+  background: #ffffff;
+  color: #1e293b;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
-}
-
-.estadistica-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  flex: 0 0 46px;
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.07);
-  font-size: 21px;
 }
 
 .estadistica-card span {
   display: block;
   margin-bottom: 4px;
   font-size: 13px;
-  opacity: 0.65;
+  color: #64748b;
+  opacity: 1;
 }
 
 .estadistica-card strong {
   display: block;
   font-size: 28px;
+  color: #0f172a;
 }
 
 .estadisticas-section {
   margin-bottom: 24px;
   padding: 22px;
   border-radius: 14px;
-  background: white;
+  background: #ffffff;
+  color: #1e293b;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
-}
-
-.estadisticas-section-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 20px;
 }
 
 .estadisticas-section-header h2 {
   margin: 0 0 6px;
   font-size: 20px;
+  color: #0f172a;
 }
 
 .estadisticas-section-header p {
   margin: 0;
-  opacity: 0.65;
-}
-
-.estadisticas-section-header > svg {
-  font-size: 24px;
-}
-
-.estadisticas-status-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  color: #64748b;
+  opacity: 1;
 }
 
 .estadisticas-status {
   padding: 18px;
   border-radius: 10px;
-  background: rgba(15, 23, 42, 0.04);
+  background: #f1f5f9;
+  color: #1e293b;
 }
 
 .estadisticas-status span {
   display: block;
   margin-bottom: 8px;
   font-size: 13px;
-  opacity: 0.65;
+  color: #64748b;
+  opacity: 1;
 }
 
 .estadisticas-status strong {
   font-size: 24px;
+  color: #0f172a;
 }
 
 .estadisticas-summary {
@@ -812,31 +792,24 @@ const estilos = `
   margin-bottom: 24px;
   padding: 22px;
   border-radius: 14px;
-  background: white;
+  background: #ffffff;
+  color: #1e293b;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.07);
-}
-
-.estadisticas-summary-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  flex: 0 0 44px;
-  border-radius: 10px;
-  background: rgba(15, 23, 42, 0.07);
 }
 
 .estadisticas-summary h2 {
   margin: 0 0 8px;
   font-size: 18px;
+  color: #0f172a;
 }
 
 .estadisticas-summary p {
   margin: 0;
   line-height: 1.6;
-  opacity: 0.75;
+  color: #475569;
+  opacity: 1;
 }
+
 
 .estadisticas-loading {
   display: flex;

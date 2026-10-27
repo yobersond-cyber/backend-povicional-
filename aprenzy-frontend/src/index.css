@@ -6,7 +6,7 @@ body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
   background-color: #f5f7fb;
-  color: #182230;
+  color: #f9fafc;
 }
 
 button,
@@ -882,7 +882,7 @@ input {
 /* Descripción de página */
 .page-header p {
   margin: 0;
-  color: #697386;
+  color: #fff;
 }
 
 /* Botón secundario */
@@ -2104,7 +2104,7 @@ input {
 .role-layout-role-card span {
   margin-top: 2px;
   font-size: 11px;
-  color: #6b7280;
+  color: #fff;
 }
 
 .role-layout-nav {
@@ -2241,7 +2241,7 @@ input {
 .role-layout-user-text span {
   margin-top: 2px;
   font-size: 11px;
-  color: #6b7280;
+  color: #059669;
 }
 
 .role-layout-avatar {
@@ -2398,9 +2398,9 @@ input {
   font-size: 15px;
 }
 
-.role-home-card span {
+.role-home-card span { /* Parrafos de los bloques*/
   margin-top: 5px;
-  color: #6b7280;
+  color: #fff;
   font-size: 13px;
   line-height: 1.5;
 }
@@ -2571,12 +2571,12 @@ input {
 .admin-page-header h1 {
   margin: 6px 0 8px;
   font-size: 30px;
-  color: #172033;
+  color: #fff;
 }
 
 .admin-page-header p {
   margin: 0;
-  color: #667085;
+  color: #ffffff;
 }
 
 .admin-page-header-actions {
@@ -2590,13 +2590,13 @@ input {
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #ebe5e5;
   border-radius: 14px;
   background: #ffffff;
 }
 
 .admin-total-card > svg {
-  color: #4338ca;
+  color: #271006;
   font-size: 21px;
 }
 
@@ -2696,9 +2696,9 @@ input {
 
 .admin-table-card {
   overflow: hidden;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #fff;
   border-radius: 16px;
-  background: #ffffff;
+  background: #17213c;
 }
 
 .admin-table-wrapper {
@@ -2714,9 +2714,9 @@ input {
 
 .admin-table th {
   padding: 14px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
-  color: #667085;
+  border-bottom: 1px solid #fff;
+  background: #17213c;
+  color: #f4f7ff;
   font-size: 11px;
   font-weight: 800;
   text-align: left;
@@ -2727,7 +2727,7 @@ input {
 .admin-table td {
   padding: 15px 16px;
   border-bottom: 1px solid #eef0f3;
-  color: #344054;
+  color: #eceef3;
   font-size: 13px;
 }
 
@@ -2736,7 +2736,7 @@ input {
 }
 
 .admin-table tbody tr:hover {
-  background: #fafbff;
+  background: #17213c;
 }
 
 .admin-user-cell {
@@ -2763,7 +2763,7 @@ input {
 }
 
 .admin-user-cell strong {
-  color: #172033;
+  color: #eceff5;
 }
 
 .admin-user-cell span {
@@ -2790,8 +2790,8 @@ input {
 }
 
 .admin-action-button {
-  width: 34px;
-  height: 34px;
+  width: 50px;
+  height: 50px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2822,7 +2822,7 @@ input {
   padding: 55px 20px;
   border: 1px solid #e5e7eb;
   border-radius: 16px;
-  background: #ffffff;
+  background: #17213c;
   text-align: center;
 }
 
@@ -2847,7 +2847,7 @@ input {
 .admin-alert-error {
   margin-bottom: 18px;
   padding: 13px 15px;
-  border: 1px solid #fecaca;
+  border: 1px solid #ea1515;
   border-radius: 10px;
   background: #fef2f2;
   color: #b91c1c;
@@ -3100,13 +3100,13 @@ input {
 
 .incapacidades-header h1 {
   margin: 0;
-  color: #172033;
+  color: #fff;
   font-size: 28px;
 }
 
 .incapacidades-header p {
   margin: 7px 0 0;
-  color: #667085;
+  color: #fff;
   line-height: 1.5;
 }
 

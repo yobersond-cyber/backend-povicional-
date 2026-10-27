@@ -458,13 +458,13 @@ export default function Accesos() {
 
           .accesos-header h1 {
             margin: 0 0 7px;
-            color: #172033;
+            color: #fff;
             font-size: 28px;
           }
 
           .accesos-header p {
             margin: 0;
-            color: #667085;
+            color: #fff;
             line-height: 1.5;
           }
 

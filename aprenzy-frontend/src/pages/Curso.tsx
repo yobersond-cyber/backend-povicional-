@@ -442,20 +442,20 @@ export default function Cursos() {
           }
 
           .cursos-kicker {
-            color: #4f46e5;
-            font-size: 13px;
+            color: #fff;
+            font-size: 17px;
             font-weight: 700;
           }
 
           .cursos-header h1 {
             margin: 5px 0 8px;
-            color: #172033;
+            color: #fff;
             font-size: 28px;
           }
 
           .cursos-header p {
             margin: 0;
-            color: #667085;
+            color: #fff;
           }
 
           .cursos-actions {
@@ -508,24 +508,26 @@ export default function Cursos() {
           .cursos-table th,
           .cursos-table td {
             padding: 15px 18px;
-            border-bottom: 1px solid #eef0f4;
+            border-bottom: 1px solid #f4efee;
+            background: #263247;
             text-align: left;
           }
 
           .cursos-table th {
-            background: #f8f9fc;
-            color: #667085;
+            background: #17213c;
+            color: #fff;
             font-size: 12px;
             text-transform: uppercase;
           }
 
           .cursos-table td {
-            color: #475467;
+            color: #fff;
             font-size: 14px;
+            background: #17213c
           }
 
           .cursos-table td strong {
-            color: #172033;
+            color: #fff;
           }
 
           .cursos-edit {
@@ -539,7 +541,7 @@ export default function Cursos() {
           .cursos-empty {
             padding: 18px;
             margin-bottom: 18px;
-            border: 1px solid #e8ecf1;
+            border: 1px solid #f1eae8;
             border-radius: 12px;
             background: #fff;
             color: #667085;

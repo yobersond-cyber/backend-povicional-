@@ -559,13 +559,13 @@ export default function Apelaciones() {
 
           .apelaciones-header h1 {
             margin: 0;
-            color: #172033;
+            color: #fff;
             font-size: 28px;
           }
 
           .apelaciones-header p {
             margin: 7px 0 0;
-            color: #667085;
+            color: #fff;
             line-height: 1.5;
           }
 

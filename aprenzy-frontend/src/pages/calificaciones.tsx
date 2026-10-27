@@ -330,13 +330,13 @@ export default function Calificaciones() {
 
           .grades-header h1 {
             margin: 0 0 8px;
-            color: #172033;
+            color: #fff;
             font-size: 28px;
           }
 
           .grades-header p {
             margin: 0;
-            color: #667085;
+            color: #fff;
           }
 
           .grades-refresh {

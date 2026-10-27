@@ -315,13 +315,13 @@ export default function Entregas() {
 
           .deliveries-header h1 {
             margin: 0 0 8px;
-            color: #172033;
+            color: #fff;
             font-size: 28px;
           }
 
           .deliveries-header p {
             margin: 0;
-            color: #667085;
+            color: #fff;
           }
 
           .delivery-new-button,

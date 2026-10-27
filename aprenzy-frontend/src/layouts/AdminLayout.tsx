@@ -217,7 +217,7 @@ export default function AdminLayout() {
 
   return (
     <RoleLayout
-      titulo="Administrador"
+      titulo="Coordinador"
       subtitulo="Gestión institucional"
       variante="admin"
       menu={menu}
