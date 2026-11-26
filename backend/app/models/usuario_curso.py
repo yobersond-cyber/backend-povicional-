@@ -1,4 +1,10 @@
-from sqlalchemy import Column, Integer, ForeignKey
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    ForeignKey,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from app.database.base import Base
@@ -7,31 +13,37 @@ from app.database.base import Base
 class UsuarioCurso(Base):
     __tablename__ = "usuario_curso"
 
+    __table_args__ = (
+        UniqueConstraint(
+            "id_usuario",
+            name="uq_usuario_curso_usuario",
+        ),
+    )
+
     id_usuario_curso = Column(
         Integer,
         primary_key=True,
-        index=True
+        index=True,
     )
 
     id_usuario = Column(
         Integer,
         ForeignKey("usuario.id_usuario"),
-        nullable=False
+        nullable=False,
     )
 
     id_curso = Column(
         Integer,
         ForeignKey("curso.id_curso"),
-        nullable=False
+        nullable=False,
     )
 
-    # Relaciones
     usuario = relationship(
         "Usuario",
-        back_populates="cursos"
+        back_populates="cursos",
     )
 
     curso = relationship(
         "Curso",
-        back_populates="usuarios"
+        back_populates="usuarios",
     )

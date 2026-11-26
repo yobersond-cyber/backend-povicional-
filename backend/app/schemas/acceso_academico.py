@@ -1,3 +1,4 @@
+
 from enum import Enum
 
 from pydantic import Field
@@ -11,15 +12,16 @@ class EstadoAcceso(str, Enum):
     FINALIZADO = "finalizado"
 
 
-class AccesoAcademicoBase(BaseSchema):
-    id_usuario: int = Field(..., gt=0)
-    id_incapacidad: int = Field(..., gt=0)
-    estado: EstadoAcceso = EstadoAcceso.ACTIVO
+class AccesoAcademicoCreate(BaseSchema):
+    numero_radicado: str = Field(
+        ...,
+        min_length=1,
+        max_length=30,
+    )
 
 
-class AccesoAcademicoCreate(AccesoAcademicoBase):
-    pass
-
-
-class AccesoAcademicoResponse(AccesoAcademicoBase):
+class AccesoAcademicoResponse(BaseSchema):
     id_acceso: int
+    id_usuario: int
+    id_incapacidad: int
+    estado: EstadoAcceso

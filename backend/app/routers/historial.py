@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database.conection import get_db
 from app.dependencias.auth import require_role
@@ -19,7 +19,7 @@ router = APIRouter(
 
 def obtener_incapacidad_del_colegio(
     db: Session,
-    id_incapacidad: int,
+    numero_radicado: str,
     id_colegio: int,
 ) -> Incapacidad:
     incapacidad = (
@@ -29,7 +29,7 @@ def obtener_incapacidad_del_colegio(
             Incapacidad.id_usuario == Usuario.id_usuario,
         )
         .filter(
-            Incapacidad.id_incapacidad == id_incapacidad,
+            Incapacidad.numero_radicado == numero_radicado.strip(),
             Usuario.id_colegio == id_colegio,
         )
         .first()
@@ -38,7 +38,7 @@ def obtener_incapacidad_del_colegio(
     if incapacidad is None:
         raise HTTPException(
             status_code=404,
-            detail="Incapacidad no encontrada en tu colegio",
+            detail="No se encontró esa incapacidad en tu colegio",
         )
 
     return incapacidad
@@ -69,7 +69,14 @@ def listar_historiales(
             Usuario,
             Incapacidad.id_usuario == Usuario.id_usuario,
         )
-        .filter(Usuario.id_colegio == current_user.id_colegio)
+        .options(
+            joinedload(HistorialIncapacidad.usuario_cambio),
+            joinedload(HistorialIncapacidad.incapacidad),
+        )
+        .filter(
+            Usuario.id_colegio == current_user.id_colegio,
+        )
+        .order_by(HistorialIncapacidad.fecha_cambio.desc())
         .all()
     )
 
@@ -81,11 +88,11 @@ def listar_historiales(
 
 
 @router.get(
-    "/incapacidad/{id_incapacidad}",
+    "/radicado/{numero_radicado}",
     response_model=APIResponse[list[HistorialResponse]],
 )
 def listar_historial_por_incapacidad(
-    id_incapacidad: int,
+    numero_radicado: str,
     current_user: Usuario = Depends(require_role("coordinador")),
     db: Session = Depends(get_db),
 ):
@@ -95,25 +102,31 @@ def listar_historial_por_incapacidad(
             detail="El coordinador no tiene un colegio asignado",
         )
 
-    obtener_incapacidad_del_colegio(
+    incapacidad = obtener_incapacidad_del_colegio(
         db,
-        id_incapacidad,
+        numero_radicado,
         current_user.id_colegio,
     )
 
     historial = (
         db.query(HistorialIncapacidad)
-        .filter(
-            HistorialIncapacidad.id_incapacidad == id_incapacidad
+        .options(
+            joinedload(HistorialIncapacidad.usuario_cambio),
+            joinedload(HistorialIncapacidad.incapacidad),
         )
+        .filter(
+            HistorialIncapacidad.id_incapacidad
+            == incapacidad.id_incapacidad,
+        )
+        .order_by(HistorialIncapacidad.fecha_cambio.desc())
         .all()
     )
 
     return APIResponse(
         success=True,
         mensaje=(
-            f"Historial de la incapacidad #{id_incapacidad} "
-            "recuperado correctamente"
+            f"Historial de la incapacidad con radicado "
+            f"{numero_radicado} recuperado correctamente"
         ),
         data=historial,
     )

@@ -1,5 +1,11 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    status,
+)
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -13,9 +19,11 @@ from app.models.Usuarios import Usuario
 from app.schemas.base import APIResponse
 from app.schemas.colegio import (
     ColegioResponse,
-    ColegioConCoordinadorCreate,
-    ColegioConCoordinadorResponse,
+    ColegioConRectorCreate,
+    ColegioConRectorResponse,
 )
+
+from app.services.notificaciones_service import notificar_usuario
 
 
 router = APIRouter(
@@ -29,9 +37,11 @@ def verificar_datos_colegio(
     codigo_dane: str | None,
     nit: str | None,
 ) -> None:
+
     if codigo_dane and db.query(Colegio).filter(
         Colegio.codigo_dane == codigo_dane
     ).first():
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Ya existe un colegio con ese código DANE",
@@ -40,61 +50,97 @@ def verificar_datos_colegio(
     if nit and db.query(Colegio).filter(
         Colegio.nit == nit
     ).first():
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Ya existe un colegio con ese NIT",
         )
 
 
-def verificar_datos_coordinador(
+def verificar_datos_rector(
     db: Session,
-    codigo_usuario: str,
     documento: str,
     correo: str,
 ) -> None:
-    if db.query(Usuario).filter(
-        Usuario.codigo_usuario == codigo_usuario
-    ).first():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="El código del coordinador ya está registrado",
-        )
 
     if db.query(Usuario).filter(
         Usuario.documento == documento
     ).first():
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="El documento del coordinador ya está registrado",
+            detail="El documento del rector ya está registrado",
         )
 
     if db.query(Usuario).filter(
         Usuario.correo == correo
     ).first():
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="El correo del coordinador ya está registrado",
+            detail="El correo del rector ya está registrado",
         )
+
+
+def notificar_creacion_rector(
+    background_tasks: BackgroundTasks,
+    rector: Usuario,
+    colegio: Colegio,
+) -> None:
+    """
+    Notifica al rector la creación de su cuenta institucional.
+    El administrador global no recibe esta notificación.
+    """
+
+    if (
+        rector.tipo_de_usuario != "rector"
+        or not rector.correo
+        or not rector.correo.strip()
+    ):
+        return
+
+    background_tasks.add_task(
+        notificar_usuario,
+        destinatario=rector.correo.strip(),
+        nombres_usuario=(
+            f"{rector.nombres_compl} "
+            f"{rector.apellidos_compl}"
+        ),
+        asunto="Tu cuenta de rector ha sido creada - APRENZY",
+        titulo="¡Bienvenido a APRENZY!",
+        mensaje=(
+            f"Se ha creado tu cuenta de rector para el colegio "
+            f"{colegio.nombre_colegio}. "
+            f"Ya puedes ingresar a APRENZY utilizando el correo "
+            f"electrónico y la contraseña que fueron registrados "
+            f"durante la creación de tu cuenta."
+        ),
+        detalle=(
+            f"Colegio: {colegio.nombre_colegio}\n"
+            f"Rol asignado: Rector\n"
+            f"Correo de acceso: {rector.correo}"
+        ),
+    )
 
 
 @router.post(
     "",
-    response_model=APIResponse[ColegioConCoordinadorResponse],
+    response_model=APIResponse[ColegioConRectorResponse],
     status_code=status.HTTP_201_CREATED,
 )
-def crear_colegio_con_coordinador(
-    datos: ColegioConCoordinadorCreate,
+def crear_colegio_con_rector(
+    datos: ColegioConRectorCreate,
+    background_tasks: BackgroundTasks,
     current_user: Usuario = Depends(
         require_role("administrador")
     ),
     db: Session = Depends(get_db),
 ):
     """
-    Crea un colegio y su coordinador en una sola operación.
+    Crea un colegio y su rector obligatoriamente
+    en una sola transacción.
 
-    Solo puede hacerlo el administrador global: las cuentas
-    antiguas con rol administrador y colegio asignado se
-    interpretan como coordinadores y no pasan esta autorización.
+    Solo puede hacerlo el administrador global.
     """
 
     verificar_datos_colegio(
@@ -103,11 +149,10 @@ def crear_colegio_con_coordinador(
         datos.colegio.nit,
     )
 
-    verificar_datos_coordinador(
+    verificar_datos_rector(
         db,
-        datos.coordinador.codigo_usuario,
-        datos.coordinador.documento,
-        str(datos.coordinador.correo),
+        datos.rector.documento,
+        str(datos.rector.correo),
     )
 
     colegio = Colegio(
@@ -127,47 +172,66 @@ def crear_colegio_con_coordinador(
     )
 
     try:
-        # Primero se guarda el colegio para obtener su ID.
         db.add(colegio)
+
         db.flush()
 
-        coordinador = Usuario(
+        rector = Usuario(
             id_colegio=colegio.id_colegio,
-            codigo_usuario=datos.coordinador.codigo_usuario,
-            documento=datos.coordinador.documento,
-            nombres_compl=datos.coordinador.nombres_compl,
-            apellidos_compl=datos.coordinador.apellidos_compl,
-            telefono=datos.coordinador.telefono,
-            correo=str(datos.coordinador.correo),
+            documento=datos.rector.documento,
+            nombres_compl=datos.rector.nombres_compl,
+            apellidos_compl=datos.rector.apellidos_compl,
+            telefono=datos.rector.telefono,
+            correo=str(datos.rector.correo),
             contrasena=hash_password(
-                datos.coordinador.contrasena
+                datos.rector.contrasena
             ),
-            tipo_de_usuario="coordinador",
+            tipo_de_usuario="rector",
+            estado_aprobacion=None,
         )
 
-        db.add(coordinador)
+        db.add(rector)
+
         db.commit()
 
         db.refresh(colegio)
-        db.refresh(coordinador)
+        db.refresh(rector)
 
     except IntegrityError as exc:
         db.rollback()
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                "No se pudo crear el colegio y su coordinador. "
-                "Verifica que el código DANE, NIT, código de usuario, "
-                "documento y correo no estén repetidos."
+                "No se pudo crear el colegio y su rector. "
+                "Verifica que el código DANE, NIT, documento "
+                "y correo no estén repetidos, y que el colegio "
+                "no tenga ya un rector."
             ),
         ) from exc
 
+    except Exception as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ocurrió un error al crear el colegio y su rector",
+        ) from exc
+
+    # El correo se programa únicamente después de confirmar
+    # la creación del colegio y del rector.
+    notificar_creacion_rector(
+        background_tasks=background_tasks,
+        rector=rector,
+        colegio=colegio,
+    )
+
     return APIResponse(
         success=True,
-        mensaje="Colegio y coordinador creados exitosamente",
+        mensaje="Colegio y rector creados exitosamente",
         data={
             "colegio": colegio,
-            "coordinador": coordinador,
+            "rector": rector,
         },
     )
 
@@ -183,7 +247,8 @@ def listar_colegios(
     db: Session = Depends(get_db),
 ):
     """
-    Lista todos los colegios. Solo para el administrador global.
+    Lista todos los colegios.
+    Solo para el administrador global.
     """
 
     colegios = (
@@ -212,7 +277,9 @@ def obtener_colegio(
 ):
     colegio = (
         db.query(Colegio)
-        .filter(Colegio.id_colegio == id_colegio)
+        .filter(
+            Colegio.id_colegio == id_colegio
+        )
         .first()
     )
 

@@ -1,4 +1,13 @@
-from sqlalchemy import Column, Integer, DateTime, Text, Enum, ForeignKey
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    DateTime,
+    Text,
+    Enum,
+    ForeignKey,
+    String,
+)
 from sqlalchemy.orm import relationship
 
 from app.database.base import Base
@@ -28,6 +37,21 @@ class Apelacion(Base):
     motivo = Column(
         Text,
         nullable=False
+    )
+
+    archivo = Column(
+        String(255),
+        nullable=True
+    )
+
+    archivo_public_id = Column(
+        String(255),
+        nullable=True
+    )
+
+    archivo_resource_type = Column(
+        String(20),
+        nullable=True
     )
 
     respuesta = Column(

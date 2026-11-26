@@ -1,4 +1,14 @@
-from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey, Enum
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Date,
+    DateTime,
+    Text,
+    ForeignKey,
+    Enum,
+)
 from sqlalchemy.orm import relationship
 
 from app.database.base import Base
@@ -34,6 +44,16 @@ class Incapacidad(Base):
         nullable=False
     )
 
+    archivo_public_id = Column(
+        String(255),
+        nullable=True
+    )
+
+    archivo_resource_type = Column(
+        String(20),
+        nullable=True
+    )
+
     motivo = Column(
         Text,
         nullable=False
@@ -55,10 +75,33 @@ class Incapacidad(Base):
         nullable=False
     )
 
-    # Relación con el estudiante/usuario
+    id_coordinador_revisor = Column(
+        Integer,
+        ForeignKey("usuario.id_usuario"),
+        nullable=True
+    )
+
+    fecha_revision = Column(
+        DateTime,
+        nullable=True
+    )
+
+    observacion_revision = Column(
+        Text,
+        nullable=True
+    )
+
+    # Relación con el estudiante que registra la incapacidad
     usuario = relationship(
         "Usuario",
-        back_populates="incapacidades"
+        back_populates="incapacidades",
+        foreign_keys=[id_usuario]
+    )
+
+    # Relación con el coordinador que revisa la incapacidad
+    coordinador_revisor = relationship(
+        "Usuario",
+        foreign_keys=[id_coordinador_revisor]
     )
 
     # Historial de cambios

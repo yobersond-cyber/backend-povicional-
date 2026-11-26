@@ -1,4 +1,13 @@
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Enum,
+    ForeignKey,
+    Computed,
+    CheckConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from app.database.base import Base
@@ -7,131 +16,158 @@ from app.database.base import Base
 class Usuario(Base):
     __tablename__ = "usuario"
 
+    __table_args__ = (
+        CheckConstraint(
+            """
+            (
+                tipo_de_usuario = 'administrador'
+                AND id_colegio IS NULL
+            )
+            OR
+            (
+                tipo_de_usuario <> 'administrador'
+                AND id_colegio IS NOT NULL
+            )
+            """,
+            name="chk_usuario_colegio",
+        ),
+    )
+
     id_usuario = Column(
         Integer,
         primary_key=True,
-        index=True
+        index=True,
     )
 
-    # Puede ser NULL únicamente para el administrador global.
-    # Los demás roles deberán tener un colegio asignado.
     id_colegio = Column(
         Integer,
         ForeignKey("colegio.id_colegio"),
-        nullable=True
-    )
-
-    codigo_usuario = Column(
-        String(20),
-        unique=True,
-        nullable=False
+        nullable=True,
     )
 
     documento = Column(
         String(20),
         unique=True,
-        nullable=False
+        nullable=False,
     )
 
     nombres_compl = Column(
         String(80),
-        nullable=False
+        nullable=False,
     )
 
     apellidos_compl = Column(
         String(80),
-        nullable=False
+        nullable=False,
     )
 
     telefono = Column(
         String(20),
-        nullable=False
+        nullable=False,
     )
 
     correo = Column(
         String(100),
         unique=True,
-        nullable=False
+        nullable=False,
     )
 
     contrasena = Column(
         String(255),
-        nullable=False
+        nullable=False,
     )
 
-    # Los cuatro roles admitidos por APRENZY.
     tipo_de_usuario = Column(
         Enum(
             "administrador",
+            "rector",
             "coordinador",
             "docente",
             "estudiante",
-            name="tipo_usuario_enum"
+            name="tipo_usuario_enum",
         ),
-        nullable=False
+        nullable=False,
+    )
+
+    estado_aprobacion = Column(
+        Enum(
+            "pendiente",
+            "aprobada",
+            "rechazada",
+            name="estado_aprobacion_enum",
+        ),
+        nullable=True,
     )
 
     jornada = Column(
         String(20),
-        nullable=True
+        nullable=True,
     )
 
-    # Colegio al que pertenece el usuario.
+    # Columna calculada: solo los rectores tienen este valor.
+    # El índice único permite un solo rector por colegio.
+    id_colegio_rector = Column(
+        Integer,
+        Computed(
+            """
+            CASE
+                WHEN tipo_de_usuario = 'rector'
+                THEN id_colegio
+                ELSE NULL
+            END
+            """,
+            persisted=True,
+        ),
+        unique=True,
+    )
+
     colegio = relationship(
         "Colegio",
-        back_populates="usuarios"
+        back_populates="usuarios",
     )
 
-    # Relación con cursos.
     cursos = relationship(
         "UsuarioCurso",
-        back_populates="usuario"
+        back_populates="usuario",
     )
 
-    # Materias asignadas al docente.
-    materias = relationship(
-        "DocenteMateria",
-        back_populates="usuario"
+    asignaciones_docentes = relationship(
+        "DocenteAsignacion",
+        back_populates="usuario",
     )
 
-    # Incapacidades del usuario.
     incapacidades = relationship(
         "Incapacidad",
-        back_populates="usuario"
+        back_populates="usuario",
+        foreign_keys="Incapacidad.id_usuario",
     )
 
-    # Historial de incapacidades.
     historial_incapacidades = relationship(
         "HistorialIncapacidad",
-        back_populates="usuario_cambio"
+        back_populates="usuario_cambio",
     )
 
-    # Apelaciones revisadas.
     apelaciones_revisadas = relationship(
         "Apelacion",
-        back_populates="revisor"
+        back_populates="revisor",
     )
 
-    # Accesos académicos.
     accesos_academicos = relationship(
         "AccesoAcademico",
-        back_populates="usuario"
+        back_populates="usuario",
     )
 
-    # Material académico.
     materiales_academicos = relationship(
         "MaterialAcademico",
-        back_populates="usuario"
+        back_populates="usuario",
     )
 
-    # Actividades creadas o gestionadas por el usuario.
     actividades = relationship(
         "Actividad",
-        back_populates="usuario"
+        back_populates="usuario",
     )
 
-    # Entregas relacionadas con el usuario.
     entregas = relationship(
         "Entrega",
-        back_populates="usuario"
+        back_populates="usuario",
     )

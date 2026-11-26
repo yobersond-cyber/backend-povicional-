@@ -1,5 +1,10 @@
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+)
 from sqlalchemy.orm import Session
 
 from app.database.conection import get_db
@@ -7,57 +12,41 @@ from app.dependencias.auth import (
     get_current_user,
     obtener_rol_efectivo,
     require_role,
+    verificar_acceso_academico,
 )
+
 from app.models.Usuarios import Usuario
 from app.models.curso import Curso
 from app.models.materia import Materia
-from app.models.docente_materia import DocenteMateria
+from app.models.docente_asignacion import DocenteAsignacion
 from app.models.usuario_curso import UsuarioCurso
+
 from app.schemas.materia import (
     MateriaCreate,
     MateriaUpdate,
     MateriaResponse,
 )
+
 from app.schemas.base import APIResponse
 
-
-router = APIRouter(prefix="/materias", tags=["Materias"])
-
-
-def obtener_curso_del_colegio(
-    db: Session,
-    id_curso: int,
-    id_colegio: int,
-) -> Curso:
-    curso = (
-        db.query(Curso)
-        .filter(
-            Curso.id_curso == id_curso,
-            Curso.id_colegio == id_colegio,
-        )
-        .first()
-    )
-
-    if curso is None:
-        raise HTTPException(
-            status_code=403,
-            detail="El curso no existe o no pertenece a tu colegio",
-        )
-
-    return curso
+from app.services.notificaciones_service import notificar_usuario
 
 
-def obtener_materia_del_colegio(
-    db: Session,
+router = APIRouter(
+    prefix="/materias",
+    tags=["Materias"],
+)
+
+
+def obtener_materia(
     id_materia: int,
-    id_colegio: int,
+    db: Session,
 ) -> Materia:
+
     materia = (
         db.query(Materia)
-        .join(Curso, Materia.id_curso == Curso.id_curso)
         .filter(
             Materia.id_materia == id_materia,
-            Curso.id_colegio == id_colegio,
         )
         .first()
     )
@@ -65,32 +54,117 @@ def obtener_materia_del_colegio(
     if materia is None:
         raise HTTPException(
             status_code=404,
-            detail="Materia no encontrada en tu colegio",
+            detail="Materia no encontrada",
         )
 
     return materia
 
 
-def validar_codigo_materia(
+def notificar_actualizacion_materia(
+    background_tasks: BackgroundTasks,
     db: Session,
-    id_curso: int,
-    codigo_materia: str,
-    id_materia_excluir: int | None = None,
+    materia: Materia,
+    nombre_anterior: str,
+    descripcion_anterior: str | None,
 ) -> None:
-    consulta = db.query(Materia).filter(
-        Materia.id_curso == id_curso,
-        Materia.codigo_materia == codigo_materia,
-    )
+    """
+    Notifica a docentes y estudiantes afectados por cambios
+    en una materia.
+    """
 
-    if id_materia_excluir is not None:
-        consulta = consulta.filter(
-            Materia.id_materia != id_materia_excluir
+    cambios = []
+
+    if nombre_anterior != materia.nombre_materia:
+        cambios.append(
+            f"Nombre anterior: {nombre_anterior}\n"
+            f"Nombre actual: {materia.nombre_materia}"
         )
 
-    if consulta.first():
-        raise HTTPException(
-            status_code=409,
-            detail="Ya existe una materia con ese código en este curso",
+    if descripcion_anterior != materia.descripcion:
+        cambios.append(
+            "La descripción de la materia fue modificada."
+        )
+
+    if not cambios:
+        return
+
+    detalle = "\n".join(cambios)
+
+    # Docentes que tienen asignada esta materia.
+    docentes = (
+        db.query(Usuario)
+        .join(
+            DocenteAsignacion,
+            DocenteAsignacion.id_usuario == Usuario.id_usuario,
+        )
+        .join(
+            Curso,
+            Curso.id_curso == DocenteAsignacion.id_curso,
+        )
+        .filter(
+            DocenteAsignacion.id_materia == materia.id_materia,
+            Usuario.tipo_de_usuario == "docente",
+            Usuario.id_colegio == Curso.id_colegio,
+            Usuario.correo.isnot(None),
+        )
+        .distinct()
+        .all()
+    )
+
+    # Estudiantes inscritos en cursos donde se orienta la materia.
+    estudiantes = (
+        db.query(Usuario)
+        .join(
+            UsuarioCurso,
+            UsuarioCurso.id_usuario == Usuario.id_usuario,
+        )
+        .join(
+            DocenteAsignacion,
+            DocenteAsignacion.id_curso == UsuarioCurso.id_curso,
+        )
+        .join(
+            Curso,
+            Curso.id_curso == DocenteAsignacion.id_curso,
+        )
+        .filter(
+            DocenteAsignacion.id_materia == materia.id_materia,
+            Usuario.tipo_de_usuario == "estudiante",
+            Usuario.id_colegio == Curso.id_colegio,
+            Usuario.correo.isnot(None),
+        )
+        .distinct()
+        .all()
+    )
+
+    # Evita enviar dos correos al mismo usuario.
+    destinatarios = {
+        usuario.id_usuario: usuario
+        for usuario in docentes + estudiantes
+    }
+
+    for usuario in destinatarios.values():
+
+        if not usuario.correo or not usuario.correo.strip():
+            continue
+
+        nombre_usuario = (
+            f"{usuario.nombres_compl} "
+            f"{usuario.apellidos_compl}"
+        ).strip()
+
+        background_tasks.add_task(
+            notificar_usuario,
+            destinatario=usuario.correo.strip(),
+            nombres_usuario=nombre_usuario,
+            asunto="Actualización de materia - APRENZY",
+            titulo="Se ha actualizado una materia",
+            mensaje=(
+                f"Te informamos que la materia "
+                f"{materia.nombre_materia} ha sido actualizada. "
+                f"Ingresa a APRENZY para consultar la información "
+                f"actualizada."
+            ),
+            detalle=detalle,
         )
 
 
@@ -104,67 +178,54 @@ def listar_materias(
 ):
     rol = obtener_rol_efectivo(current_user)
 
-    # COORDINADOR:
-    # Puede consultar todas las materias de su colegio.
+    if current_user.id_colegio is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Tu cuenta no tiene un colegio asignado",
+        )
+
     if rol == "coordinador":
-        if current_user.id_colegio is None:
-            raise HTTPException(
-                status_code=403,
-                detail="El coordinador no tiene un colegio asignado",
-            )
 
         materias = (
             db.query(Materia)
-            .join(
-                Curso,
-                Materia.id_curso == Curso.id_curso,
-            )
-            .filter(
-                Curso.id_colegio == current_user.id_colegio,
-            )
             .order_by(Materia.nombre_materia.asc())
             .all()
         )
 
-    # DOCENTE:
-    # Solo puede consultar las materias que tiene asignadas.
     elif rol == "docente":
-        if current_user.id_colegio is None:
-            raise HTTPException(
-                status_code=403,
-                detail="El docente no tiene un colegio asignado",
-            )
 
         materias = (
             db.query(Materia)
             .join(
-                Curso,
-                Materia.id_curso == Curso.id_curso,
+                DocenteAsignacion,
+                DocenteAsignacion.id_materia == Materia.id_materia,
             )
             .join(
-                DocenteMateria,
-                DocenteMateria.id_materia == Materia.id_materia,
+                Curso,
+                Curso.id_curso == DocenteAsignacion.id_curso,
             )
             .filter(
-                DocenteMateria.id_usuario == current_user.id_usuario,
+                DocenteAsignacion.id_usuario == current_user.id_usuario,
                 Curso.id_colegio == current_user.id_colegio,
             )
+            .distinct()
             .order_by(Materia.nombre_materia.asc())
             .all()
         )
-        
+
     elif rol == "estudiante":
-        if current_user.id_colegio is None:
-            raise HTTPException(
-                status_code=403,
-                detail="El estudiante no tiene un colegio asignado",
-            )
+
+        verificar_acceso_academico(current_user, db)
 
         materias = (
             db.query(Materia)
             .join(
+                DocenteAsignacion,
+                DocenteAsignacion.id_materia == Materia.id_materia,
+            )
+            .join(
                 Curso,
-                Materia.id_curso == Curso.id_curso,
+                Curso.id_curso == DocenteAsignacion.id_curso,
             )
             .join(
                 UsuarioCurso,
@@ -202,35 +263,17 @@ def crear_materia(
     current_user: Usuario = Depends(require_role("coordinador")),
     db: Session = Depends(get_db),
 ):
-    if current_user.id_colegio is None:
-        raise HTTPException(
-            status_code=403,
-            detail="El coordinador no tiene un colegio asignado",
-        )
-
-    obtener_curso_del_colegio(
-        db,
-        datos.id_curso,
-        current_user.id_colegio,
-    )
-
-    validar_codigo_materia(
-        db,
-        datos.id_curso,
-        datos.codigo_materia,
-    )
 
     nueva_materia = Materia(
-        codigo_materia=datos.codigo_materia,
         nombre_materia=datos.nombre_materia,
         descripcion=datos.descripcion,
-        id_curso=datos.id_curso,
     )
 
     try:
         db.add(nueva_materia)
         db.commit()
         db.refresh(nueva_materia)
+
     except Exception:
         db.rollback()
         raise HTTPException(
@@ -249,12 +292,18 @@ def crear_materia(
     "/{id_materia}",
     response_model=APIResponse[MateriaResponse],
 )
-def obtener_materia(
+def obtener_materia_por_id(
     id_materia: int,
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+
     rol = obtener_rol_efectivo(current_user)
+
+    materia = obtener_materia(
+        id_materia,
+        db,
+    )
 
     if current_user.id_colegio is None:
         raise HTTPException(
@@ -262,63 +311,57 @@ def obtener_materia(
             detail="Tu cuenta no tiene un colegio asignado",
         )
 
-    # El coordinador puede consultar materias de su colegio.
     if rol == "coordinador":
-        materia = obtener_materia_del_colegio(
-            db,
-            id_materia,
-            current_user.id_colegio,
-        )
+        pass
 
-    # El docente solo puede consultar materias que tiene asignadas.
     elif rol == "docente":
-        materia = (
-            db.query(Materia)
+
+        asignacion = (
+            db.query(DocenteAsignacion)
             .join(
                 Curso,
-                Materia.id_curso == Curso.id_curso,
-            )
-            .join(
-                DocenteMateria,
-                DocenteMateria.id_materia == Materia.id_materia,
+                Curso.id_curso == DocenteAsignacion.id_curso,
             )
             .filter(
-                Materia.id_materia == id_materia,
-                DocenteMateria.id_usuario == current_user.id_usuario,
+                DocenteAsignacion.id_usuario == current_user.id_usuario,
+                DocenteAsignacion.id_materia == id_materia,
                 Curso.id_colegio == current_user.id_colegio,
             )
             .first()
         )
-        
+
+        if asignacion is None:
+            raise HTTPException(
+                status_code=404,
+                detail="La materia no está entre tus asignaciones",
+            )
+
     elif rol == "estudiante":
-        materia = (
-            db.query(Materia)
+
+        verificar_acceso_academico(current_user, db)
+
+        asignacion = (
+            db.query(DocenteAsignacion)
             .join(
                 Curso,
-                Materia.id_curso == Curso.id_curso,
+                Curso.id_curso == DocenteAsignacion.id_curso,
             )
             .join(
                 UsuarioCurso,
                 UsuarioCurso.id_curso == Curso.id_curso,
             )
             .filter(
-                Materia.id_materia == id_materia,
+                DocenteAsignacion.id_materia == id_materia,
                 UsuarioCurso.id_usuario == current_user.id_usuario,
                 Curso.id_colegio == current_user.id_colegio,
             )
             .first()
         )
 
-        if materia is None:
+        if asignacion is None:
             raise HTTPException(
                 status_code=404,
-                detail="La materia no pertenece a tu curso",
-            )    
-
-        if materia is None:
-            raise HTTPException(
-                status_code=404,
-                detail="La materia no existe entre tus asignaciones",
+                detail="La materia no pertenece a tus cursos",
             )
 
     else:
@@ -333,6 +376,7 @@ def obtener_materia(
         data=materia,
     )
 
+
 @router.put(
     "/{id_materia}",
     response_model=APIResponse[MateriaResponse],
@@ -340,42 +384,40 @@ def obtener_materia(
 def actualizar_materia(
     id_materia: int,
     datos: MateriaUpdate,
+    background_tasks: BackgroundTasks,
     current_user: Usuario = Depends(require_role("coordinador")),
     db: Session = Depends(get_db),
 ):
-    materia = obtener_materia_del_colegio(
-        db,
+
+    materia = obtener_materia(
         id_materia,
-        current_user.id_colegio,
-    )
-
-    obtener_curso_del_colegio(
         db,
-        datos.id_curso,
-        current_user.id_colegio,
     )
 
-    validar_codigo_materia(
-        db,
-        datos.id_curso,
-        datos.codigo_materia,
-        id_materia_excluir=materia.id_materia,
-    )
+    nombre_anterior = materia.nombre_materia
+    descripcion_anterior = materia.descripcion
 
-    materia.codigo_materia = datos.codigo_materia
     materia.nombre_materia = datos.nombre_materia
     materia.descripcion = datos.descripcion
-    materia.id_curso = datos.id_curso
 
     try:
         db.commit()
         db.refresh(materia)
+
     except Exception:
         db.rollback()
         raise HTTPException(
             status_code=500,
             detail="No se pudo actualizar la materia",
         )
+
+    notificar_actualizacion_materia(
+        background_tasks=background_tasks,
+        db=db,
+        materia=materia,
+        nombre_anterior=nombre_anterior,
+        descripcion_anterior=descripcion_anterior,
+    )
 
     return APIResponse(
         success=True,
@@ -384,33 +426,39 @@ def actualizar_materia(
     )
 
 
-@router.delete("/{id_materia}", response_model=APIResponse[dict])
+@router.delete(
+    "/{id_materia}",
+    response_model=APIResponse[dict],
+)
 def eliminar_materia(
     id_materia: int,
     current_user: Usuario = Depends(require_role("coordinador")),
     db: Session = Depends(get_db),
 ):
-    materia = obtener_materia_del_colegio(
-        db,
+
+    materia = obtener_materia(
         id_materia,
-        current_user.id_colegio,
+        db,
     )
 
     try:
         db.delete(materia)
         db.commit()
+
     except Exception:
         db.rollback()
         raise HTTPException(
             status_code=409,
             detail=(
                 "No se pudo eliminar la materia. "
-                "Verifica si tiene actividades, materiales o docentes asociados."
+                "Puede tener actividades, materiales o asignaciones asociadas."
             ),
         )
 
     return APIResponse(
         success=True,
         mensaje="Materia eliminada correctamente",
-        data={"id_materia": id_materia},
+        data={
+            "id_materia": id_materia,
+        },
     )

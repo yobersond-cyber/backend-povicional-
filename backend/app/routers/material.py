@@ -1,25 +1,42 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from datetime import datetime
+
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.database.conection import get_db
 from app.dependencias.auth import (
     get_current_user,
     require_role,
     obtener_rol_efectivo,
+    verificar_acceso_academico,
 )
 
 from app.models.material_academico import MaterialAcademico
 from app.models.Usuarios import Usuario
 from app.models.materia import Materia
-from app.models.docente_materia import DocenteMateria
+from app.models.docente_asignacion import DocenteAsignacion
 from app.models.usuario_curso import UsuarioCurso
 from app.models.curso import Curso
 
 from app.schemas.material_academico import (
-    MaterialAcademicoCreate,
-    MaterialAcademicoUpdate,
     MaterialAcademicoResponse,
+)
+
+from app.services.notificaciones_service import notificar_usuario
+from app.services.archivo_service import (
+    subir_archivo,
+    eliminar_archivo,
 )
 
 
@@ -27,48 +44,6 @@ router = APIRouter(
     prefix="/materiales",
     tags=["Material Académico"],
 )
-
-
-# ============================================================
-# FUNCIONES AUXILIARES
-# ============================================================
-
-def obtener_materia_o_error(
-    db: Session,
-    id_materia: int,
-) -> Materia:
-    materia = (
-        db.query(Materia)
-        .filter(Materia.id_materia == id_materia)
-        .first()
-    )
-
-    if not materia:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Materia no encontrada",
-        )
-
-    return materia
-
-
-def obtener_curso_o_error(
-    db: Session,
-    id_curso: int,
-) -> Curso:
-    curso = (
-        db.query(Curso)
-        .filter(Curso.id_curso == id_curso)
-        .first()
-    )
-
-    if not curso:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Curso asociado a la materia no encontrado",
-        )
-
-    return curso
 
 
 def obtener_material_o_error(
@@ -81,13 +56,86 @@ def obtener_material_o_error(
         .first()
     )
 
-    if not material:
+    if material is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Material académico no encontrado",
         )
 
     return material
+
+
+def obtener_curso_de_material(
+    db: Session,
+    material: MaterialAcademico,
+) -> Curso:
+    if material.id_curso is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Este material antiguo todavía no tiene un curso asociado",
+        )
+
+    curso = (
+        db.query(Curso)
+        .filter(Curso.id_curso == material.id_curso)
+        .first()
+    )
+
+    if curso is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Curso del material no encontrado",
+        )
+
+    return curso
+
+
+def obtener_asignacion_docente(
+    db: Session,
+    docente: Usuario,
+    nombre_materia: str,
+    numero_curso: str,
+) -> DocenteAsignacion:
+    asignaciones = (
+        db.query(DocenteAsignacion)
+        .join(
+            Materia,
+            DocenteAsignacion.id_materia == Materia.id_materia,
+        )
+        .join(
+            Curso,
+            DocenteAsignacion.id_curso == Curso.id_curso,
+        )
+        .filter(
+            DocenteAsignacion.id_usuario == docente.id_usuario,
+            func.lower(Materia.nombre_materia)
+            == nombre_materia.strip().lower(),
+            func.lower(Curso.numero_curso)
+            == numero_curso.strip().lower(),
+            Curso.id_colegio == docente.id_colegio,
+        )
+        .all()
+    )
+
+    if not asignaciones:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "No tienes asignada esa materia en el curso seleccionado. "
+                "Verifica el nombre de la materia y el número del curso."
+            ),
+        )
+
+    if len(asignaciones) > 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "La materia y el curso no identifican una asignación única. "
+                "Debes seleccionar una opción más específica."
+            ),
+        )
+
+    return asignaciones[0]
 
 
 def verificar_colegio(
@@ -108,28 +156,31 @@ def verificar_asignacion_docente(
     db: Session,
     id_usuario: int,
     id_materia: int,
+    id_curso: int,
 ) -> None:
     asignacion = (
-        db.query(DocenteMateria)
+        db.query(DocenteAsignacion)
         .filter(
-            DocenteMateria.id_usuario == id_usuario,
-            DocenteMateria.id_materia == id_materia,
+            DocenteAsignacion.id_usuario == id_usuario,
+            DocenteAsignacion.id_materia == id_materia,
+            DocenteAsignacion.id_curso == id_curso,
         )
         .first()
     )
 
-    if not asignacion:
+    if asignacion is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="El docente no está autorizado para gestionar esta materia",
+            detail="No estás asignado a esta materia en el curso seleccionado",
         )
 
 
-def obtener_curso_estudiante(
+def verificar_curso_estudiante(
     db: Session,
     usuario: Usuario,
-) -> UsuarioCurso:
-    usuario_curso = (
+    id_curso: int,
+) -> None:
+    pertenencia = (
         db.query(UsuarioCurso)
         .join(
             Curso,
@@ -137,80 +188,186 @@ def obtener_curso_estudiante(
         )
         .filter(
             UsuarioCurso.id_usuario == usuario.id_usuario,
+            UsuarioCurso.id_curso == id_curso,
             Curso.id_colegio == usuario.id_colegio,
         )
         .first()
     )
 
-    if not usuario_curso:
+    if pertenencia is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="El estudiante no tiene un curso asignado en su colegio",
+            detail="No puedes consultar materiales de otro curso",
         )
 
-    return usuario_curso
+
+def verificar_acceso_material(
+    db: Session,
+    material: MaterialAcademico,
+    current_user: Usuario,
+) -> None:
+    rol = obtener_rol_efectivo(current_user)
+    curso = obtener_curso_de_material(db, material)
+
+    verificar_colegio(curso, current_user)
+
+    if rol == "coordinador":
+        return
+
+    if rol == "docente":
+        verificar_asignacion_docente(
+            db,
+            current_user.id_usuario,
+            material.id_materia,
+            curso.id_curso,
+        )
+        return
+
+    if rol == "estudiante":
+        verificar_acceso_academico(current_user, db)
+
+        verificar_curso_estudiante(
+            db,
+            current_user,
+            curso.id_curso,
+        )
+        return
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Tu rol no tiene permisos para consultar este material",
+    )
 
 
-# ============================================================
-# POST /materiales
-# Crear material académico
-# ============================================================
+def notificar_publicacion_material(
+    background_tasks: BackgroundTasks,
+    db: Session,
+    material: MaterialAcademico,
+    materia: Materia,
+    curso: Curso,
+) -> None:
+    estudiantes = (
+        db.query(Usuario)
+        .join(
+            UsuarioCurso,
+            Usuario.id_usuario == UsuarioCurso.id_usuario,
+        )
+        .filter(
+            UsuarioCurso.id_curso == curso.id_curso,
+            Usuario.tipo_de_usuario == "estudiante",
+            Usuario.id_colegio == curso.id_colegio,
+        )
+        .distinct()
+        .all()
+    )
+
+    for estudiante in estudiantes:
+        if not estudiante.correo:
+            continue
+
+        background_tasks.add_task(
+            notificar_usuario,
+            destinatario=estudiante.correo,
+            nombres_usuario=(
+                f"{estudiante.nombres_compl} "
+                f"{estudiante.apellidos_compl}"
+            ),
+            asunto=f"Nuevo material académico: {material.titulo}",
+            titulo="Se publicó un nuevo material académico",
+            mensaje=(
+                f"Tu docente ha publicado un nuevo material "
+                f"en la materia {materia.nombre_materia}, "
+                f"correspondiente al curso {curso.numero_curso}."
+            ),
+            detalle=(
+                f"Título: {material.titulo}\n"
+                f"Descripción: {material.descripcion or 'Sin descripción'}"
+            ),
+        )
+
 
 @router.post(
     "",
     response_model=MaterialAcademicoResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def crear_material(
-    datos: MaterialAcademicoCreate,
+async def crear_material(
+    background_tasks: BackgroundTasks,
+    titulo: str = Form(...),
+    descripcion: str = Form(...),
+    fecha_publicacion: datetime = Form(...),
+    nombre_materia: str = Form(...),
+    numero_curso: str = Form(...),
+    archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("docente")),
 ):
-    # El docente solo puede publicar en su propio nombre.
-    if datos.id_usuario != current_user.id_usuario:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No puedes publicar material utilizando otro usuario",
-        )
-
-    materia = obtener_materia_o_error(
+    asignacion = obtener_asignacion_docente(
         db,
-        datos.id_materia,
+        current_user,
+        nombre_materia,
+        numero_curso,
     )
 
-    curso = obtener_curso_o_error(
-        db,
-        materia.id_curso,
-    )
-
-    verificar_colegio(curso, current_user)
-
-    verificar_asignacion_docente(
-        db,
-        current_user.id_usuario,
-        materia.id_materia,
+    archivo_subido = await subir_archivo(
+        archivo,
+        "materiales",
     )
 
     nuevo_material = MaterialAcademico(
         id_usuario=current_user.id_usuario,
-        id_materia=materia.id_materia,
-        titulo=datos.titulo,
-        descripcion=datos.descripcion,
-        archivo=datos.archivo,
-        fecha_publicacion=datos.fecha_publicacion,
+        id_materia=asignacion.id_materia,
+        id_curso=asignacion.id_curso,
+        titulo=titulo,
+        descripcion=descripcion,
+        archivo=archivo_subido["url"],
+        archivo_public_id=archivo_subido["public_id"],
+        archivo_resource_type=archivo_subido["resource_type"],
+        fecha_publicacion=fecha_publicacion,
     )
 
-    db.add(nuevo_material)
-    db.commit()
-    db.refresh(nuevo_material)
+    try:
+        db.add(nuevo_material)
+        db.commit()
+        db.refresh(nuevo_material)
+
+    except Exception:
+        db.rollback()
+
+        eliminar_archivo(
+            archivo_subido["public_id"],
+            archivo_subido["resource_type"],
+        )
+
+        raise
+
+    materia = (
+        db.query(Materia)
+        .filter(
+            Materia.id_materia == nuevo_material.id_materia,
+        )
+        .first()
+    )
+
+    curso = (
+        db.query(Curso)
+        .filter(
+            Curso.id_curso == nuevo_material.id_curso,
+        )
+        .first()
+    )
+
+    if materia is not None and curso is not None:
+        notificar_publicacion_material(
+            background_tasks,
+            db,
+            nuevo_material,
+            materia,
+            curso,
+        )
 
     return nuevo_material
 
-
-# ============================================================
-# GET /materiales
-# Listar materiales según el usuario autenticado
-# ============================================================
 
 @router.get(
     "",
@@ -222,18 +379,12 @@ def listar_materiales(
 ):
     rol = obtener_rol_efectivo(current_user)
 
-    # COORDINADOR:
-    # Solo puede consultar materiales de su colegio.
     if rol == "coordinador":
-        materiales = (
+        return (
             db.query(MaterialAcademico)
             .join(
-                Materia,
-                MaterialAcademico.id_materia == Materia.id_materia,
-            )
-            .join(
                 Curso,
-                Materia.id_curso == Curso.id_curso,
+                MaterialAcademico.id_curso == Curso.id_curso,
             )
             .filter(
                 Curso.id_colegio == current_user.id_colegio,
@@ -241,75 +392,55 @@ def listar_materiales(
             .all()
         )
 
-        return materiales
-
-    # DOCENTE:
-    # Solo consulta materiales de materias que tiene asignadas
-    # y que pertenecen a su colegio.
     if rol == "docente":
-        materiales = (
+        return (
             db.query(MaterialAcademico)
             .join(
-                Materia,
-                MaterialAcademico.id_materia == Materia.id_materia,
+                DocenteAsignacion,
+                (MaterialAcademico.id_materia == DocenteAsignacion.id_materia)
+                & (MaterialAcademico.id_curso == DocenteAsignacion.id_curso),
             )
             .join(
                 Curso,
-                Materia.id_curso == Curso.id_curso,
-            )
-            .join(
-                DocenteMateria,
-                MaterialAcademico.id_materia
-                == DocenteMateria.id_materia,
+                MaterialAcademico.id_curso == Curso.id_curso,
             )
             .filter(
-                DocenteMateria.id_usuario == current_user.id_usuario,
+                DocenteAsignacion.id_usuario == current_user.id_usuario,
                 Curso.id_colegio == current_user.id_colegio,
             )
+            .distinct()
             .all()
         )
 
-        return materiales
-
-    # ESTUDIANTE:
-    # Solo consulta materiales de las materias de su curso.
     if rol == "estudiante":
-        usuario_curso = obtener_curso_estudiante(
-            db,
-            current_user,
-        )
+        verificar_acceso_academico(current_user, db)
 
-        materiales = (
-            db.query(MaterialAcademico)
-            .join(
-                Materia,
-                MaterialAcademico.id_materia == Materia.id_materia,
-            )
+        cursos_estudiante = (
+            db.query(UsuarioCurso.id_curso)
             .join(
                 Curso,
-                Materia.id_curso == Curso.id_curso,
+                UsuarioCurso.id_curso == Curso.id_curso,
             )
             .filter(
-                Materia.id_curso == usuario_curso.id_curso,
+                UsuarioCurso.id_usuario == current_user.id_usuario,
                 Curso.id_colegio == current_user.id_colegio,
+            )
+            .subquery()
+        )
+
+        return (
+            db.query(MaterialAcademico)
+            .filter(
+                MaterialAcademico.id_curso.in_(cursos_estudiante),
             )
             .all()
         )
 
-        return materiales
-
-    # El administrador global no consulta materiales académicos
-    # desde este módulo, para mantener separados sus permisos.
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Tu rol no tiene permisos para consultar materiales académicos",
     )
 
-
-# ============================================================
-# GET /materiales/{id_material}
-# Obtener un material específico
-# ============================================================
 
 @router.get(
     "/{id_material}",
@@ -320,78 +451,32 @@ def obtener_material(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    rol = obtener_rol_efectivo(current_user)
-
     material = obtener_material_o_error(
         db,
         id_material,
     )
 
-    materia = obtener_materia_o_error(
+    verificar_acceso_material(
         db,
-        material.id_materia,
+        material,
+        current_user,
     )
 
-    curso = obtener_curso_o_error(
-        db,
-        materia.id_curso,
-    )
+    return material
 
-    # COORDINADOR:
-    # El material debe pertenecer a su colegio.
-    if rol == "coordinador":
-        verificar_colegio(curso, current_user)
-        return material
-
-    # DOCENTE:
-    # Debe estar asignado a la materia y pertenecer al colegio.
-    if rol == "docente":
-        verificar_colegio(curso, current_user)
-
-        verificar_asignacion_docente(
-            db,
-            current_user.id_usuario,
-            materia.id_materia,
-        )
-
-        return material
-
-    # ESTUDIANTE:
-    # El material debe corresponder a su curso y colegio.
-    if rol == "estudiante":
-        verificar_colegio(curso, current_user)
-
-        usuario_curso = obtener_curso_estudiante(
-            db,
-            current_user,
-        )
-
-        if usuario_curso.id_curso != curso.id_curso:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No puedes consultar material de otro curso",
-            )
-
-        return material
-
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Tu rol no tiene permisos para consultar este material",
-    )
-
-
-# ============================================================
-# PUT /materiales/{id_material}
-# Editar material
-# ============================================================
 
 @router.put(
     "/{id_material}",
     response_model=MaterialAcademicoResponse,
 )
-def editar_material(
+async def editar_material(
     id_material: int,
-    datos: MaterialAcademicoUpdate,
+    titulo: str | None = Form(default=None),
+    descripcion: str | None = Form(default=None),
+    fecha_publicacion: datetime | None = Form(default=None),
+    nombre_materia: str | None = Form(default=None),
+    numero_curso: str | None = Form(default=None),
+    archivo: UploadFile | None = File(default=None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("docente")),
 ):
@@ -400,50 +485,92 @@ def editar_material(
         id_material,
     )
 
-    # Solo el docente que publicó el material puede editarlo.
     if material.id_usuario != current_user.id_usuario:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No puedes editar material publicado por otro docente",
         )
 
-    materia = obtener_materia_o_error(
+    verificar_acceso_material(
         db,
-        material.id_materia,
+        material,
+        current_user,
     )
 
-    curso = obtener_curso_o_error(
-        db,
-        materia.id_curso,
-    )
+    if nombre_materia is not None or numero_curso is not None:
+        curso_actual = obtener_curso_de_material(
+            db,
+            material,
+        )
 
-    verificar_colegio(curso, current_user)
+        materia_actual = (
+            db.query(Materia)
+            .filter(Materia.id_materia == material.id_materia)
+            .first()
+        )
 
-    verificar_asignacion_docente(
-        db,
-        current_user.id_usuario,
-        materia.id_materia,
-    )
+        asignacion = obtener_asignacion_docente(
+            db,
+            current_user,
+            nombre_materia or materia_actual.nombre_materia,
+            numero_curso or curso_actual.numero_curso,
+        )
 
-    material.titulo = datos.titulo
-    material.descripcion = datos.descripcion
-    material.archivo = datos.archivo
-    material.fecha_publicacion = datos.fecha_publicacion
+        material.id_materia = asignacion.id_materia
+        material.id_curso = asignacion.id_curso
 
-    db.commit()
-    db.refresh(material)
+    if titulo is not None:
+        material.titulo = titulo
+
+    if descripcion is not None:
+        material.descripcion = descripcion
+
+    if fecha_publicacion is not None:
+        material.fecha_publicacion = fecha_publicacion
+
+    archivo_anterior_public_id = material.archivo_public_id
+    archivo_anterior_resource_type = material.archivo_resource_type
+
+    archivo_nuevo = None
+
+    if archivo is not None and archivo.filename:
+        archivo_nuevo = await subir_archivo(
+            archivo,
+            "materiales",
+        )
+
+        material.archivo = archivo_nuevo["url"]
+        material.archivo_public_id = archivo_nuevo["public_id"]
+        material.archivo_resource_type = archivo_nuevo["resource_type"]
+
+    try:
+        db.commit()
+        db.refresh(material)
+
+    except Exception:
+        db.rollback()
+
+        if archivo_nuevo:
+            eliminar_archivo(
+                archivo_nuevo["public_id"],
+                archivo_nuevo["resource_type"],
+            )
+
+        raise
+
+    if (
+        archivo_nuevo
+        and archivo_anterior_public_id
+    ):
+        eliminar_archivo(
+            archivo_anterior_public_id,
+            archivo_anterior_resource_type or "image",
+        )
 
     return material
 
 
-# ============================================================
-# DELETE /materiales/{id_material}
-# Eliminar material
-# ============================================================
-
-@router.delete(
-    "/{id_material}",
-)
+@router.delete("/{id_material}")
 def eliminar_material(
     id_material: int,
     db: Session = Depends(get_db),
@@ -454,33 +581,34 @@ def eliminar_material(
         id_material,
     )
 
-    # Solo el docente que publicó el material puede eliminarlo.
     if material.id_usuario != current_user.id_usuario:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No puedes eliminar material publicado por otro docente",
         )
 
-    materia = obtener_materia_o_error(
+    verificar_acceso_material(
         db,
-        material.id_materia,
+        material,
+        current_user,
     )
 
-    curso = obtener_curso_o_error(
-        db,
-        materia.id_curso,
-    )
+    archivo_public_id = material.archivo_public_id
+    archivo_resource_type = material.archivo_resource_type
 
-    verificar_colegio(curso, current_user)
+    try:
+        db.delete(material)
+        db.commit()
 
-    verificar_asignacion_docente(
-        db,
-        current_user.id_usuario,
-        materia.id_materia,
-    )
+    except Exception:
+        db.rollback()
+        raise
 
-    db.delete(material)
-    db.commit()
+    if archivo_public_id:
+        eliminar_archivo(
+            archivo_public_id,
+            archivo_resource_type or "image",
+        )
 
     return {
         "success": True,

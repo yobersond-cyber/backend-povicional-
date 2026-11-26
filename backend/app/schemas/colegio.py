@@ -1,3 +1,4 @@
+
 from datetime import datetime
 from typing import Optional, Literal
 
@@ -56,13 +57,7 @@ class ColegioResponse(ColegioBase):
     fecha_creacion: datetime
 
 
-class CoordinadorCreate(BaseSchema):
-    codigo_usuario: str = Field(
-        ...,
-        min_length=1,
-        max_length=20,
-    )
-
+class RectorCreate(BaseSchema):
     documento: str = Field(
         ...,
         min_length=1,
@@ -96,32 +91,22 @@ class CoordinadorCreate(BaseSchema):
     )
 
 
-# NUEVO:
-# Datos para crear un coordinador en un colegio existente.
-class CoordinadorConColegioCreate(CoordinadorCreate):
-    id_colegio: int = Field(
-        ...,
-        gt=0,
-    )
-
-
-class CoordinadorResponse(BaseSchema):
+class RectorResponse(BaseSchema):
     id_usuario: int
     id_colegio: int
-    codigo_usuario: str
     documento: str
     nombres_compl: str
     apellidos_compl: str
     telefono: str
     correo: EmailStr
-    tipo_de_usuario: Literal["coordinador"]
+    tipo_de_usuario: Literal["rector"]
 
 
-class ColegioConCoordinadorCreate(BaseSchema):
+class ColegioConRectorCreate(BaseSchema):
     colegio: ColegioCreate
-    coordinador: CoordinadorCreate
+    rector: RectorCreate
 
 
-class ColegioConCoordinadorResponse(BaseSchema):
+class ColegioConRectorResponse(BaseSchema):
     colegio: ColegioResponse
-    coordinador: CoordinadorResponse
+    rector: RectorResponse

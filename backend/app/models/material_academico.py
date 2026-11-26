@@ -1,3 +1,4 @@
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 
@@ -10,49 +11,67 @@ class MaterialAcademico(Base):
     id_material = Column(
         Integer,
         primary_key=True,
-        index=True
+        index=True,
     )
 
     id_usuario = Column(
         Integer,
         ForeignKey("usuario.id_usuario"),
-        nullable=False
+        nullable=False,
     )
 
     id_materia = Column(
         Integer,
         ForeignKey("materia.id_materia"),
-        nullable=False
+        nullable=False,
+    )
+
+    id_curso = Column(
+        Integer,
+        ForeignKey("curso.id_curso"),
+        nullable=False,
     )
 
     titulo = Column(
         String(150),
-        nullable=False
+        nullable=False,
     )
 
     descripcion = Column(
         Text,
-        nullable=False
+        nullable=False,
     )
 
     archivo = Column(
         String(255),
-        nullable=False
+        nullable=False,
+    )
+
+    archivo_public_id = Column(
+        String(255),
+        nullable=True,
+    )
+
+    archivo_resource_type = Column(
+        String(20),
+        nullable=True,
     )
 
     fecha_publicacion = Column(
         DateTime,
-        nullable=False
+        nullable=False,
     )
 
-    # Docente que publicó el material
     usuario = relationship(
         "Usuario",
-        back_populates="materiales_academicos"
+        back_populates="materiales_academicos",
     )
 
-    # Materia a la que pertenece
     materia = relationship(
         "Materia",
-        back_populates="materiales_academicos"
+        back_populates="materiales_academicos",
+    )
+
+    curso = relationship(
+        "Curso",
     )

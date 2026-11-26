@@ -1,4 +1,6 @@
+
 from datetime import datetime
+from typing import Optional
 
 from pydantic import Field
 
@@ -6,16 +8,30 @@ from app.schemas.base import BaseSchema
 
 
 class MaterialAcademicoBase(BaseSchema):
-    id_usuario: int = Field(..., gt=0)
-    id_materia: int = Field(..., gt=0)
+    titulo: str = Field(
+        ...,
+        min_length=1,
+        max_length=150,
+    )
 
-    titulo: str = Field(..., min_length=1, max_length=150)
-
-    descripcion: str = Field(..., min_length=1)
-
-    archivo: str = Field(..., min_length=1, max_length=255)
+    descripcion: str = Field(
+        ...,
+        min_length=1,
+    )
 
     fecha_publicacion: datetime
+
+    nombre_materia: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+    )
+
+    numero_curso: str = Field(
+        ...,
+        min_length=1,
+        max_length=10,
+    )
 
 
 class MaterialAcademicoCreate(MaterialAcademicoBase):
@@ -23,11 +39,38 @@ class MaterialAcademicoCreate(MaterialAcademicoBase):
 
 
 class MaterialAcademicoUpdate(BaseSchema):
-    titulo: str = Field(..., min_length=1, max_length=150)
-    descripcion: str = Field(..., min_length=1)
-    archivo: str = Field(..., min_length=1, max_length=255)
-    fecha_publicacion: datetime
+    titulo: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=150,
+    )
+
+    descripcion: Optional[str] = Field(
+        default=None,
+        min_length=1,
+    )
+
+    fecha_publicacion: Optional[datetime] = None
+
+    nombre_materia: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+    )
+
+    numero_curso: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=10,
+    )
 
 
-class MaterialAcademicoResponse(MaterialAcademicoBase):
+class MaterialAcademicoResponse(BaseSchema):
     id_material: int
+    id_usuario: int
+    id_materia: int
+    id_curso: Optional[int]
+    titulo: str
+    descripcion: str
+    archivo: str
+    fecha_publicacion: datetime

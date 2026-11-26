@@ -1,25 +1,41 @@
 
-from datetime import datetime
+from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    status,
+    Form,
+    File,
+    UploadFile,
+)
 from sqlalchemy.orm import Session, joinedload
 
 from app.database.conection import get_db
 from app.dependencias.auth import (
     get_current_user,
-    obtener_rol_efectivo,
     require_role,
 )
+
+from app.models.Usuarios import Usuario
 from app.models.incapacidad import Incapacidad
 from app.models.historial_incapacidad import HistorialIncapacidad
-from app.models.Usuarios import Usuario
+from app.models.acceso_academico import AccesoAcademico
+
 from app.schemas.incapacidad import (
-    IncapacidadCreate,
-    IncapacidadUpdate,
     IncapacidadResponse,
     IncapacidadDetalleResponse,
 )
+
 from app.schemas.base import APIResponse
+
+from app.services.notificaciones_service import notificar_usuario
+from app.services.archivo_service import (
+    subir_archivo,
+    eliminar_archivo,
+)
 
 
 router = APIRouter(
@@ -27,114 +43,225 @@ router = APIRouter(
     tags=["Incapacidades"],
 )
 
-ESTADOS_VALIDOS = {
-    "pendiente",
-    "aprobada",
-    "rechazada",
-    "finalizada",
-}
 
+# ============================================================
+# FUNCIONES AUXILIARES
+# ============================================================
 
-def obtener_incapacidad_del_colegio(
+def obtener_incapacidad(
     db: Session,
     id_incapacidad: int,
-    id_colegio: int,
 ) -> Incapacidad:
     incapacidad = (
         db.query(Incapacidad)
-        .join(
-            Usuario,
-            Incapacidad.id_usuario == Usuario.id_usuario,
+        .options(
+            joinedload(Incapacidad.usuario),
+            joinedload(Incapacidad.apelacion),
         )
-        .options(joinedload(Incapacidad.apelacion))
         .filter(
             Incapacidad.id_incapacidad == id_incapacidad,
-            Usuario.id_colegio == id_colegio,
         )
         .first()
     )
 
     if incapacidad is None:
         raise HTTPException(
-            status_code=404,
-            detail="Incapacidad no encontrada en tu colegio",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Incapacidad no encontrada",
         )
 
     return incapacidad
 
 
-def validar_fechas(fecha_inicio, fecha_fin):
-    if fecha_fin < fecha_inicio:
+def verificar_colegio(
+    incapacidad: Incapacidad,
+    coordinador: Usuario,
+) -> None:
+    if (
+        coordinador.id_colegio is None
+        or incapacidad.usuario.id_colegio != coordinador.id_colegio
+    ):
         raise HTTPException(
-            status_code=400,
-            detail="La fecha de fin no puede ser anterior a la fecha de inicio",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Incapacidad no encontrada en tu colegio",
         )
 
 
-def validar_estado(estado: str):
-    if estado not in ESTADOS_VALIDOS:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Estado inválido. Estados permitidos: "
-                "pendiente, aprobada, rechazada, finalizada"
+def sincronizar_acceso_academico(
+    db: Session,
+    incapacidad: Incapacidad,
+) -> None:
+    acceso = (
+        db.query(AccesoAcademico)
+        .filter(
+            AccesoAcademico.id_incapacidad
+            == incapacidad.id_incapacidad,
+        )
+        .first()
+    )
+
+    if incapacidad.estado in ("rechazada", "pendiente"):
+        if acceso is not None:
+            acceso.estado = "suspendido"
+        return
+
+    if incapacidad.estado == "finalizada":
+        if acceso is not None:
+            acceso.estado = "finalizado"
+        return
+
+    if incapacidad.estado == "aprobada":
+        hoy = date.today()
+
+        if incapacidad.fecha_fin < hoy:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "No se puede aprobar una incapacidad cuyo "
+                    "periodo ya terminó"
+                ),
+            )
+
+        if hoy < incapacidad.fecha_inicio:
+            estado_acceso = "suspendido"
+        else:
+            estado_acceso = "activo"
+
+        if acceso is None:
+            acceso = AccesoAcademico(
+                id_usuario=incapacidad.id_usuario,
+                id_incapacidad=incapacidad.id_incapacidad,
+                estado=estado_acceso,
+            )
+            db.add(acceso)
+        else:
+            acceso.id_usuario = incapacidad.id_usuario
+            acceso.estado = estado_acceso
+
+
+# ============================================================
+# NOTIFICAR A LOS COORDINADORES DE UNA NUEVA INCAPACIDAD
+# ============================================================
+
+def notificar_nueva_incapacidad_coordinadores(
+    background_tasks: BackgroundTasks,
+    db: Session,
+    estudiante: Usuario,
+    incapacidad: Incapacidad,
+) -> None:
+
+    if estudiante.id_colegio is None:
+        return
+
+    coordinadores = (
+        db.query(Usuario)
+        .filter(
+            Usuario.id_colegio == estudiante.id_colegio,
+            Usuario.tipo_de_usuario == "coordinador",
+            Usuario.correo.isnot(None),
+        )
+        .all()
+    )
+
+    for coordinador in coordinadores:
+        if not coordinador.correo or not coordinador.correo.strip():
+            continue
+
+        background_tasks.add_task(
+            notificar_usuario,
+            destinatario=coordinador.correo,
+            nombres_usuario=(
+                f"{coordinador.nombres_compl} "
+                f"{coordinador.apellidos_compl}"
+            ),
+            asunto=(
+                f"Nueva incapacidad recibida - "
+                f"{incapacidad.numero_radicado}"
+            ),
+            titulo="Nueva incapacidad pendiente de revisión",
+            mensaje=(
+                f"El estudiante {estudiante.nombres_compl} "
+                f"{estudiante.apellidos_compl} ha registrado "
+                f"una nueva incapacidad en APRENZY. "
+                f"Debes ingresar a la plataforma para revisar "
+                f"la solicitud."
+            ),
+            detalle=(
+                f"Número de radicado: {incapacidad.numero_radicado}\n"
+                f"Estudiante: {estudiante.nombres_compl} "
+                f"{estudiante.apellidos_compl}\n"
+                f"Fecha de inicio: {incapacidad.fecha_inicio}\n"
+                f"Fecha de finalización: {incapacidad.fecha_fin}\n"
+                f"Estado: Pendiente de revisión"
             ),
         )
 
 
-def registrar_historial(
-    db: Session,
-    incapacidad: Incapacidad,
-    usuario_cambio: Usuario,
-    fecha_nueva_inicio,
-    fecha_nueva_fin,
-    motivo_cambio: str,
-):
-    historial = HistorialIncapacidad(
-        id_incapacidad=incapacidad.id_incapacidad,
-        fecha_anterior_inicio=incapacidad.fecha_inicio,
-        fecha_anterior_fin=incapacidad.fecha_fin,
-        fecha_nueva_inicio=fecha_nueva_inicio,
-        fecha_nueva_fin=fecha_nueva_fin,
-        motivo_cambio=motivo_cambio,
-        fecha_cambio=datetime.now(),
-        id_usuario_cambio=usuario_cambio.id_usuario,
-    )
-    db.add(historial)
-
+# ============================================================
+# POST /incapacidades
+# El estudiante registra una nueva incapacidad.
+# El documento adjunto es obligatorio.
+# ============================================================
 
 @router.post(
     "",
     response_model=APIResponse[IncapacidadResponse],
     status_code=status.HTTP_201_CREATED,
 )
-def crear_incapacidad(
-    datos: IncapacidadCreate,
+async def crear_incapacidad(
+    background_tasks: BackgroundTasks,
+    numero_radicado: str = Form(...),
+    fecha_inicio: date = Form(...),
+    fecha_fin: date = Form(...),
+    motivo: str = Form(...),
+    archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("estudiante")),
 ):
-    validar_fechas(datos.fecha_inicio, datos.fecha_fin)
+    numero_radicado = numero_radicado.strip()
 
-    existente = (
+    if not numero_radicado:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El número de radicado es obligatorio",
+        )
+
+    if fecha_fin < fecha_inicio:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "La fecha de finalización no puede ser anterior "
+                "a la fecha de inicio"
+            ),
+        )
+
+    radicado_existente = (
         db.query(Incapacidad)
         .filter(
-            Incapacidad.numero_radicado == datos.numero_radicado
+            Incapacidad.numero_radicado == numero_radicado,
         )
         .first()
     )
 
-    if existente:
+    if radicado_existente is not None:
         raise HTTPException(
-            status_code=409,
-            detail="El número de radicado ya existe",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ya existe una incapacidad con ese número de radicado",
         )
 
+    archivo_subido = await subir_archivo(
+        archivo,
+        "incapacidades",
+    )
+
     nueva_incapacidad = Incapacidad(
-        numero_radicado=datos.numero_radicado,
-        fecha_inicio=datos.fecha_inicio,
-        fecha_fin=datos.fecha_fin,
-        archivo=datos.archivo,
-        motivo=datos.motivo,
+        numero_radicado=numero_radicado,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        archivo=archivo_subido["url"],
+        archivo_public_id=archivo_subido["public_id"],
+        archivo_resource_type=archivo_subido["resource_type"],
+        motivo=motivo,
         estado="pendiente",
         id_usuario=current_user.id_usuario,
     )
@@ -143,222 +270,347 @@ def crear_incapacidad(
         db.add(nueva_incapacidad)
         db.commit()
         db.refresh(nueva_incapacidad)
+
     except Exception:
         db.rollback()
+
+        eliminar_archivo(
+            archivo_subido["public_id"],
+            archivo_subido["resource_type"],
+        )
+
         raise HTTPException(
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="No se pudo registrar la incapacidad",
         )
 
+    notificar_nueva_incapacidad_coordinadores(
+        background_tasks=background_tasks,
+        db=db,
+        estudiante=current_user,
+        incapacidad=nueva_incapacidad,
+    )
+
     return APIResponse(
         success=True,
-        mensaje="Incapacidad radicada exitosamente",
+        mensaje="Incapacidad registrada correctamente y pendiente de revisión",
         data=nueva_incapacidad,
     )
 
 
+# ============================================================
+# GET /incapacidades
+# Listar incapacidades según el rol.
+# ============================================================
+
 @router.get(
     "",
-    response_model=APIResponse[list[IncapacidadDetalleResponse]],
+    response_model=APIResponse[list[IncapacidadResponse]],
 )
 def listar_incapacidades(
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(require_role("coordinador")),
+    current_user: Usuario = Depends(get_current_user),
 ):
-    if current_user.id_colegio is None:
-        raise HTTPException(
-            status_code=403,
-            detail="El coordinador no tiene un colegio asignado",
+    if current_user.tipo_de_usuario == "estudiante":
+        incapacidades = (
+            db.query(Incapacidad)
+            .filter(
+                Incapacidad.id_usuario == current_user.id_usuario,
+            )
+            .all()
         )
 
-    incapacidades = (
-        db.query(Incapacidad)
-        .join(
-            Usuario,
-            Incapacidad.id_usuario == Usuario.id_usuario,
+    elif current_user.tipo_de_usuario == "coordinador":
+        if current_user.id_colegio is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="El coordinador no tiene un colegio asignado",
+            )
+
+        incapacidades = (
+            db.query(Incapacidad)
+            .join(
+                Usuario,
+                Incapacidad.id_usuario == Usuario.id_usuario,
+            )
+            .filter(
+                Usuario.id_colegio == current_user.id_colegio,
+                Usuario.tipo_de_usuario == "estudiante",
+            )
+            .all()
         )
-        .options(joinedload(Incapacidad.apelacion))
-        .filter(Usuario.id_colegio == current_user.id_colegio)
-        .all()
-    )
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos para consultar incapacidades",
+        )
 
     return APIResponse(
         success=True,
-        mensaje="Incapacidades de tu colegio recuperadas correctamente",
+        mensaje="Incapacidades recuperadas correctamente",
         data=incapacidades,
     )
 
+
+# ============================================================
+# GET /incapacidades/{id_incapacidad}
+# Consultar una incapacidad concreta.
+# ============================================================
 
 @router.get(
     "/{id_incapacidad}",
     response_model=APIResponse[IncapacidadDetalleResponse],
 )
-def obtener_incapacidad(
+def obtener_incapacidad_por_id(
     id_incapacidad: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    incapacidad = (
-        db.query(Incapacidad)
-        .options(joinedload(Incapacidad.apelacion))
-        .filter(
-            Incapacidad.id_incapacidad == id_incapacidad
-        )
-        .first()
+    incapacidad = obtener_incapacidad(
+        db,
+        id_incapacidad,
     )
 
-    if incapacidad is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Incapacidad no encontrada",
-        )
-
-    rol = obtener_rol_efectivo(current_user)
-
-    if rol == "estudiante":
+    if current_user.tipo_de_usuario == "estudiante":
         if incapacidad.id_usuario != current_user.id_usuario:
             raise HTTPException(
-                status_code=403,
-                detail="Solo puedes consultar tus propias incapacidades",
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Incapacidad no encontrada",
             )
 
-    elif rol == "coordinador":
-        if current_user.id_colegio is None:
-            raise HTTPException(
-                status_code=403,
-                detail="El coordinador no tiene un colegio asignado",
-            )
-
-        obtener_incapacidad_del_colegio(
-            db,
-            id_incapacidad,
-            current_user.id_colegio,
+    elif current_user.tipo_de_usuario == "coordinador":
+        verificar_colegio(
+            incapacidad,
+            current_user,
         )
 
     else:
         raise HTTPException(
-            status_code=403,
+            status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar esta incapacidad",
         )
 
     return APIResponse(
         success=True,
-        mensaje="Incapacidad encontrada exitosamente",
+        mensaje="Incapacidad encontrada",
         data=incapacidad,
     )
 
+
+# ============================================================
+# PUT /incapacidades/{id_incapacidad}
+# El coordinador revisa y actualiza una incapacidad.
+# El archivo nuevo es opcional.
+# ============================================================
 
 @router.put(
     "/{id_incapacidad}",
     response_model=APIResponse[IncapacidadResponse],
 )
-def actualizar_incapacidad(
+async def actualizar_incapacidad(
     id_incapacidad: int,
-    datos: IncapacidadUpdate,
+    background_tasks: BackgroundTasks,
+    fecha_inicio: date = Form(...),
+    fecha_fin: date = Form(...),
+    motivo: str = Form(...),
+    estado: str = Form(...),
+    motivo_cambio: str = Form(...),
+    observacion_revision: str | None = Form(default=None),
+    archivo: UploadFile | None = File(default=None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("coordinador")),
 ):
-    if current_user.id_colegio is None:
-        raise HTTPException(
-            status_code=403,
-            detail="El coordinador no tiene un colegio asignado",
-        )
-
-    incapacidad = obtener_incapacidad_del_colegio(
+    incapacidad = obtener_incapacidad(
         db,
         id_incapacidad,
-        current_user.id_colegio,
     )
 
-    validar_fechas(datos.fecha_inicio, datos.fecha_fin)
-    validar_estado(datos.estado)
-
-    radicado_duplicado = (
-        db.query(Incapacidad)
-        .filter(
-            Incapacidad.numero_radicado == incapacidad.numero_radicado,
-            Incapacidad.id_incapacidad != incapacidad.id_incapacidad,
-        )
-        .first()
+    verificar_colegio(
+        incapacidad,
+        current_user,
     )
-    if radicado_duplicado:
+
+    if incapacidad.estado == "finalizada":
         raise HTTPException(
-            status_code=409,
-            detail="El número de radicado ya existe",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede modificar una incapacidad finalizada",
         )
 
-    fecha_anterior_inicio = incapacidad.fecha_inicio
-    fecha_anterior_fin = incapacidad.fecha_fin
+    estados_validos = (
+        "pendiente",
+        "aprobada",
+        "rechazada",
+        "finalizada",
+    )
+
+    if estado not in estados_validos:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El estado de la incapacidad no es válido",
+        )
+
+    if fecha_fin < fecha_inicio:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "La fecha de finalización no puede ser anterior "
+                "a la fecha de inicio"
+            ),
+        )
+
+    if estado in ("aprobada", "rechazada"):
+        if (
+            observacion_revision is None
+            or not observacion_revision.strip()
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Debes escribir una observación para "
+                    "aprobar o rechazar la incapacidad"
+                ),
+            )
+
+    estado_anterior = incapacidad.estado
+
+    archivo_anterior_public_id = incapacidad.archivo_public_id
+    archivo_anterior_resource_type = incapacidad.archivo_resource_type
+
+    archivo_subido = None
+
+    if archivo is not None and archivo.filename:
+        archivo_subido = await subir_archivo(
+            archivo,
+            "incapacidades",
+        )
+
+    historial = HistorialIncapacidad(
+        id_incapacidad=incapacidad.id_incapacidad,
+        fecha_anterior_inicio=incapacidad.fecha_inicio,
+        fecha_anterior_fin=incapacidad.fecha_fin,
+        fecha_nueva_inicio=fecha_inicio,
+        fecha_nueva_fin=fecha_fin,
+        motivo_cambio=motivo_cambio,
+        fecha_cambio=datetime.now(),
+        id_usuario_cambio=current_user.id_usuario,
+    )
 
     try:
-        incapacidad.fecha_inicio = datos.fecha_inicio
-        incapacidad.fecha_fin = datos.fecha_fin
-        incapacidad.archivo = datos.archivo
-        incapacidad.motivo = datos.motivo
-        incapacidad.estado = datos.estado
-
-        registrar_historial(
-            db=db,
-            incapacidad=incapacidad,
-            usuario_cambio=current_user,
-            fecha_nueva_inicio=datos.fecha_inicio,
-            fecha_nueva_fin=datos.fecha_fin,
-            motivo_cambio=datos.motivo_cambio,
-        )
-
-        db.commit()
-        db.refresh(incapacidad)
-    except Exception:
-        db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="No se pudo actualizar la incapacidad y su historial",
-        )
-
-    return APIResponse(
-        success=True,
-        mensaje="Incapacidad actualizada y cambio registrado en el historial",
-        data=incapacidad,
-    )
-
-
-@router.put(
-    "/{id_incapacidad}/estado",
-    response_model=APIResponse[IncapacidadResponse],
-)
-def cambiar_estado_incapacidad(
-    id_incapacidad: int,
-    estado: str,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(require_role("coordinador")),
-):
-    if current_user.id_colegio is None:
-        raise HTTPException(
-            status_code=403,
-            detail="El coordinador no tiene un colegio asignado",
-        )
-
-    incapacidad = obtener_incapacidad_del_colegio(
-        db,
-        id_incapacidad,
-        current_user.id_colegio,
-    )
-
-    validar_estado(estado)
-
-    try:
+        incapacidad.fecha_inicio = fecha_inicio
+        incapacidad.fecha_fin = fecha_fin
+        incapacidad.motivo = motivo
         incapacidad.estado = estado
+
+        if archivo_subido:
+            incapacidad.archivo = archivo_subido["url"]
+            incapacidad.archivo_public_id = archivo_subido["public_id"]
+            incapacidad.archivo_resource_type = (
+                archivo_subido["resource_type"]
+            )
+
+        if estado in ("aprobada", "rechazada"):
+            incapacidad.id_coordinador_revisor = current_user.id_usuario
+            incapacidad.fecha_revision = datetime.now()
+            incapacidad.observacion_revision = (
+                observacion_revision.strip()
+            )
+
+        sincronizar_acceso_academico(
+            db,
+            incapacidad,
+        )
+
+        db.add(historial)
         db.commit()
         db.refresh(incapacidad)
+
+    except HTTPException:
+        db.rollback()
+
+        if archivo_subido:
+            eliminar_archivo(
+                archivo_subido["public_id"],
+                archivo_subido["resource_type"],
+            )
+
+        raise
+
     except Exception:
         db.rollback()
+
+        if archivo_subido:
+            eliminar_archivo(
+                archivo_subido["public_id"],
+                archivo_subido["resource_type"],
+            )
+
         raise HTTPException(
-            status_code=500,
-            detail="No se pudo cambiar el estado de la incapacidad",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo actualizar la incapacidad",
         )
+
+    # Eliminar el documento anterior únicamente después
+    # de guardar correctamente el nuevo documento.
+    if (
+        archivo_subido
+        and archivo_anterior_public_id
+    ):
+        eliminar_archivo(
+            archivo_anterior_public_id,
+            archivo_anterior_resource_type or "image",
+        )
+
+    # Notificar únicamente cuando exista un cambio real
+    # hacia aprobada o rechazada.
+    if (
+        estado in ("aprobada", "rechazada")
+        and estado_anterior != estado
+    ):
+        estudiante = incapacidad.usuario
+
+        if (
+            estudiante is not None
+            and estudiante.tipo_de_usuario == "estudiante"
+            and estudiante.correo
+        ):
+            resultado = (
+                "aprobada"
+                if estado == "aprobada"
+                else "rechazada"
+            )
+
+            background_tasks.add_task(
+                notificar_usuario,
+                destinatario=estudiante.correo,
+                nombres_usuario=(
+                    f"{estudiante.nombres_compl} "
+                    f"{estudiante.apellidos_compl}"
+                ),
+                asunto=(
+                    f"Actualización de incapacidad - "
+                    f"{incapacidad.numero_radicado}"
+                ),
+                titulo=f"Tu incapacidad fue {resultado}",
+                mensaje=(
+                    f"Te informamos que tu incapacidad con "
+                    f"número de radicado "
+                    f"{incapacidad.numero_radicado} "
+                    f"ha sido {resultado}."
+                ),
+                detalle=(
+                    incapacidad.observacion_revision or ""
+                ),
+            )
+
+    mensaje = (
+        "Incapacidad aprobada y acceso académico gestionado automáticamente"
+        if estado == "aprobada"
+        else "Incapacidad actualizada y revisión registrada correctamente"
+    )
 
     return APIResponse(
         success=True,
-        mensaje=f"Estado de la incapacidad cambiado a {estado}",
+        mensaje=mensaje,
         data=incapacidad,
     )

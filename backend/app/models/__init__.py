@@ -1,9 +1,10 @@
+
 from .colegios import Colegio
 from .curso import Curso
 from .Usuarios import Usuario
 from .usuario_curso import UsuarioCurso
 from .materia import Materia
-from .docente_materia import DocenteMateria
+from .docente_asignacion import DocenteAsignacion
 from .incapacidad import Incapacidad
 from .historial_incapacidad import HistorialIncapacidad
 from .apelacion import Apelacion

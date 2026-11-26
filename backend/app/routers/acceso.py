@@ -1,3 +1,4 @@
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
@@ -8,9 +9,11 @@ from app.dependencias.auth import (
     require_role,
     obtener_rol_efectivo,
 )
+
 from app.models.acceso_academico import AccesoAcademico
 from app.models.incapacidad import Incapacidad
 from app.models.Usuarios import Usuario
+
 from app.schemas.acceso_academico import (
     AccesoAcademicoCreate,
     AccesoAcademicoResponse,
@@ -28,7 +31,6 @@ def obtener_acceso_del_colegio(
     id_acceso: int,
     id_colegio: int,
 ) -> AccesoAcademico:
-    """Busca un acceso y verifica que pertenezca al colegio indicado."""
 
     acceso = (
         db.query(AccesoAcademico)
@@ -66,29 +68,40 @@ def crear_acceso(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("coordinador")),
 ):
+
     if current_user.id_colegio is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="El coordinador no tiene un colegio asignado",
         )
 
-    # El estudiante debe pertenecer al colegio del coordinador.
-    estudiante = (
-        db.query(Usuario)
-        .filter(Usuario.id_usuario == datos.id_usuario)
+    incapacidad = (
+        db.query(Incapacidad)
+        .options(
+            joinedload(Incapacidad.usuario),
+        )
+        .filter(
+            Incapacidad.numero_radicado
+            == datos.numero_radicado.strip(),
+        )
         .first()
     )
 
-    if estudiante is None:
+    if incapacidad is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Estudiante no encontrado",
+            detail="No se encontró una incapacidad con ese número de radicado",
         )
 
-    if estudiante.tipo_de_usuario != "estudiante":
+    estudiante = incapacidad.usuario
+
+    if (
+        estudiante is None
+        or estudiante.tipo_de_usuario != "estudiante"
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El acceso académico solo puede asignarse a un estudiante",
+            detail="La incapacidad no pertenece a un estudiante",
         )
 
     if estudiante.id_colegio != current_user.id_colegio:
@@ -97,37 +110,25 @@ def crear_acceso(
             detail="No puedes gestionar estudiantes de otro colegio",
         )
 
-    incapacidad = (
-        db.query(Incapacidad)
-        .filter(
-            Incapacidad.id_incapacidad == datos.id_incapacidad,
-        )
-        .first()
-    )
-
-    if incapacidad is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Incapacidad no encontrada",
-        )
-
-    # La incapacidad debe pertenecer al estudiante indicado.
-    if incapacidad.id_usuario != estudiante.id_usuario:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La incapacidad no pertenece al estudiante indicado",
-        )
-
     if incapacidad.estado != "aprobada":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Solo se puede crear un acceso para una incapacidad aprobada",
         )
 
+    hoy = date.today()
+
+    if incapacidad.fecha_fin < hoy:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede crear un acceso para una incapacidad vencida",
+        )
+
     existente = (
         db.query(AccesoAcademico)
         .filter(
-            AccesoAcademico.id_incapacidad == datos.id_incapacidad,
+            AccesoAcademico.id_incapacidad
+            == incapacidad.id_incapacidad,
         )
         .first()
     )
@@ -138,17 +139,23 @@ def crear_acceso(
             detail="Esta incapacidad ya tiene un acceso académico",
         )
 
-    # El estado inicial lo determina el servidor, no el cliente.
+    # El acceso depende de las fechas de la incapacidad.
+    if hoy < incapacidad.fecha_inicio:
+        estado_acceso = "suspendido"
+    else:
+        estado_acceso = "activo"
+
     nuevo_acceso = AccesoAcademico(
         id_usuario=estudiante.id_usuario,
         id_incapacidad=incapacidad.id_incapacidad,
-        estado="activo",
+        estado=estado_acceso,
     )
 
     try:
         db.add(nuevo_acceso)
         db.commit()
         db.refresh(nuevo_acceso)
+
     except Exception:
         db.rollback()
         raise HTTPException(
@@ -167,10 +174,11 @@ def listar_accesos(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
+
     rol = obtener_rol_efectivo(current_user)
 
-    # El coordinador solo puede listar accesos de su colegio.
     if rol == "coordinador":
+
         if current_user.id_colegio is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -183,11 +191,12 @@ def listar_accesos(
                 Usuario,
                 AccesoAcademico.id_usuario == Usuario.id_usuario,
             )
-            .filter(Usuario.id_colegio == current_user.id_colegio)
+            .filter(
+                Usuario.id_colegio == current_user.id_colegio,
+            )
             .all()
         )
 
-    # El estudiante solo puede ver sus propios accesos.
     if rol == "estudiante":
 
         return (
@@ -217,6 +226,7 @@ def obtener_acceso(
     rol = obtener_rol_efectivo(current_user)
 
     if rol == "coordinador":
+
         if current_user.id_colegio is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -230,9 +240,12 @@ def obtener_acceso(
         )
 
     if rol == "estudiante":
+
         acceso = (
             db.query(AccesoAcademico)
-            .filter(AccesoAcademico.id_acceso == id_acceso)
+            .filter(
+                AccesoAcademico.id_acceso == id_acceso,
+            )
             .first()
         )
 

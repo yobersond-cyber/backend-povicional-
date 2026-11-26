@@ -1,39 +1,25 @@
+
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Literal
+
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    status,
+)
+from pydantic import Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from app.database.conection import SessionLocal
-
-from app.models.Usuarios import Usuario
-from app.models.colegios import Colegio
-from app.models.entrega import Entrega
-from app.models.actividad import Actividad
-from app.models.usuario_curso import UsuarioCurso
-from app.models.curso import Curso
-from app.models.incapacidad import Incapacidad
-from app.models.materia import Materia
-from app.models.docente_materia import DocenteMateria
-from app.models.material_academico import MaterialAcademico
-from app.models.historial_incapacidad import HistorialIncapacidad
-from app.models.acceso_academico import AccesoAcademico
-
-from app.schemas.entrega import EntregaResponse
-
-from app.schemas.actividad import (
-    ActividadResponse,
-    ActividadEstudianteResponse,
+from app.database.conection import get_db
+from app.dependencias.auth import (
+    get_current_user,
+    require_role,
+    obtener_rol_efectivo,
+    verificar_acceso_academico,
 )
-
-from app.schemas.usuario import (
-    UsuarioCreate,
-    UsuarioResponse,
-    UsuarioLogin,
-    EstudianteDetalleResponse,
-    DocenteDetalleResponse,
-)
-
-from app.schemas.base import APIResponse
 
 from app.core.security import (
     hash_password,
@@ -41,16 +27,36 @@ from app.core.security import (
     create_access_token,
 )
 
-from app.dependencias.auth import (
-    get_current_user,
-    require_role,
-    obtener_rol_efectivo,
+from app.models.Usuarios import Usuario
+from app.models.colegios import Colegio
+from app.models.curso import Curso
+from app.models.usuario_curso import UsuarioCurso
+from app.models.entrega import Entrega
+from app.models.actividad import Actividad
+from app.models.incapacidad import Incapacidad
+from app.models.materia import Materia
+from app.models.docente_asignacion import DocenteAsignacion
+from app.models.material_academico import MaterialAcademico
+from app.models.historial_incapacidad import HistorialIncapacidad
+from app.models.acceso_academico import AccesoAcademico
+
+from app.schemas.base import APIResponse, BaseSchema
+from app.schemas.entrega import EntregaResponse
+from app.schemas.actividad import ActividadEstudianteResponse
+
+from app.schemas.usuario import (
+    UsuarioCreate,
+    UsuarioUpdate,
+    RegistroEstudianteCreate,
+    UsuarioResponse,
+    UsuarioLogin,
+    EstudianteDetalleResponse,
+    DocenteDetalleResponse,
+    MateriaResumen,
+    CursoResumen,
 )
 
-from app.schemas.colegio import (
-    CoordinadorConColegioCreate,
-    CoordinadorResponse,
-)
+from app.services.notificaciones_service import notificar_usuario
 
 
 router = APIRouter(
@@ -59,19 +65,28 @@ router = APIRouter(
 )
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+class EstadoAprobacionUpdate(BaseSchema):
+    estado: Literal["aprobada", "rechazada"]
+
+
+# ============================================================
+# FUNCIONES AUXILIARES
+# ============================================================
+
+def verificar_colegio_usuario(current_user: Usuario) -> int:
+    if current_user.id_colegio is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tu cuenta no tiene un colegio asignado",
+        )
+
+    return current_user.id_colegio
 
 
 def verificar_usuario_en_colegio(
     usuario: Usuario,
     current_user: Usuario,
 ):
-    """Comprueba que un coordinador solo acceda a su colegio."""
     if (
         current_user.id_colegio is None
         or usuario.id_colegio != current_user.id_colegio
@@ -84,221 +99,388 @@ def verificar_usuario_en_colegio(
 
 def verificar_datos_unicos(
     db: Session,
-    datos: UsuarioCreate,
+    documento: str,
+    correo: str,
     id_usuario_excluir: int | None = None,
 ):
-    """Comprueba que código, documento y correo sean únicos."""
-    campos = [
-        (
-            "codigo_usuario",
-            datos.codigo_usuario,
-            "El código de usuario ya está registrado",
-        ),
-        (
-            "documento",
-            datos.documento,
-            "El documento ya está registrado",
-        ),
-        (
-            "correo",
-            datos.correo,
-            "El correo ya está registrado",
-        ),
-    ]
+    consulta_documento = db.query(Usuario).filter(
+        Usuario.documento == documento
+    )
 
-    for campo, valor, mensaje in campos:
-        consulta = db.query(Usuario).filter(
-            getattr(Usuario, campo) == valor
+    consulta_correo = db.query(Usuario).filter(
+        Usuario.correo == correo
+    )
+
+    if id_usuario_excluir is not None:
+        consulta_documento = consulta_documento.filter(
+            Usuario.id_usuario != id_usuario_excluir
         )
 
-        if id_usuario_excluir is not None:
-            consulta = consulta.filter(
-                Usuario.id_usuario != id_usuario_excluir
-            )
+        consulta_correo = consulta_correo.filter(
+            Usuario.id_usuario != id_usuario_excluir
+        )
 
-        if consulta.first():
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=mensaje,
-            )
+    if consulta_documento.first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El documento ya está registrado",
+        )
 
-# ============================================================
-# ADMINISTRACIÓN GLOBAL: COORDINADORES
-# ============================================================
+    if consulta_correo.first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El correo ya está registrado",
+        )
 
-@router.get(
-    "/coordinadores",
-    response_model=APIResponse[list[CoordinadorResponse]],
-)
-def listar_coordinadores(
-    current_user: Usuario = Depends(
-        require_role("administrador")
-    ),
-    db: Session = Depends(get_db),
-):
-    """
-    Lista los coordinadores de todos los colegios.
-    Solo puede acceder el administrador global.
-    """
 
-    usuarios = (
+def obtener_usuario_o_error(
+    db: Session,
+    id_usuario: int,
+) -> Usuario:
+    usuario = (
         db.query(Usuario)
+        .filter(Usuario.id_usuario == id_usuario)
+        .first()
+    )
+
+    if usuario is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    return usuario
+
+
+def obtener_curso_o_error(
+    db: Session,
+    id_curso: int,
+    id_colegio: int,
+) -> Curso:
+    curso = (
+        db.query(Curso)
         .filter(
-            Usuario.tipo_de_usuario.in_(
-                ("coordinador", "administrador")
-            )
+            Curso.id_curso == id_curso,
+            Curso.id_colegio == id_colegio,
         )
-        .order_by(
-            Usuario.apellidos_compl.asc(),
-            Usuario.nombres_compl.asc(),
-        )
-        .all()
+        .first()
     )
 
-    resultado = []
-
-    for usuario in usuarios:
-        # Los administradores asociados a un colegio
-        # son coordinadores de cuentas antiguas.
-        es_coordinador = (
-            usuario.tipo_de_usuario == "coordinador"
-            or (
-                usuario.tipo_de_usuario == "administrador"
-                and usuario.id_colegio is not None
-            )
+    if curso is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="El curso no existe o no pertenece al colegio seleccionado",
         )
 
-        if not es_coordinador:
-            continue
-
-        resultado.append({
-            "id_usuario": usuario.id_usuario,
-            "id_colegio": usuario.id_colegio,
-            "codigo_usuario": usuario.codigo_usuario,
-            "documento": usuario.documento,
-            "nombres_compl": usuario.nombres_compl,
-            "apellidos_compl": usuario.apellidos_compl,
-            "telefono": usuario.telefono,
-            "correo": usuario.correo,
-            # Normaliza las cuentas antiguas en la respuesta.
-            "tipo_de_usuario": "coordinador",
-        })
-
-    return APIResponse(
-        success=True,
-        mensaje="Coordinadores recuperados exitosamente",
-        data=resultado,
-    )
+    return curso
 
 
-@router.post(
-    "/coordinadores",
-    response_model=APIResponse[CoordinadorResponse],
-    status_code=status.HTTP_201_CREATED,
-)
-def crear_coordinador(
-    datos: CoordinadorConColegioCreate,
-    current_user: Usuario = Depends(
-        require_role("administrador")
-    ),
-    db: Session = Depends(get_db),
-):
-    """
-    Crea un coordinador en un colegio existente.
-    Solo puede hacerlo el administrador global.
-    """
-
+def verificar_colegio_activo(
+    db: Session,
+    id_colegio: int,
+) -> Colegio:
     colegio = (
         db.query(Colegio)
-        .filter(
-            Colegio.id_colegio == datos.id_colegio
-        )
+        .filter(Colegio.id_colegio == id_colegio)
         .first()
     )
 
     if colegio is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="El colegio seleccionado no existe",
+            detail="Colegio no encontrado",
         )
 
     if colegio.estado != "activo":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "No se puede asignar un coordinador "
-                "a un colegio inactivo"
-            ),
+            detail="El colegio se encuentra inactivo",
         )
 
-    # Comprobar que el código sea único.
-    if db.query(Usuario).filter(
-        Usuario.codigo_usuario == datos.codigo_usuario
-    ).first():
+    return colegio
+
+
+def verificar_permisos_creacion(
+    current_user: Usuario,
+    tipo_nuevo_usuario: str,
+):
+    rol_actual = obtener_rol_efectivo(current_user)
+
+    permisos = {
+        "rector": (
+            "coordinador",
+            "docente",
+            "estudiante",
+        ),
+        "coordinador": (
+            "docente",
+            "estudiante",
+        ),
+    }
+
+    if rol_actual not in permisos:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="El código de usuario ya está registrado",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos para crear usuarios",
         )
 
-    # Comprobar que el documento sea único.
-    if db.query(Usuario).filter(
-        Usuario.documento == datos.documento
-    ).first():
+    if tipo_nuevo_usuario not in permisos[rol_actual]:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="El documento ya está registrado",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No puedes crear cuentas de este tipo",
         )
 
-    # Comprobar que el correo sea único.
-    if db.query(Usuario).filter(
-        Usuario.correo == str(datos.correo)
-    ).first():
+
+def verificar_permisos_gestion(
+    current_user: Usuario,
+    usuario_objetivo: Usuario,
+):
+    verificar_usuario_en_colegio(
+        usuario_objetivo,
+        current_user,
+    )
+
+    rol_actual = obtener_rol_efectivo(current_user)
+
+    permisos = {
+        "rector": (
+            "coordinador",
+            "docente",
+            "estudiante",
+        ),
+        "coordinador": (
+            "docente",
+            "estudiante",
+        ),
+    }
+
+    if rol_actual not in permisos:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="El correo ya está registrado",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos para gestionar usuarios",
         )
 
-    coordinador = Usuario(
-        id_colegio=datos.id_colegio,
-        codigo_usuario=datos.codigo_usuario,
+    if usuario_objetivo.tipo_de_usuario not in permisos[rol_actual]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No puedes gestionar una cuenta de este tipo",
+        )
+
+
+def obtener_nombre_curso(curso: Curso | None) -> str:
+    if curso is None:
+        return "Sin curso asignado"
+
+    grado = getattr(curso, "grado", None)
+    numero = getattr(curso, "numero_curso", None)
+
+    if grado is not None and numero is not None:
+        return f"{grado} - {numero}"
+
+    if grado is not None:
+        return str(grado)
+
+    if numero is not None:
+        return str(numero)
+
+    return "Curso asignado"
+
+
+def notificar_cambio_curso_estudiante(
+    background_tasks: BackgroundTasks,
+    estudiante: Usuario,
+    curso_anterior: Curso | None,
+    curso_nuevo: Curso,
+) -> None:
+    """
+    Notifica al estudiante cuando cambia su curso.
+    """
+
+    if (
+        estudiante.tipo_de_usuario != "estudiante"
+        or not estudiante.correo
+        or not estudiante.correo.strip()
+    ):
+        return
+
+    nombre_anterior = obtener_nombre_curso(curso_anterior)
+    nombre_nuevo = obtener_nombre_curso(curso_nuevo)
+
+    background_tasks.add_task(
+        notificar_usuario,
+        destinatario=estudiante.correo.strip(),
+        nombres_usuario=(
+            f"{estudiante.nombres_compl} "
+            f"{estudiante.apellidos_compl}"
+        ),
+        asunto="Actualización de tu curso - APRENZY",
+        titulo="Tu curso ha sido actualizado",
+        mensaje=(
+            f"Te informamos que tu curso en APRENZY "
+            f"ha sido cambiado de {nombre_anterior} "
+            f"a {nombre_nuevo}. "
+            f"Ingresa a la plataforma para consultar "
+            f"tu información académica actualizada."
+        ),
+        detalle=(
+            f"Curso anterior: {nombre_anterior}\n"
+            f"Nuevo curso: {nombre_nuevo}"
+        ),
+    )
+
+
+# ============================================================
+# 1. COLEGIOS Y CURSOS PARA EL REGISTRO PÚBLICO
+# No requieren autenticación.
+# ============================================================
+
+@router.get(
+    "/colegios-disponibles",
+    response_model=APIResponse[list[dict]],
+)
+def listar_colegios_disponibles(
+    db: Session = Depends(get_db),
+):
+    colegios = (
+        db.query(Colegio)
+        .filter(Colegio.estado == "activo")
+        .order_by(Colegio.nombre_colegio.asc())
+        .all()
+    )
+
+    resultado = [
+        {
+            "id_colegio": colegio.id_colegio,
+            "nombre_colegio": colegio.nombre_colegio,
+        }
+        for colegio in colegios
+    ]
+
+    return APIResponse(
+        success=True,
+        mensaje="Colegios disponibles recuperados correctamente",
+        data=resultado,
+    )
+
+
+@router.get(
+    "/colegios/{id_colegio}/cursos-disponibles",
+    response_model=APIResponse[list[dict]],
+)
+def listar_cursos_disponibles(
+    id_colegio: int,
+    db: Session = Depends(get_db),
+):
+    verificar_colegio_activo(
+        db,
+        id_colegio,
+    )
+
+    cursos = (
+        db.query(Curso)
+        .filter(Curso.id_colegio == id_colegio)
+        .order_by(
+            Curso.grado.asc(),
+            Curso.numero_curso.asc(),
+        )
+        .all()
+    )
+
+    resultado = [
+        {
+            "id_curso": curso.id_curso,
+            "numero_curso": curso.numero_curso,
+            "grado": curso.grado,
+            "jornada": curso.jornada,
+        }
+        for curso in cursos
+    ]
+
+    return APIResponse(
+        success=True,
+        mensaje="Cursos del colegio recuperados correctamente",
+        data=resultado,
+    )
+
+
+# ============================================================
+# 2. REGISTRO PÚBLICO DE ESTUDIANTES
+# ============================================================
+
+@router.post(
+    "/registro-estudiante",
+    response_model=APIResponse[UsuarioResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+def registrar_estudiante(
+    datos: RegistroEstudianteCreate,
+    db: Session = Depends(get_db),
+):
+    colegio = verificar_colegio_activo(
+        db,
+        datos.id_colegio,
+    )
+
+    curso = obtener_curso_o_error(
+        db,
+        datos.id_curso,
+        colegio.id_colegio,
+    )
+
+    verificar_datos_unicos(
+        db,
+        datos.documento,
+        str(datos.correo),
+    )
+
+    estudiante = Usuario(
+        id_colegio=colegio.id_colegio,
         documento=datos.documento,
         nombres_compl=datos.nombres_compl,
         apellidos_compl=datos.apellidos_compl,
         telefono=datos.telefono,
         correo=str(datos.correo),
         contrasena=hash_password(datos.contrasena),
-        tipo_de_usuario="coordinador",
-        jornada=None,
+        tipo_de_usuario="estudiante",
+        estado_aprobacion="pendiente",
+        jornada=curso.jornada,
     )
 
     try:
-        db.add(coordinador)
+        db.add(estudiante)
+        db.flush()
+
+        db.add(
+            UsuarioCurso(
+                id_usuario=estudiante.id_usuario,
+                id_curso=curso.id_curso,
+            )
+        )
+
         db.commit()
-        db.refresh(coordinador)
+        db.refresh(estudiante)
 
     except IntegrityError as exc:
         db.rollback()
 
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "No se pudo crear el coordinador. "
-                "Verifica que el código, documento y "
-                "correo no estén registrados."
-            ),
+            detail="No se pudo registrar el estudiante. Verifica sus datos.",
         ) from exc
 
     return APIResponse(
         success=True,
-        mensaje="Coordinador creado exitosamente",
-        data=coordinador,
+        mensaje=(
+            "Registro enviado correctamente. "
+            "Debes esperar la aprobación del coordinador del colegio."
+        ),
+        data=estudiante,
     )
 
-# ============================================================
-# 1. Crear usuario
-# Solo coordinadores; únicamente docentes y estudiantes.
-# ============================================================
 
+# ============================================================
+# 3. CREACIÓN INTERNA DE USUARIOS
+# ============================================================
 
 @router.post(
     "",
@@ -306,128 +488,102 @@ def crear_coordinador(
     status_code=status.HTTP_201_CREATED,
 )
 def crear_usuario(
-    usuario: UsuarioCreate,
-    current_user: Usuario = Depends(
-        require_role("coordinador")
-    ),
+    datos: UsuarioCreate,
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # El coordinador debe tener un colegio asignado.
-    if current_user.id_colegio is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="El coordinador no tiene un colegio asignado",
-        )
+    verificar_permisos_creacion(
+        current_user,
+        datos.tipo_de_usuario,
+    )
 
-    # Solo se permite crear docentes y estudiantes.
-    roles_permitidos = {"docente", "estudiante"}
-    if usuario.tipo_de_usuario not in roles_permitidos:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo puedes crear docentes y estudiantes",
-        )
+    id_colegio = verificar_colegio_usuario(current_user)
 
-    # No se permite crear usuarios en otro colegio.
-    if usuario.id_colegio != current_user.id_colegio:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No puedes crear usuarios en otro colegio",
-        )
+    verificar_colegio_activo(
+        db,
+        id_colegio,
+    )
 
-    # Verificar que el colegio exista.
-    from app.models.colegios import Colegio
+    curso = None
 
-    colegio = db.query(Colegio).filter(
-        Colegio.id_colegio == current_user.id_colegio
-    ).first()
-
-    if not colegio:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La institución/colegio indicado no existe",
-        )
-
-    # Los estudiantes deben tener un curso válido
-    # que pertenezca al mismo colegio.
-    if usuario.tipo_de_usuario == "estudiante":
-        if not usuario.id_curso:
+    if datos.tipo_de_usuario == "estudiante":
+        if datos.id_curso is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="El estudiante debe indicar un curso",
+                detail="Debes seleccionar un curso para el estudiante",
             )
 
-        curso = db.query(Curso).filter(
-            Curso.id_curso == usuario.id_curso,
-            Curso.id_colegio == current_user.id_colegio,
-        ).first()
+        curso = obtener_curso_o_error(
+            db,
+            datos.id_curso,
+            id_colegio,
+        )
 
-        if not curso:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "El curso no existe o no pertenece "
-                    "a la institución indicada"
-                ),
-            )
+    elif datos.id_curso is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo los estudiantes deben tener un curso directo",
+        )
 
-    # Verificar que código, documento y correo sean únicos.
-    verificar_datos_unicos(db, usuario)
+    verificar_datos_unicos(
+        db,
+        datos.documento,
+        str(datos.correo),
+    )
 
     nuevo_usuario = Usuario(
-        id_colegio=current_user.id_colegio,
-        codigo_usuario=usuario.codigo_usuario,
-        documento=usuario.documento,
-        nombres_compl=usuario.nombres_compl,
-        apellidos_compl=usuario.apellidos_compl,
-        telefono=usuario.telefono,
-        correo=usuario.correo,
-        contrasena=hash_password(usuario.contrasena),
-        tipo_de_usuario=usuario.tipo_de_usuario,
-        jornada=usuario.jornada,
+        id_colegio=id_colegio,
+        documento=datos.documento,
+        nombres_compl=datos.nombres_compl,
+        apellidos_compl=datos.apellidos_compl,
+        telefono=datos.telefono,
+        correo=str(datos.correo),
+        contrasena=hash_password(datos.contrasena),
+        tipo_de_usuario=datos.tipo_de_usuario,
+        estado_aprobacion=(
+            "aprobada"
+            if datos.tipo_de_usuario == "estudiante"
+            else None
+        ),
+        jornada=(
+            curso.jornada
+            if curso is not None
+            else datos.jornada
+        ),
     )
 
     try:
         db.add(nuevo_usuario)
-        db.commit()
-        db.refresh(nuevo_usuario)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "No se pudo crear el usuario. "
-                "Verifica que el código, documento y correo "
-                "no estén registrados."
-            ),
-        )
+        db.flush()
 
-    # Vincular al estudiante con el curso seleccionado.
-    if usuario.tipo_de_usuario == "estudiante" and usuario.id_curso:
-        try:
+        if curso is not None:
             db.add(
                 UsuarioCurso(
                     id_usuario=nuevo_usuario.id_usuario,
-                    id_curso=usuario.id_curso,
+                    id_curso=curso.id_curso,
                 )
             )
-            db.commit()
-        except IntegrityError:
-            db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="No se pudo vincular al estudiante con el curso.",
-            )
+
+        db.commit()
+        db.refresh(nuevo_usuario)
+
+    except IntegrityError as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se pudo crear el usuario. Verifica el documento y el correo.",
+        ) from exc
 
     return APIResponse(
         success=True,
-        mensaje="Usuario registrado exitosamente",
+        mensaje="Usuario creado exitosamente en tu colegio",
         data=nuevo_usuario,
     )
 
 
-
 # ============================================================
-# 2. Login
+# 4. INICIAR SESIÓN
 # ============================================================
 
 @router.post(
@@ -440,17 +596,45 @@ def login_usuario(
 ):
     usuario = (
         db.query(Usuario)
-        .filter(Usuario.correo == datos.correo)
+        .filter(Usuario.correo == str(datos.correo))
         .first()
     )
 
-    if not usuario or not verify_password(
+    if usuario is None or not verify_password(
         datos.contrasena,
         usuario.contrasena,
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Correo o contraseña incorrectos",
+        )
+
+    if usuario.tipo_de_usuario == "administrador":
+        if usuario.id_colegio is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="El administrador global no puede pertenecer a un colegio",
+            )
+
+    else:
+        if usuario.id_colegio is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="La cuenta no tiene un colegio asignado",
+            )
+
+        verificar_colegio_activo(
+            db,
+            usuario.id_colegio,
+        )
+
+    if (
+        usuario.tipo_de_usuario == "estudiante"
+        and usuario.estado_aprobacion != "aprobada"
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tu cuenta todavía no ha sido aprobada por el colegio",
         )
 
     token = create_access_token(
@@ -473,7 +657,7 @@ def login_usuario(
 
 
 # ============================================================
-# 3. Obtener usuario autenticado
+# 5. OBTENER USUARIO AUTENTICADO
 # ============================================================
 
 @router.get(
@@ -491,8 +675,7 @@ def obtener_usuario_actual(
 
 
 # ============================================================
-# 4. Listar usuarios del colegio
-# Solo coordinadores.
+# 6. LISTAR USUARIOS DEL COLEGIO
 # ============================================================
 
 @router.get(
@@ -500,39 +683,225 @@ def obtener_usuario_actual(
     response_model=APIResponse[list[UsuarioResponse]],
 )
 def listar_usuarios(
-    current_user: Usuario = Depends(
-        require_role("coordinador")
-    ),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.id_colegio is None:
+    rol = obtener_rol_efectivo(current_user)
+    id_colegio = verificar_colegio_usuario(current_user)
+
+    if rol == "rector":
+        tipos = (
+            "coordinador",
+            "docente",
+            "estudiante",
+        )
+
+    elif rol == "coordinador":
+        tipos = (
+            "docente",
+            "estudiante",
+        )
+
+    else:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="El coordinador no tiene un colegio asignado",
+            detail="No tienes permisos para listar usuarios",
         )
 
     usuarios = (
         db.query(Usuario)
         .filter(
-            Usuario.id_colegio == current_user.id_colegio,
-            Usuario.tipo_de_usuario.in_(("docente", "estudiante")),
+            Usuario.id_colegio == id_colegio,
+            Usuario.tipo_de_usuario.in_(tipos),
         )
-        .order_by(Usuario.apellidos_compl.asc())
+        .order_by(
+            Usuario.apellidos_compl.asc(),
+            Usuario.nombres_compl.asc(),
+        )
         .all()
     )
 
     return APIResponse(
         success=True,
-        mensaje="Lista de usuarios obtenida exitosamente",
+        mensaje="Usuarios del colegio recuperados correctamente",
         data=usuarios,
     )
 
 
 # ============================================================
-# 5. Listar estudiantes
-# Coordinador: estudiantes de su colegio.
-# Docente: estudiantes de los cursos donde tiene
-# materias asignadas.
+# 7. LISTAR COORDINADORES DEL RECTOR
+# ============================================================
+
+@router.get(
+    "/coordinadores",
+    response_model=APIResponse[list[UsuarioResponse]],
+)
+def listar_coordinadores(
+    current_user: Usuario = Depends(
+        require_role("rector")
+    ),
+    db: Session = Depends(get_db),
+):
+    id_colegio = verificar_colegio_usuario(current_user)
+
+    coordinadores = (
+        db.query(Usuario)
+        .filter(
+            Usuario.id_colegio == id_colegio,
+            Usuario.tipo_de_usuario == "coordinador",
+        )
+        .order_by(
+            Usuario.apellidos_compl.asc(),
+            Usuario.nombres_compl.asc(),
+        )
+        .all()
+    )
+
+    return APIResponse(
+        success=True,
+        mensaje="Coordinadores del colegio recuperados correctamente",
+        data=coordinadores,
+    )
+
+
+# ============================================================
+# 8. SOLICITUDES DE REGISTRO DE ESTUDIANTES
+# ============================================================
+
+@router.get(
+    "/solicitudes-estudiantes",
+    response_model=APIResponse[list[UsuarioResponse]],
+)
+def listar_solicitudes_estudiantes(
+    current_user: Usuario = Depends(
+        require_role("coordinador")
+    ),
+    db: Session = Depends(get_db),
+):
+    id_colegio = verificar_colegio_usuario(current_user)
+
+    solicitudes = (
+        db.query(Usuario)
+        .filter(
+            Usuario.id_colegio == id_colegio,
+            Usuario.tipo_de_usuario == "estudiante",
+            Usuario.estado_aprobacion == "pendiente",
+        )
+        .order_by(
+            Usuario.apellidos_compl.asc(),
+            Usuario.nombres_compl.asc(),
+        )
+        .all()
+    )
+
+    return APIResponse(
+        success=True,
+        mensaje="Solicitudes pendientes recuperadas correctamente",
+        data=solicitudes,
+    )
+
+
+@router.patch(
+    "/{id_usuario}/aprobacion",
+    response_model=APIResponse[UsuarioResponse],
+)
+def actualizar_aprobacion_estudiante(
+    id_usuario: int,
+    datos: EstadoAprobacionUpdate,
+    background_tasks: BackgroundTasks,
+    current_user: Usuario = Depends(
+        require_role("coordinador")
+    ),
+    db: Session = Depends(get_db),
+):
+    verificar_colegio_usuario(current_user)
+
+    estudiante = obtener_usuario_o_error(
+        db,
+        id_usuario,
+    )
+
+    verificar_usuario_en_colegio(
+        estudiante,
+        current_user,
+    )
+
+    if estudiante.tipo_de_usuario != "estudiante":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La cuenta seleccionada no es de un estudiante",
+        )
+
+    if estudiante.estado_aprobacion != "pendiente":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Esta solicitud ya fue revisada",
+        )
+
+    estudiante.estado_aprobacion = datos.estado
+
+    try:
+        db.commit()
+        db.refresh(estudiante)
+
+    except Exception as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo actualizar la solicitud",
+        ) from exc
+
+    if estudiante.correo:
+        if datos.estado == "aprobada":
+            asunto = "Tu cuenta de APRENZY ha sido aprobada"
+            titulo = "¡Tu solicitud fue aprobada!"
+
+            mensaje = (
+                "Tu solicitud de registro en APRENZY ha sido aprobada "
+                "por el coordinador de tu colegio. "
+                "Ya puedes iniciar sesión con tu correo y contraseña "
+                "para acceder a la plataforma."
+            )
+
+        else:
+            asunto = "Actualización de tu solicitud de APRENZY"
+            titulo = "Tu solicitud de registro fue rechazada"
+
+            mensaje = (
+                "Te informamos que tu solicitud de registro en APRENZY "
+                "ha sido rechazada por el coordinador de tu colegio. "
+                "Si necesitas más información, comunícate con tu colegio."
+            )
+
+        background_tasks.add_task(
+            notificar_usuario,
+            destinatario=estudiante.correo,
+            nombres_usuario=(
+                f"{estudiante.nombres_compl} "
+                f"{estudiante.apellidos_compl}"
+            ),
+            asunto=asunto,
+            titulo=titulo,
+            mensaje=mensaje,
+            detalle=(
+                f"Estado de tu solicitud: {datos.estado.capitalize()}"
+            ),
+        )
+
+    return APIResponse(
+        success=True,
+        mensaje=(
+            "Estudiante aprobado correctamente"
+            if datos.estado == "aprobada"
+            else "Solicitud de estudiante rechazada"
+        ),
+        data=estudiante,
+    )
+
+
+# ============================================================
+# 9. LISTAR ESTUDIANTES
 # ============================================================
 
 @router.get(
@@ -545,27 +914,25 @@ def listar_estudiantes(
 ):
     rol = obtener_rol_efectivo(current_user)
 
-    if rol not in ("coordinador", "docente"):
+    if rol not in (
+        "rector",
+        "coordinador",
+        "docente",
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permisos para consultar estudiantes",
         )
 
-    if current_user.id_colegio is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Tu cuenta no tiene un colegio asignado",
-        )
+    id_colegio = verificar_colegio_usuario(current_user)
 
-    # Consulta base: solo registros de estudiantes.
     consulta = db.query(Usuario).filter(
         Usuario.tipo_de_usuario == "estudiante",
-        Usuario.id_colegio == current_user.id_colegio,
+        Usuario.id_colegio == id_colegio,
+        Usuario.estado_aprobacion == "aprobada",
     )
 
     if rol == "docente":
-        # El docente solo puede ver estudiantes inscritos
-        # en cursos que tengan una materia asignada a él.
         consulta = (
             consulta
             .join(
@@ -577,16 +944,12 @@ def listar_estudiantes(
                 Curso.id_curso == UsuarioCurso.id_curso,
             )
             .join(
-                Materia,
-                Materia.id_curso == Curso.id_curso,
-            )
-            .join(
-                DocenteMateria,
-                DocenteMateria.id_materia == Materia.id_materia,
+                DocenteAsignacion,
+                DocenteAsignacion.id_curso == Curso.id_curso,
             )
             .filter(
-                DocenteMateria.id_usuario == current_user.id_usuario,
-                Curso.id_colegio == current_user.id_colegio,
+                DocenteAsignacion.id_usuario == current_user.id_usuario,
+                Curso.id_colegio == id_colegio,
             )
             .distinct()
         )
@@ -609,13 +972,13 @@ def listar_estudiantes(
 
     return APIResponse(
         success=True,
-        mensaje="Estudiantes recuperados exitosamente",
+        mensaje="Estudiantes recuperados correctamente",
         data=estudiantes,
     )
 
 
 # ============================================================
-# 6. Listar docentes del colegio
+# 10. LISTAR DOCENTES DEL COLEGIO
 # ============================================================
 
 @router.get(
@@ -623,22 +986,28 @@ def listar_estudiantes(
     response_model=APIResponse[list[DocenteDetalleResponse]],
 )
 def listar_docentes(
-    current_user: Usuario = Depends(
-        require_role("coordinador")
-    ),
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if current_user.id_colegio is None:
+    rol = obtener_rol_efectivo(current_user)
+
+    if rol not in ("rector", "coordinador"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="El coordinador no tiene un colegio asignado",
+            detail="No tienes permisos para consultar docentes",
         )
+
+    id_colegio = verificar_colegio_usuario(current_user)
 
     docentes = (
         db.query(Usuario)
         .filter(
             Usuario.tipo_de_usuario == "docente",
-            Usuario.id_colegio == current_user.id_colegio,
+            Usuario.id_colegio == id_colegio,
+        )
+        .order_by(
+            Usuario.apellidos_compl.asc(),
+            Usuario.nombres_compl.asc(),
         )
         .all()
     )
@@ -646,29 +1015,57 @@ def listar_docentes(
     resultado = []
 
     for docente in docentes:
-        materias = [
-            dm.materia
-            for dm in docente.materias
-            if dm.materia
-            and dm.materia.curso
-            and dm.materia.curso.id_colegio
-            == current_user.id_colegio
-        ]
+        asignaciones = (
+            db.query(DocenteAsignacion)
+            .join(
+                Curso,
+                DocenteAsignacion.id_curso == Curso.id_curso,
+            )
+            .filter(
+                DocenteAsignacion.id_usuario == docente.id_usuario,
+                Curso.id_colegio == id_colegio,
+            )
+            .all()
+        )
 
-        cursos = list({
-            dm.materia.curso
-            for dm in docente.materias
-            if dm.materia
-            and dm.materia.curso
-            and dm.materia.curso.id_colegio
-            == current_user.id_colegio
-        })
+        materias_por_id = {}
+        cursos_por_id = {}
+
+        for asignacion in asignaciones:
+            materia = (
+                db.query(Materia)
+                .filter(
+                    Materia.id_materia == asignacion.id_materia
+                )
+                .first()
+            )
+
+            curso = (
+                db.query(Curso)
+                .filter(
+                    Curso.id_curso == asignacion.id_curso
+                )
+                .first()
+            )
+
+            if materia:
+                materias_por_id[materia.id_materia] = MateriaResumen(
+                    id_materia=materia.id_materia,
+                    nombre_materia=materia.nombre_materia,
+                )
+
+            if curso:
+                cursos_por_id[curso.id_curso] = CursoResumen(
+                    id_curso=curso.id_curso,
+                    numero_curso=curso.numero_curso,
+                    grado=curso.grado,
+                    jornada=curso.jornada,
+                )
 
         resultado.append(
             DocenteDetalleResponse(
                 id_usuario=docente.id_usuario,
                 id_colegio=docente.id_colegio,
-                codigo_usuario=docente.codigo_usuario,
                 documento=docente.documento,
                 nombres_compl=docente.nombres_compl,
                 apellidos_compl=docente.apellidos_compl,
@@ -676,20 +1073,21 @@ def listar_docentes(
                 correo=docente.correo,
                 tipo_de_usuario=docente.tipo_de_usuario,
                 jornada=docente.jornada,
-                materias_asignadas=materias,
-                cursos_asignados=cursos,
+                estado_aprobacion=docente.estado_aprobacion,
+                materias_asignadas=list(materias_por_id.values()),
+                cursos_asignados=list(cursos_por_id.values()),
             )
         )
 
     return APIResponse(
         success=True,
-        mensaje="Docentes recuperados exitosamente",
+        mensaje="Docentes recuperados correctamente",
         data=resultado,
     )
 
 
 # ============================================================
-# 7. Obtener mis entregas
+# 11. OBTENER MIS ENTREGAS
 # ============================================================
 
 @router.get(
@@ -697,9 +1095,11 @@ def listar_docentes(
     response_model=APIResponse[list[EntregaResponse]],
 )
 def obtener_mis_entregas(
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(require_role("estudiante")),
     db: Session = Depends(get_db),
 ):
+    verificar_acceso_academico(current_user, db)
+
     entregas = (
         db.query(Entrega)
         .filter(
@@ -710,13 +1110,13 @@ def obtener_mis_entregas(
 
     return APIResponse(
         success=True,
-        mensaje="Entregas del usuario obtenidas exitosamente",
+        mensaje="Entregas del usuario recuperadas correctamente",
         data=entregas,
     )
 
 
 # ============================================================
-# 8. Obtener mis actividades
+# 12. OBTENER MIS ACTIVIDADES
 # ============================================================
 
 @router.get(
@@ -724,23 +1124,31 @@ def obtener_mis_entregas(
     response_model=APIResponse[list[ActividadEstudianteResponse]],
 )
 def obtener_mis_actividades(
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(
+        require_role("estudiante")
+    ),
     db: Session = Depends(get_db),
 ):
+    verificar_acceso_academico(current_user, db)
+
     actividades = (
         db.query(Actividad)
         .join(
-            Materia,
-            Actividad.id_materia == Materia.id_materia,
+            UsuarioCurso,
+            Actividad.id_curso == UsuarioCurso.id_curso,
         )
         .join(
-            UsuarioCurso,
-            Materia.id_curso == UsuarioCurso.id_curso,
+            Curso,
+            Actividad.id_curso == Curso.id_curso,
         )
         .filter(
-            UsuarioCurso.id_usuario == current_user.id_usuario
+            UsuarioCurso.id_usuario == current_user.id_usuario,
+            Curso.id_colegio == current_user.id_colegio,
+            Actividad.id_curso.isnot(None),
         )
-        .order_by(Actividad.fecha_limite.asc())
+        .order_by(
+            Actividad.fecha_limite.asc()
+        )
         .all()
     )
 
@@ -760,12 +1168,15 @@ def obtener_mis_actividades(
         if entrega:
             fecha_entrega = entrega.fecha_entrega.date()
 
-            if fecha_entrega <= actividad.fecha_limite:
-                estado = "entregada"
-            else:
-                estado = "fuera_de_plazo"
+            estado = (
+                "entregada"
+                if fecha_entrega <= actividad.fecha_limite
+                else "fuera_de_plazo"
+            )
+
         elif hoy > actividad.fecha_limite:
             estado = "vencida"
+
         else:
             estado = "pendiente"
 
@@ -778,19 +1189,20 @@ def obtener_mis_actividades(
                 fecha_publicacion=actividad.fecha_publicacion,
                 fecha_limite=actividad.fecha_limite,
                 id_materia=actividad.id_materia,
+                id_curso=actividad.id_curso,
                 estado=estado,
             )
         )
 
     return APIResponse(
         success=True,
-        mensaje="Actividades del usuario obtenidas exitosamente",
+        mensaje="Actividades del estudiante recuperadas correctamente",
         data=resultado,
     )
 
 
 # ============================================================
-# 9. Obtener mis calificaciones
+# 13. OBTENER MIS CALIFICACIONES
 # ============================================================
 
 @router.get(
@@ -798,9 +1210,13 @@ def obtener_mis_actividades(
     response_model=APIResponse[list[EntregaResponse]],
 )
 def obtener_mis_calificaciones(
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(
+        require_role("estudiante")
+    ),
     db: Session = Depends(get_db),
 ):
+    verificar_acceso_academico(current_user, db)
+
     entregas = (
         db.query(Entrega)
         .filter(
@@ -812,15 +1228,13 @@ def obtener_mis_calificaciones(
 
     return APIResponse(
         success=True,
-        mensaje="Calificaciones del usuario obtenidas exitosamente",
+        mensaje="Calificaciones recuperadas correctamente",
         data=entregas,
     )
 
 
 # ============================================================
-# 10. Eliminar estudiante o docente
-# Administrador global: cualquier colegio.
-# Coordinador: únicamente su colegio.
+# 14. ELIMINAR USUARIOS
 # ============================================================
 
 @router.delete(
@@ -832,43 +1246,15 @@ def eliminar_usuario(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    usuario = (
-        db.query(Usuario)
-        .filter(Usuario.id_usuario == id_usuario)
-        .first()
+    usuario = obtener_usuario_o_error(
+        db,
+        id_usuario,
     )
 
-    if usuario is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario no encontrado",
-        )
-
-    rol = obtener_rol_efectivo(current_user)
-
-    if rol not in ("administrador", "coordinador"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permisos para eliminar usuarios",
-        )
-
-    if rol == "coordinador":
-        verificar_usuario_en_colegio(usuario, current_user)
-
-    if usuario.tipo_de_usuario in ("administrador", "coordinador"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "No se pueden eliminar cuentas administrativas "
-                "o de coordinación desde esta ruta"
-            ),
-        )
-
-    if usuario.tipo_de_usuario not in ("estudiante", "docente"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Solo se pueden eliminar estudiantes o docentes",
-        )
+    verificar_permisos_gestion(
+        current_user,
+        usuario,
+    )
 
     tiene_incapacidades = (
         db.query(Incapacidad)
@@ -914,6 +1300,20 @@ def eliminar_usuario(
         is not None
     )
 
+    tiene_asignaciones = (
+        db.query(DocenteAsignacion)
+        .filter(DocenteAsignacion.id_usuario == id_usuario)
+        .first()
+        is not None
+    )
+
+    tiene_cursos = (
+        db.query(UsuarioCurso)
+        .filter(UsuarioCurso.id_usuario == id_usuario)
+        .first()
+        is not None
+    )
+
     if any((
         tiene_incapacidades,
         tiene_historial,
@@ -921,6 +1321,8 @@ def eliminar_usuario(
         tiene_materiales,
         tiene_actividades,
         tiene_entregas,
+        tiene_asignaciones,
+        tiene_cursos,
     )):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -937,19 +1339,18 @@ def eliminar_usuario(
     try:
         db.delete(usuario)
         db.commit()
-    except IntegrityError:
+
+    except IntegrityError as exc:
         db.rollback()
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "No se puede eliminar el usuario porque tiene "
-                "otros registros relacionados."
-            ),
-        )
+            detail="No se puede eliminar el usuario porque tiene otros registros relacionados.",
+        ) from exc
 
     return APIResponse(
         success=True,
-        mensaje="Usuario eliminado exitosamente",
+        mensaje="Usuario eliminado correctamente",
         data={
             "id_usuario": id_usuario,
             "nombre": nombre_usuario,
@@ -958,10 +1359,7 @@ def eliminar_usuario(
 
 
 # ============================================================
-# 11. Obtener usuario por ID
-# Administrador global: todos los colegios.
-# Coordinador: su colegio.
-# Docente/estudiante: únicamente su perfil.
+# 15. OBTENER USUARIO POR ID
 # ============================================================
 
 @router.get(
@@ -973,25 +1371,21 @@ def obtener_usuario(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    usuario = (
-        db.query(Usuario)
-        .filter(Usuario.id_usuario == id_usuario)
-        .first()
+    usuario = obtener_usuario_o_error(
+        db,
+        id_usuario,
     )
-
-    if usuario is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario no encontrado",
-        )
 
     rol = obtener_rol_efectivo(current_user)
 
     if rol == "administrador":
         pass
 
-    elif rol == "coordinador":
-        verificar_usuario_en_colegio(usuario, current_user)
+    elif rol in ("rector", "coordinador"):
+        verificar_permisos_gestion(
+            current_user,
+            usuario,
+        )
 
     elif rol in ("docente", "estudiante"):
         if usuario.id_usuario != current_user.id_usuario:
@@ -1008,15 +1402,14 @@ def obtener_usuario(
 
     return APIResponse(
         success=True,
-        mensaje="Usuario obtenido correctamente",
+        mensaje="Usuario recuperado correctamente",
         data=usuario,
     )
 
 
 # ============================================================
-# 12. Actualizar usuario
-# Solo coordinadores; únicamente docentes y estudiantes
-# de su propio colegio.
+# 16. ACTUALIZAR USUARIOS
+# Notifica al estudiante si cambia de curso.
 # ============================================================
 
 @router.put(
@@ -1025,75 +1418,135 @@ def obtener_usuario(
 )
 def actualizar_usuario(
     id_usuario: int,
-    datos: UsuarioCreate,
-    current_user: Usuario = Depends(
-        require_role("coordinador")
-    ),
+    datos: UsuarioUpdate,
+    background_tasks: BackgroundTasks,
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    usuario = (
-        db.query(Usuario)
-        .filter(Usuario.id_usuario == id_usuario)
-        .first()
-    )
-
-    if usuario is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Usuario no encontrado",
-        )
-
-    verificar_usuario_en_colegio(usuario, current_user)
-
-    if usuario.tipo_de_usuario not in ("docente", "estudiante"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo puedes modificar docentes y estudiantes",
-        )
-
-    if datos.id_colegio != current_user.id_colegio:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No puedes asignar usuarios a otro colegio",
-        )
-
-    if datos.tipo_de_usuario not in ("docente", "estudiante"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No puedes asignar roles administrativos",
-        )
-
-    verificar_datos_unicos(
+    usuario = obtener_usuario_o_error(
         db,
-        datos,
-        id_usuario_excluir=id_usuario,
+        id_usuario,
     )
 
-    usuario.codigo_usuario = datos.codigo_usuario
-    usuario.documento = datos.documento
-    usuario.nombres_compl = datos.nombres_compl
-    usuario.apellidos_compl = datos.apellidos_compl
-    usuario.telefono = datos.telefono
-    usuario.correo = datos.correo
-    usuario.tipo_de_usuario = datos.tipo_de_usuario
-    usuario.jornada = datos.jornada
+    verificar_permisos_gestion(
+        current_user,
+        usuario,
+    )
 
-    # El colegio se mantiene sin cambios.
-    if datos.contrasena:
-        usuario.contrasena = hash_password(datos.contrasena)
+    cambios = datos.model_dump(exclude_unset=True)
+
+    if not cambios:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se enviaron datos para actualizar",
+        )
+
+    if "documento" in cambios or "correo" in cambios:
+        verificar_datos_unicos(
+            db,
+            cambios.get("documento", usuario.documento),
+            str(cambios.get("correo", usuario.correo)),
+            id_usuario_excluir=id_usuario,
+        )
+
+    curso_anterior = None
+    curso_nuevo = None
+    cambio_real_de_curso = False
+
+    if usuario.tipo_de_usuario == "estudiante":
+        if "id_curso" in cambios:
+            id_curso = cambios.pop("id_curso")
+
+            if id_curso is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El estudiante debe conservar un curso asignado",
+                )
+
+            curso_nuevo = obtener_curso_o_error(
+                db,
+                id_curso,
+                usuario.id_colegio,
+            )
+
+            relacion = (
+                db.query(UsuarioCurso)
+                .filter(
+                    UsuarioCurso.id_usuario == usuario.id_usuario
+                )
+                .first()
+            )
+
+            if relacion is None:
+                db.add(
+                    UsuarioCurso(
+                        id_usuario=usuario.id_usuario,
+                        id_curso=curso_nuevo.id_curso,
+                    )
+                )
+
+                cambio_real_de_curso = True
+
+            else:
+                if relacion.id_curso != curso_nuevo.id_curso:
+                    curso_anterior = (
+                        db.query(Curso)
+                        .filter(
+                            Curso.id_curso == relacion.id_curso,
+                        )
+                        .first()
+                    )
+
+                    relacion.id_curso = curso_nuevo.id_curso
+                    cambio_real_de_curso = True
+
+            if cambio_real_de_curso:
+                usuario.jornada = curso_nuevo.jornada
+
+    elif "id_curso" in cambios:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Solo los estudiantes pueden tener un curso directo",
+        )
+
+    contrasena = cambios.pop("contrasena", None)
+
+    cambios.pop("id_curso", None)
+
+    for campo, valor in cambios.items():
+        setattr(usuario, campo, valor)
+
+    if contrasena:
+        usuario.contrasena = hash_password(contrasena)
 
     try:
         db.commit()
         db.refresh(usuario)
-    except IntegrityError:
+
+    except IntegrityError as exc:
         db.rollback()
+
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="No se pudo actualizar: verifica los datos únicos",
+            detail="No se pudo actualizar el usuario. Verifica los datos.",
+        ) from exc
+
+    # Notificar solamente si el estudiante cambió realmente
+    # de curso y el cambio quedó guardado correctamente.
+    if (
+        cambio_real_de_curso
+        and curso_nuevo is not None
+        and usuario.tipo_de_usuario == "estudiante"
+    ):
+        notificar_cambio_curso_estudiante(
+            background_tasks=background_tasks,
+            estudiante=usuario,
+            curso_anterior=curso_anterior,
+            curso_nuevo=curso_nuevo,
         )
 
     return APIResponse(
         success=True,
-        mensaje="Usuario actualizado exitosamente",
+        mensaje="Usuario actualizado correctamente",
         data=usuario,
     )

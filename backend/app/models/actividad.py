@@ -1,4 +1,12 @@
-from sqlalchemy import Column, Integer, String, Text, Date, ForeignKey
+
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    Text,
+    Date,
+    ForeignKey,
+)
 from sqlalchemy.orm import relationship
 
 from app.database.base import Base
@@ -10,55 +18,77 @@ class Actividad(Base):
     id_actividad = Column(
         Integer,
         primary_key=True,
-        index=True
+        index=True,
     )
 
     id_usuario = Column(
         Integer,
         ForeignKey("usuario.id_usuario"),
-        nullable=False
+        nullable=False,
     )
 
     titulo = Column(
         String(120),
-        nullable=False
+        nullable=False,
     )
 
     descripcion = Column(
         Text,
-        nullable=False
+        nullable=False,
+    )
+
+    archivo = Column(
+        String(255),
+        nullable=True,
+    )
+
+    archivo_public_id = Column(
+        String(255),
+        nullable=True,
+    )
+
+    archivo_resource_type = Column(
+        String(20),
+        nullable=True,
     )
 
     fecha_publicacion = Column(
         Date,
-        nullable=False
+        nullable=False,
     )
 
     fecha_limite = Column(
         Date,
-        nullable=False
+        nullable=False,
     )
 
     id_materia = Column(
         Integer,
         ForeignKey("materia.id_materia"),
-        nullable=False
+        nullable=False,
     )
 
-    # Docente que creó la actividad
+    id_curso = Column(
+        Integer,
+        ForeignKey("curso.id_curso"),
+        nullable=False,
+    )
+
     usuario = relationship(
         "Usuario",
-        back_populates="actividades"
+        back_populates="actividades",
     )
 
-    # Materia a la que pertenece
     materia = relationship(
         "Materia",
-        back_populates="actividades"
+        back_populates="actividades",
     )
 
-    # Entregas de esta actividad
+    curso = relationship(
+        "Curso",
+    )
+
     entregas = relationship(
         "Entrega",
-        back_populates="actividad"
+        back_populates="actividad",
     )
