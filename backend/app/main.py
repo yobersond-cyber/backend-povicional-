@@ -1,5 +1,6 @@
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -40,7 +41,6 @@ def actualizar_estructura_base_datos():
     Conserva las tablas y registros existentes.
     """
 
-    # Crear únicamente las tablas que todavía no existen.
     Base.metadata.create_all(bind=engine)
 
     tablas_requeridas = [
@@ -132,15 +132,27 @@ app = FastAPI(
 )
 
 
+# Dominios permitidos para comunicarse con el backend.
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://backend-povicional-puce.vercel.app",
 ]
+
+# Permitir agregar uno o varios dominios propios desde Railway.
+# Ejemplo: https://mi-aplicacion.vercel.app
+frontend_urls = os.getenv("FRONTEND_URL", "")
+
+for url in frontend_urls.split(","):
+    url = url.strip().rstrip("/")
+
+    if url and url not in origins:
+        origins.append(url)
+
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"^https://[a-zA-Z0-9-]+\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
