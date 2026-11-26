@@ -1,7 +1,7 @@
 
 const API_URL = (
   import.meta.env.VITE_API_URL ||
-  "https://backend-povicional-production.up.railway.app"
+    "https://backend-povicional-production-b1de74c7.up.railway.app"
 ).replace(/\/+$/, "");
 
 export async function apiFetch(
