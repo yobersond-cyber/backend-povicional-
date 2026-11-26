@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from typing import Optional, Literal
 
@@ -55,6 +54,10 @@ class ColegioResponse(ColegioBase):
     id_colegio: int
     estado: Literal["activo", "inactivo"]
     fecha_creacion: datetime
+
+
+class EstadoColegioUpdate(BaseSchema):
+    estado: Literal["activo", "inactivo"]
 
 
 class RectorCreate(BaseSchema):

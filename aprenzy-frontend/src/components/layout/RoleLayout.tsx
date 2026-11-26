@@ -37,6 +37,7 @@ interface RoleLayoutProps {
   children?: ReactNode;
   variante:
     | "admin"
+    | "rector"
     | "coordinador"
     | "docente"
     | "estudiante";
@@ -102,12 +103,10 @@ export default function RoleLayout({
     setMenuAbierto(false);
   }
 
-  // Abrir la ventana personalizada de confirmación.
   function cerrarSesion() {
     setConfirmarCierre(true);
   }
 
-  // Cerrar la sesión solamente cuando se confirme.
   function confirmarCerrarSesion() {
     setConfirmarCierre(false);
     setMenuAbierto(false);
@@ -115,7 +114,6 @@ export default function RoleLayout({
     navigate("/", { replace: true });
   }
 
-  // Permitir cerrar la ventana con la tecla Escape.
   useEffect(() => {
     if (!confirmarCierre) return;
 
@@ -134,15 +132,12 @@ export default function RoleLayout({
 
   return (
     <div className={`role-layout role-${variante}`}>
-
       {menuAbierto && (
         <div
           className="role-layout-overlay"
           onClick={() => setMenuAbierto(false)}
         />
       )}
-
-      {/* MENÚ LATERAL */}
 
       <aside
         className={`role-layout-sidebar ${
@@ -221,8 +216,6 @@ export default function RoleLayout({
         </div>
       </aside>
 
-      {/* CONTENIDO PRINCIPAL */}
-
       <main className="role-layout-main">
         <header className="role-layout-topbar">
           <div className="role-layout-topbar-left">
@@ -266,8 +259,6 @@ export default function RoleLayout({
           {renderSeccion(seccionActiva)}
         </section>
       </main>
-
-      {/* VENTANA PERSONALIZADA PARA CERRAR SESIÓN */}
 
       {confirmarCierre && (
         <div
@@ -353,3 +344,4 @@ export default function RoleLayout({
     </div>
   );
 }
+  

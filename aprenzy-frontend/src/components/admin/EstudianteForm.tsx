@@ -21,6 +21,7 @@ import {
   actualizarUsuario,
   crearUsuario,
   type Estudiante,
+  type UsuarioCreate,
 } from "../../services/usuario";
 
 import {
@@ -41,7 +42,6 @@ interface EstudianteFormProps {
 }
 
 interface FormularioEstudiante {
-  codigo_usuario: string;
   documento: string;
   nombres_compl: string;
   apellidos_compl: string;
@@ -53,7 +53,6 @@ interface FormularioEstudiante {
 }
 
 const formularioInicial: FormularioEstudiante = {
-  codigo_usuario: "",
   documento: "",
   nombres_compl: "",
   apellidos_compl: "",
@@ -73,43 +72,18 @@ export default function EstudianteForm({
 
   const esEdicion = estudiante !== null;
 
-  const [
-    formulario,
-    setFormulario,
-  ] = useState<FormularioEstudiante>({
-    ...formularioInicial,
-  });
+  const [formulario, setFormulario] =
+    useState<FormularioEstudiante>({
+      ...formularioInicial,
+    });
 
-  const [
-    cursos,
-    setCursos,
-  ] = useState<Curso[]>([]);
-
-  const [
-    cargandoCursos,
-    setCargandoCursos,
-  ] = useState(true);
-
-  const [
-    guardando,
-    setGuardando,
-  ] = useState(false);
-
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-  const [
-    advertencia,
-    setAdvertencia,
-  ] = useState("");
-
-  // Control de visibilidad de la contraseña.
-  const [
-    mostrarContrasena,
-    setMostrarContrasena,
-  ] = useState(false);
+  const [cursos, setCursos] = useState<Curso[]>([]);
+  const [cargandoCursos, setCargandoCursos] = useState(true);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState("");
+  const [advertencia, setAdvertencia] = useState("");
+  const [mostrarContrasena, setMostrarContrasena] =
+    useState(false);
 
   useEffect(() => {
     setMostrarContrasena(false);
@@ -117,38 +91,18 @@ export default function EstudianteForm({
     setAdvertencia("");
 
     if (!estudiante) {
-      setFormulario({
-        ...formularioInicial,
-      });
-
+      setFormulario({ ...formularioInicial });
       return;
     }
 
     setFormulario({
-      codigo_usuario:
-        estudiante.codigo_usuario ?? "",
-
-      documento:
-        estudiante.documento ?? "",
-
-      nombres_compl:
-        estudiante.nombres_compl ?? "",
-
-      apellidos_compl:
-        estudiante.apellidos_compl ?? "",
-
-      telefono:
-        estudiante.telefono ?? "",
-
-      correo:
-        estudiante.correo ?? "",
-
-      jornada:
-        estudiante.jornada ?? "",
-
-      // Nunca rellenamos la contraseña anterior.
+      documento: estudiante.documento ?? "",
+      nombres_compl: estudiante.nombres_compl ?? "",
+      apellidos_compl: estudiante.apellidos_compl ?? "",
+      telefono: estudiante.telefono ?? "",
+      correo: estudiante.correo ?? "",
+      jornada: estudiante.jornada ?? "",
       contrasena: "",
-
       id_curso: "",
     });
   }, [estudiante]);
@@ -157,9 +111,7 @@ export default function EstudianteForm({
     async function cargarCursos() {
       try {
         setCargandoCursos(true);
-
         const datos = await obtenerCursos();
-
         setCursos(datos);
       } catch (err) {
         setError(
@@ -194,21 +146,14 @@ export default function EstudianteForm({
     setAdvertencia("");
 
     if (!usuario) {
-      setError(
-        "No se encontró la sesión del administrador.",
-      );
-
+      setError("No se encontró la sesión del administrador.");
       return;
     }
 
-    const idColegio = usuario.id_colegio;
-
-    if (idColegio == null) {
+    if (usuario.id_colegio == null) {
       setError(
-        "Tu cuenta no tiene un colegio asociado. " +
-        "No puedes crear ni editar estudiantes.",
+        "Tu cuenta no tiene un colegio asociado. No puedes crear ni editar estudiantes.",
       );
-
       return;
     }
 
@@ -221,14 +166,10 @@ export default function EstudianteForm({
       !formulario.nombres_compl.trim() ||
       !formulario.apellidos_compl.trim() ||
       !formulario.documento.trim() ||
-      !formulario.codigo_usuario.trim() ||
       !formulario.telefono.trim() ||
       !formulario.correo.trim()
     ) {
-      setError(
-        "Completa todos los campos obligatorios.",
-      );
-
+      setError("Completa todos los campos obligatorios.");
       return;
     }
 
@@ -236,72 +177,37 @@ export default function EstudianteForm({
       !esEdicion &&
       formulario.contrasena.length < 6
     ) {
-      setError(
-        "La contraseña debe tener al menos 6 caracteres.",
-      );
-
+      setError("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
 
     try {
       setGuardando(true);
 
-      /*
-       * ========================================
-       * MODO EDICIÓN
-       * ========================================
-       */
+      const datos: Partial<UsuarioCreate> = {
+        documento: formulario.documento.trim(),
+        nombres_compl: formulario.nombres_compl.trim(),
+        apellidos_compl: formulario.apellidos_compl.trim(),
+        telefono: formulario.telefono.trim(),
+        correo: formulario.correo.trim(),
+        tipo_de_usuario: "estudiante",
+        jornada: formulario.jornada || null,
+      };
+
+      if (formulario.contrasena) {
+        datos.contrasena = formulario.contrasena;
+      }
+
       if (esEdicion && estudiante) {
         await actualizarUsuario(
           estudiante.id_usuario,
-          {
-            id_colegio: idColegio,
-
-            codigo_usuario:
-              formulario.codigo_usuario.trim(),
-
-            documento:
-              formulario.documento.trim(),
-
-            nombres_compl:
-              formulario.nombres_compl.trim(),
-
-            apellidos_compl:
-              formulario.apellidos_compl.trim(),
-
-            telefono:
-              formulario.telefono.trim(),
-
-            correo:
-              formulario.correo.trim(),
-
-            tipo_de_usuario: "estudiante",
-
-            jornada:
-              formulario.jornada || null,
-
-            // Solo cambia la contraseña si se escribió una nueva.
-            ...(formulario.contrasena
-              ? {
-                  contrasena:
-                    formulario.contrasena,
-                }
-              : {}),
-          },
+          datos,
         );
 
-        /*
-         * Intentamos asignar el curso seleccionado.
-         * Si la asignación falla, informamos al usuario
-         * sin ocultar que los datos ya se actualizaron.
-         */
         try {
           await asignarUsuarioCurso({
             id_usuario: estudiante.id_usuario,
-
-            id_curso: Number(
-              formulario.id_curso,
-            ),
+            id_curso: Number(formulario.id_curso),
           });
         } catch (err) {
           const mensaje =
@@ -310,66 +216,25 @@ export default function EstudianteForm({
               : "No fue posible actualizar el curso.";
 
           setAdvertencia(
-            "Los datos del estudiante fueron actualizados, " +
-            "pero no se pudo actualizar la asignación del curso: " +
+            "Los datos del estudiante fueron actualizados, pero no se pudo actualizar la asignación del curso: " +
             mensaje,
           );
-
           return;
         }
 
         onSuccess();
-
         return;
       }
 
-      /*
-       * ========================================
-       * MODO CREACIÓN
-       * ========================================
-       */
-
       const nuevoEstudiante = await crearUsuario({
-        id_colegio: idColegio,
+        ...datos,
+        contrasena: formulario.contrasena,
+      } as UsuarioCreate);
 
-        codigo_usuario:
-          formulario.codigo_usuario.trim(),
-
-        documento:
-          formulario.documento.trim(),
-
-        nombres_compl:
-          formulario.nombres_compl.trim(),
-
-        apellidos_compl:
-          formulario.apellidos_compl.trim(),
-
-        telefono:
-          formulario.telefono.trim(),
-
-        correo:
-          formulario.correo.trim(),
-
-        tipo_de_usuario: "estudiante",
-
-        jornada:
-          formulario.jornada || null,
-
-        contrasena:
-          formulario.contrasena,
-      });
-
-      /*
-       * Asignar el curso al nuevo estudiante.
-       */
       try {
         await asignarUsuarioCurso({
-          id_usuario:
-            nuevoEstudiante.id_usuario,
-
-          id_curso: Number(
-            formulario.id_curso,
-          ),
+          id_usuario: nuevoEstudiante.id_usuario,
+          id_curso: Number(formulario.id_curso),
         });
       } catch (err) {
         const mensaje =
@@ -378,20 +243,14 @@ export default function EstudianteForm({
             : "No fue posible asignar el curso.";
 
         setAdvertencia(
-          "El estudiante fue creado correctamente, " +
-          "pero no se pudo asignar al curso: " +
+          "El estudiante fue creado correctamente, pero no se pudo asignar al curso: " +
           mensaje,
         );
-
         return;
       }
 
-      setFormulario({
-        ...formularioInicial,
-      });
-
+      setFormulario({ ...formularioInicial });
       setMostrarContrasena(false);
-
       onSuccess();
     } catch (err) {
       setError(
@@ -416,9 +275,7 @@ export default function EstudianteForm({
             </span>
 
             <h2>
-              {esEdicion
-                ? "Editar estudiante"
-                : "Crear estudiante"}
+              {esEdicion ? "Editar estudiante" : "Crear estudiante"}
             </h2>
 
             <p>
@@ -440,46 +297,32 @@ export default function EstudianteForm({
         </div>
 
         {error && (
-          <div
-            className="admin-form-error"
-            role="alert"
-          >
+          <div className="admin-form-error" role="alert">
             {error}
           </div>
         )}
 
         {advertencia && (
-          <div
-            className="admin-form-warning"
-            role="alert"
-          >
+          <div className="admin-form-warning" role="alert">
             {advertencia}
           </div>
         )}
 
-        <form
-          onSubmit={guardarEstudiante}
-          className="admin-form"
-        >
+        <form onSubmit={guardarEstudiante} className="admin-form">
           <div className="admin-form-section">
             <h3>Información personal</h3>
 
             <div className="admin-form-grid">
               <label>
                 <span>Nombres</span>
-
                 <div className="admin-input">
                   <FiUser aria-hidden="true" />
-
                   <input
                     type="text"
                     autoComplete="given-name"
                     value={formulario.nombres_compl}
                     onChange={(event) =>
-                      actualizarCampo(
-                        "nombres_compl",
-                        event.target.value,
-                      )
+                      actualizarCampo("nombres_compl", event.target.value)
                     }
                     required
                     disabled={guardando}
@@ -489,19 +332,14 @@ export default function EstudianteForm({
 
               <label>
                 <span>Apellidos</span>
-
                 <div className="admin-input">
                   <FiUser aria-hidden="true" />
-
                   <input
                     type="text"
                     autoComplete="family-name"
                     value={formulario.apellidos_compl}
                     onChange={(event) =>
-                      actualizarCampo(
-                        "apellidos_compl",
-                        event.target.value,
-                      )
+                      actualizarCampo("apellidos_compl", event.target.value)
                     }
                     required
                     disabled={guardando}
@@ -511,32 +349,11 @@ export default function EstudianteForm({
 
               <label>
                 <span>Documento</span>
-
                 <input
                   type="text"
                   value={formulario.documento}
                   onChange={(event) =>
-                    actualizarCampo(
-                      "documento",
-                      event.target.value,
-                    )
-                  }
-                  required
-                  disabled={guardando}
-                />
-              </label>
-
-              <label>
-                <span>Código de estudiante</span>
-
-                <input
-                  type="text"
-                  value={formulario.codigo_usuario}
-                  onChange={(event) =>
-                    actualizarCampo(
-                      "codigo_usuario",
-                      event.target.value,
-                    )
+                    actualizarCampo("documento", event.target.value)
                   }
                   required
                   disabled={guardando}
@@ -545,19 +362,14 @@ export default function EstudianteForm({
 
               <label>
                 <span>Teléfono</span>
-
                 <div className="admin-input">
                   <FiPhone aria-hidden="true" />
-
                   <input
                     type="tel"
                     autoComplete="tel"
                     value={formulario.telefono}
                     onChange={(event) =>
-                      actualizarCampo(
-                        "telefono",
-                        event.target.value,
-                      )
+                      actualizarCampo("telefono", event.target.value)
                     }
                     required
                     disabled={guardando}
@@ -567,19 +379,14 @@ export default function EstudianteForm({
 
               <label>
                 <span>Correo</span>
-
                 <div className="admin-input">
                   <FiMail aria-hidden="true" />
-
                   <input
                     type="email"
                     autoComplete="email"
                     value={formulario.correo}
                     onChange={(event) =>
-                      actualizarCampo(
-                        "correo",
-                        event.target.value,
-                      )
+                      actualizarCampo("correo", event.target.value)
                     }
                     required
                     disabled={guardando}
@@ -595,55 +402,32 @@ export default function EstudianteForm({
             <div className="admin-form-grid">
               <label>
                 <span>Jornada</span>
-
                 <select
                   value={formulario.jornada}
                   onChange={(event) =>
-                    actualizarCampo(
-                      "jornada",
-                      event.target.value,
-                    )
+                    actualizarCampo("jornada", event.target.value)
                   }
                   required
                   disabled={guardando}
                 >
-                  <option value="">
-                    Seleccionar jornada
-                  </option>
-
-                  <option value="mañana">
-                    Mañana
-                  </option>
-
-                  <option value="tarde">
-                    Tarde
-                  </option>
-
-                  <option value="noche">
-                    Noche
-                  </option>
+                  <option value="">Seleccionar jornada</option>
+                  <option value="mañana">Mañana</option>
+                  <option value="tarde">Tarde</option>
+                  <option value="noche">Noche</option>
                 </select>
               </label>
 
               <label>
                 <span>Curso</span>
-
                 <div className="admin-input">
                   <FiBookOpen aria-hidden="true" />
-
                   <select
                     value={formulario.id_curso}
                     onChange={(event) =>
-                      actualizarCampo(
-                        "id_curso",
-                        event.target.value,
-                      )
+                      actualizarCampo("id_curso", event.target.value)
                     }
                     required
-                    disabled={
-                      cargandoCursos ||
-                      guardando
-                    }
+                    disabled={cargandoCursos || guardando}
                   >
                     <option value="">
                       {cargandoCursos
@@ -656,16 +440,13 @@ export default function EstudianteForm({
                         key={curso.id_curso}
                         value={curso.id_curso}
                       >
-                        {curso.grado} -{" "}
-                        {curso.numero_curso}{" "}
-                        ({curso.jornada})
+                        {curso.grado} - {curso.numero_curso} ({curso.jornada})
                       </option>
                     ))}
                   </select>
                 </div>
               </label>
 
-              {/* CONTRASEÑA CON BOTÓN DE VISIBILIDAD */}
               <label>
                 <span>
                   Contraseña
@@ -674,20 +455,12 @@ export default function EstudianteForm({
 
                 <div className="admin-input admin-password-control">
                   <FiLock aria-hidden="true" />
-
                   <input
-                    type={
-                      mostrarContrasena
-                        ? "text"
-                        : "password"
-                    }
+                    type={mostrarContrasena ? "text" : "password"}
                     autoComplete="new-password"
                     value={formulario.contrasena}
                     onChange={(event) =>
-                      actualizarCampo(
-                        "contrasena",
-                        event.target.value,
-                      )
+                      actualizarCampo("contrasena", event.target.value)
                     }
                     minLength={6}
                     required={!esEdicion}
@@ -713,9 +486,7 @@ export default function EstudianteForm({
                         : "Mostrar contraseña"
                     }
                     onClick={() =>
-                      setMostrarContrasena(
-                        (visible) => !visible,
-                      )
+                      setMostrarContrasena((visible) => !visible)
                     }
                     disabled={guardando}
                   >
@@ -749,13 +520,9 @@ export default function EstudianteForm({
             <button
               type="submit"
               className="admin-button-primary"
-              disabled={
-                guardando ||
-                cargandoCursos
-              }
+              disabled={guardando || cargandoCursos}
             >
               <FiSave aria-hidden="true" />
-
               {guardando
                 ? esEdicion
                   ? "Guardando..."

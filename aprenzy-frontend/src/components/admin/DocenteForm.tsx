@@ -22,7 +22,6 @@ interface FormularioDocente {
   nombres_compl: string;
   apellidos_compl: string;
   documento: string;
-  codigo_usuario: string;
   telefono: string;
   correo: string;
   jornada: string;
@@ -33,7 +32,6 @@ const formularioInicial: FormularioDocente = {
   nombres_compl: "",
   apellidos_compl: "",
   documento: "",
-  codigo_usuario: "",
   telefono: "",
   correo: "",
   jornada: "",
@@ -46,7 +44,7 @@ export default function DocenteForm({
   onCancel,
 }: DocenteFormProps) {
   const [formulario, setFormulario] =
-    useState<FormularioDocente>(formularioInicial);
+    useState<FormularioDocente>({ ...formularioInicial });
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
@@ -61,7 +59,6 @@ export default function DocenteForm({
         nombres_compl: docente.nombres_compl ?? "",
         apellidos_compl: docente.apellidos_compl ?? "",
         documento: docente.documento ?? "",
-        codigo_usuario: docente.codigo_usuario ?? "",
         telefono: docente.telefono ?? "",
         correo: docente.correo ?? "",
         jornada: docente.jornada ?? "",
@@ -92,7 +89,6 @@ export default function DocenteForm({
     evento: React.FormEvent<HTMLFormElement>,
   ) {
     evento.preventDefault();
-
     setError("");
 
     if (!formulario.nombres_compl.trim()) {
@@ -110,11 +106,6 @@ export default function DocenteForm({
       return;
     }
 
-    if (!formulario.codigo_usuario.trim()) {
-      setError("El código de usuario es obligatorio.");
-      return;
-    }
-
     if (!formulario.correo.trim()) {
       setError("El correo es obligatorio.");
       return;
@@ -125,41 +116,38 @@ export default function DocenteForm({
       return;
     }
 
+    if (
+      !esEdicion &&
+      formulario.contrasena.length < 6
+    ) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
     setGuardando(true);
 
     try {
+      const datos: Partial<UsuarioCreate> = {
+        nombres_compl: formulario.nombres_compl.trim(),
+        apellidos_compl: formulario.apellidos_compl.trim(),
+        documento: formulario.documento.trim(),
+        telefono: formulario.telefono.trim(),
+        correo: formulario.correo.trim(),
+        jornada: formulario.jornada || null,
+        tipo_de_usuario: "docente",
+      };
+
+      if (formulario.contrasena.trim()) {
+        datos.contrasena = formulario.contrasena;
+      }
+
       if (esEdicion && docente) {
-        const datos: Partial<UsuarioCreate> = {
-          nombres_compl: formulario.nombres_compl.trim(),
-          apellidos_compl: formulario.apellidos_compl.trim(),
-          documento: formulario.documento.trim(),
-          codigo_usuario: formulario.codigo_usuario.trim(),
-          telefono: formulario.telefono.trim(),
-          correo: formulario.correo.trim(),
-          jornada: formulario.jornada || null,
-          tipo_de_usuario: "docente",
-        };
-
-        if (formulario.contrasena.trim()) {
-          datos.contrasena = formulario.contrasena;
-        }
-
-        await actualizarUsuario(docente.id_usuario, datos);
+        await actualizarUsuario(
+          docente.id_usuario,
+          datos,
+        );
       } else {
-        const datos: UsuarioCreate = {
-          id_colegio: 1,
-          codigo_usuario: formulario.codigo_usuario.trim(),
-          documento: formulario.documento.trim(),
-          nombres_compl: formulario.nombres_compl.trim(),
-          apellidos_compl: formulario.apellidos_compl.trim(),
-          telefono: formulario.telefono.trim(),
-          correo: formulario.correo.trim(),
-          tipo_de_usuario: "docente",
-          jornada: formulario.jornada || null,
-          contrasena: formulario.contrasena,
-        };
-
-        await crearUsuario(datos);
+        await crearUsuario(datos as UsuarioCreate);
       }
 
       setFormulario({ ...formularioInicial });
@@ -169,15 +157,13 @@ export default function DocenteForm({
     } catch (error) {
       console.error("Error guardando docente:", error);
 
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError(
-          esEdicion
+      setError(
+        error instanceof Error
+          ? error.message
+          : esEdicion
             ? "No fue posible actualizar el docente."
             : "No fue posible crear el docente.",
-        );
-      }
+      );
     } finally {
       setGuardando(false);
     }
@@ -187,10 +173,7 @@ export default function DocenteForm({
     <form className="admin-form" onSubmit={manejarSubmit}>
       <div className="admin-form-grid">
         <div className="admin-form-group">
-          <label htmlFor="nombres_compl">
-            Nombres
-          </label>
-
+          <label htmlFor="nombres_compl">Nombres</label>
           <input
             id="nombres_compl"
             name="nombres_compl"
@@ -198,15 +181,13 @@ export default function DocenteForm({
             value={formulario.nombres_compl}
             onChange={manejarCambio}
             placeholder="Ingrese los nombres"
+            required
             disabled={guardando}
           />
         </div>
 
         <div className="admin-form-group">
-          <label htmlFor="apellidos_compl">
-            Apellidos
-          </label>
-
+          <label htmlFor="apellidos_compl">Apellidos</label>
           <input
             id="apellidos_compl"
             name="apellidos_compl"
@@ -214,15 +195,13 @@ export default function DocenteForm({
             value={formulario.apellidos_compl}
             onChange={manejarCambio}
             placeholder="Ingrese los apellidos"
+            required
             disabled={guardando}
           />
         </div>
 
         <div className="admin-form-group">
-          <label htmlFor="documento">
-            Documento
-          </label>
-
+          <label htmlFor="documento">Documento</label>
           <input
             id="documento"
             name="documento"
@@ -230,31 +209,13 @@ export default function DocenteForm({
             value={formulario.documento}
             onChange={manejarCambio}
             placeholder="Número de documento"
+            required
             disabled={guardando}
           />
         </div>
 
         <div className="admin-form-group">
-          <label htmlFor="codigo_usuario">
-            Código de usuario
-          </label>
-
-          <input
-            id="codigo_usuario"
-            name="codigo_usuario"
-            type="text"
-            value={formulario.codigo_usuario}
-            onChange={manejarCambio}
-            placeholder="Código del docente"
-            disabled={guardando}
-          />
-        </div>
-
-        <div className="admin-form-group">
-          <label htmlFor="telefono">
-            Teléfono
-          </label>
-
+          <label htmlFor="telefono">Teléfono</label>
           <input
             id="telefono"
             name="telefono"
@@ -267,10 +228,7 @@ export default function DocenteForm({
         </div>
 
         <div className="admin-form-group">
-          <label htmlFor="correo">
-            Correo
-          </label>
-
+          <label htmlFor="correo">Correo</label>
           <input
             id="correo"
             name="correo"
@@ -278,15 +236,13 @@ export default function DocenteForm({
             value={formulario.correo}
             onChange={manejarCambio}
             placeholder="correo@ejemplo.com"
+            required
             disabled={guardando}
           />
         </div>
 
         <div className="admin-form-group">
-          <label htmlFor="jornada">
-            Jornada
-          </label>
-
+          <label htmlFor="jornada">Jornada</label>
           <select
             id="jornada"
             name="jornada"
@@ -294,25 +250,13 @@ export default function DocenteForm({
             onChange={manejarCambio}
             disabled={guardando}
           >
-            <option value="">
-              Seleccione una jornada
-            </option>
-
-            <option value="mañana">
-              Mañana
-            </option>
-
-            <option value="tarde">
-              Tarde
-            </option>
-
-            <option value="unica">
-              Única
-            </option>
+            <option value="">Seleccione una jornada</option>
+            <option value="mañana">Mañana</option>
+            <option value="tarde">Tarde</option>
+            <option value="unica">Única</option>
           </select>
         </div>
 
-        {/* CONTRASEÑA CON BOTÓN PARA MOSTRAR U OCULTAR */}
         <div className="admin-form-group">
           <label htmlFor="contrasena">
             {esEdicion
@@ -324,11 +268,7 @@ export default function DocenteForm({
             <input
               id="contrasena"
               name="contrasena"
-              type={
-                mostrarContrasena
-                  ? "text"
-                  : "password"
-              }
+              type={mostrarContrasena ? "text" : "password"}
               autoComplete="new-password"
               value={formulario.contrasena}
               onChange={manejarCambio}
@@ -337,6 +277,8 @@ export default function DocenteForm({
                   ? "Dejar vacío para conservarla"
                   : "Ingrese una contraseña"
               }
+              minLength={6}
+              required={!esEdicion}
               disabled={guardando}
             />
 
@@ -354,9 +296,7 @@ export default function DocenteForm({
                   : "Mostrar contraseña"
               }
               onClick={() =>
-                setMostrarContrasena(
-                  (visible) => !visible,
-                )
+                setMostrarContrasena((visible) => !visible)
               }
               disabled={guardando}
             >
@@ -370,18 +310,14 @@ export default function DocenteForm({
 
           {esEdicion && (
             <small className="admin-password-help">
-              Deja este campo vacío para conservar la contraseña
-              actual del docente.
+              Deja este campo vacío para conservar la contraseña actual del docente.
             </small>
           )}
         </div>
       </div>
 
       {error && (
-        <div
-          className="admin-form-error"
-          role="alert"
-        >
+        <div className="admin-form-error" role="alert">
           {error}
         </div>
       )}

@@ -13,7 +13,6 @@ import {
 } from "react-icons/fi";
 
 import { useNavigate } from "react-router-dom";
-
 import { useAuth } from "../context/AuthContext";
 
 import RoleLayout, {
@@ -27,10 +26,6 @@ import Materiales from "../pages/Material";
 import Materias from "../pages/materias";
 import EstudiantesDocente from "../pages/EstudiantesDocente";
 
-/* ==========================================
-   MENÚ DEL DOCENTE
-   ========================================== */
-
 const menu: RoleMenuItem[] = [
   { id: "inicio", nombre: "Inicio", icono: <FiHome /> },
   { id: "materias", nombre: "Mis materias", icono: <FiBookOpen /> },
@@ -42,17 +37,12 @@ const menu: RoleMenuItem[] = [
   { id: "perfil", nombre: "Mi perfil", icono: <FiUser /> },
 ];
 
-/* ==========================================
-   INICIO DEL DOCENTE
-   ========================================== */
-
 function InicioDocente() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
 
   const primerNombre =
-    usuario?.nombres_compl?.trim().split(/\s+/)[0] ||
-    "docente";
+    usuario?.nombres_compl?.trim().split(/\s+/)[0] || "docente";
 
   const fechaFormateada = new Intl.DateTimeFormat("es-CO", {
     weekday: "long",
@@ -85,7 +75,7 @@ function InicioDocente() {
     {
       id: "materiales",
       titulo: "Materiales",
-      descripcion: "Accede a la sección de recursos para tus estudiantes.",
+      descripcion: "Comparte recursos y contenidos con tus estudiantes.",
       accion: "Gestionar materiales",
       ruta: "/docente/materiales",
       icono: <FiFileText />,
@@ -101,7 +91,7 @@ function InicioDocente() {
     {
       id: "entregas",
       titulo: "Entregas",
-      descripcion: "Consulta la sección de seguimiento de entregas.",
+      descripcion: "Consulta y realiza seguimiento a las entregas.",
       accion: "Consultar entregas",
       ruta: "/docente/entregas",
       icono: <FiCalendar />,
@@ -109,8 +99,8 @@ function InicioDocente() {
     {
       id: "calificaciones",
       titulo: "Calificaciones",
-      descripcion: "Accede a la gestión de resultados académicos.",
-      accion: "Consultar calificaciones",
+      descripcion: "Gestiona los resultados académicos de tus estudiantes.",
+      accion: "Gestionar calificaciones",
       ruta: "/docente/calificaciones",
       icono: <FiCheckCircle />,
     },
@@ -118,11 +108,10 @@ function InicioDocente() {
 
   return (
     <div className="role-home role-home-docente teacher-dashboard">
-
       <section className="role-home-header teacher-welcome">
         <div className="teacher-welcome-content">
           <span className="role-home-badge teacher-badge">
-            <FiBookOpen />
+            <FiBookOpen aria-hidden="true" />
             Área docente
           </span>
 
@@ -133,13 +122,13 @@ function InicioDocente() {
           <h1>¡Bienvenido, {primerNombre}!</h1>
 
           <p className="teacher-description">
-            Tu espacio para organizar las materias, compartir
-            recursos, acompañar a tus estudiantes y gestionar
-            las actividades académicas.
+            Tu espacio para organizar las materias, compartir recursos,
+            acompañar a tus estudiantes y gestionar las actividades
+            académicas.
           </p>
 
           <div className="teacher-date">
-            <FiCalendar />
+            <FiCalendar aria-hidden="true" />
             <span>{fecha}</span>
           </div>
         </div>
@@ -148,6 +137,7 @@ function InicioDocente() {
           <div className="teacher-hero-icon">
             <FiBookOpen />
           </div>
+
           <span className="teacher-hero-dot teacher-dot-one" />
           <span className="teacher-hero-dot teacher-dot-two" />
         </div>
@@ -191,7 +181,7 @@ function InicioDocente() {
 
                 <em>
                   {acceso.accion}
-                  <FiArrowRight />
+                  <FiArrowRight aria-hidden="true" />
                 </em>
               </div>
             </button>
@@ -201,15 +191,15 @@ function InicioDocente() {
 
       <section className="teacher-reminder">
         <div className="teacher-reminder-icon">
-          <FiActivity />
+          <FiActivity aria-hidden="true" />
         </div>
 
         <div className="teacher-reminder-copy">
           <h2>Organiza tu jornada</h2>
 
           <p>
-            Consulta tus actividades y revisa las entregas
-            para mantener organizado el seguimiento académico.
+            Consulta tus actividades y revisa las entregas para mantener
+            organizado el seguimiento académico.
           </p>
         </div>
 
@@ -219,16 +209,12 @@ function InicioDocente() {
           className="teacher-reminder-button"
         >
           Ver actividades
-          <FiArrowRight />
+          <FiArrowRight aria-hidden="true" />
         </button>
       </section>
     </div>
   );
 }
-
-/* ==========================================
-   PERFIL DEL DOCENTE
-   ========================================== */
 
 function PerfilDocente() {
   const { usuario } = useAuth();
@@ -243,7 +229,7 @@ function PerfilDocente() {
   const datos = [
     {
       etiqueta: "Nombres",
-      valor: usuario?.nombres_compl || "No registrado",
+      valor: usuario?.nombres_compl || "No registrados",
     },
     {
       etiqueta: "Apellidos",
@@ -252,10 +238,6 @@ function PerfilDocente() {
     {
       etiqueta: "Documento",
       valor: usuario?.documento || "No registrado",
-    },
-    {
-      etiqueta: "Código de usuario",
-      valor: usuario?.codigo_usuario || "No registrado",
     },
     {
       etiqueta: "Correo electrónico",
@@ -269,20 +251,13 @@ function PerfilDocente() {
       etiqueta: "Jornada",
       valor: usuario?.jornada || "No registrada",
     },
-    {
-      etiqueta: "Institución",
-      valor:
-        usuario?.id_colegio != null
-          ? `Institución ${usuario.id_colegio}`
-          : "No asignada",
-    },
   ];
 
   return (
     <div className="role-home role-home-docente teacher-profile">
       <section className="teacher-profile-hero">
         <div className="teacher-profile-avatar">
-          <FiUser />
+          <FiUser aria-hidden="true" />
         </div>
 
         <div>
@@ -325,10 +300,6 @@ function PerfilDocente() {
     </div>
   );
 }
-
-/* ==========================================
-   NAVEGACIÓN PRINCIPAL
-   ========================================== */
 
 export default function DocenteLayout() {
   function renderSeccion(seccion: string) {

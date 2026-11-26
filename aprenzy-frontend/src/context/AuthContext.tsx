@@ -1,4 +1,4 @@
-// Importa las herramientas necesarias de React
+
 import {
   createContext,
   useContext,
@@ -7,19 +7,16 @@ import {
   type ReactNode,
 } from "react";
 
-// Importa las funciones de autenticación
 import {
   login as loginService,
   logout as logoutService,
 } from "../services/auth";
 
-// Importa la función para obtener el usuario autenticado
 import {
   obtenerUsuario,
   type Usuario,
 } from "../services/usuario";
 
-// Define los datos disponibles en el contexto
 interface AuthContextType {
   usuario: Usuario | null;
   token: string | null;
@@ -31,99 +28,148 @@ interface AuthContextType {
   logout: () => void;
 }
 
-// Crea el contexto de autenticación
 const AuthContext = createContext<
   AuthContextType | undefined
 >(undefined);
 
-// Proporciona la sesión al resto de la aplicación
 export function AuthProvider({
   children,
 }: {
   children: ReactNode;
 }) {
-  // Recupera el token guardado en el navegador
-  const [token, setToken] = useState<string | null>(
-    localStorage.getItem("token"),
-  );
+  const [token, setToken] = useState<string | null>(null);
 
-  // Guarda la información del usuario actual
   const [usuario, setUsuario] =
     useState<Usuario | null>(null);
 
-  // Controla si estamos recuperando la sesión
   const [loading, setLoading] = useState(true);
 
-  // Recupera el usuario cuando existe una sesión guardada
+  // Recuperar y validar la sesión existente.
   useEffect(() => {
-    // Comprueba si existe un token
-    if (!token) {
-      setLoading(false);
-      return;
-    }
+    let activo = true;
 
-    // Obtiene los datos del usuario autenticado
-    obtenerUsuario()
-      .then((usuarioActual) => {
-        // Guarda el usuario obtenido
+    const recuperarSesion = async () => {
+      const tokenGuardado = localStorage.getItem("token");
+
+      if (!tokenGuardado) {
+        if (activo) {
+          setToken(null);
+          setUsuario(null);
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const usuarioActual = await obtenerUsuario();
+
+        if (!usuarioActual?.id_usuario ||
+            !usuarioActual?.tipo_de_usuario) {
+          throw new Error("Los datos del usuario no son válidos.");
+        }
+
+        if (!activo) return;
+
+        localStorage.setItem(
+          "rol",
+          usuarioActual.tipo_de_usuario,
+        );
+
+        setToken(tokenGuardado);
         setUsuario(usuarioActual);
-      })
-      .catch(() => {
-        // Cierra la sesión si el token no es válido
+      } catch {
         logoutService();
 
-        // Limpia el token de React
+        if (!activo) return;
+
         setToken(null);
-
-        // Limpia el usuario actual
         setUsuario(null);
-      })
-      .finally(() => {
-        // Finaliza la carga de la sesión
-        setLoading(false);
-      });
-  }, [token]);
+      } finally {
+        if (activo) {
+          setLoading(false);
+        }
+      }
+    };
 
-  // Realiza el inicio de sesión
+    recuperarSesion();
+
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  // Iniciar sesión y validar los datos del usuario.
   const login = async (
     correo: string,
     contrasena: string,
   ) => {
-    // Envía las credenciales al backend
-    const respuesta = await loginService({
-      correo,
-      contrasena,
-    });
+    setLoading(true);
 
-    // Guarda el JWT en React
-    setToken(respuesta.access_token);
+    try {
+      const respuesta = await loginService({
+        correo,
+        contrasena,
+      });
 
-    // Guarda el JWT en el navegador
-    localStorage.setItem(
-      "token",
-      respuesta.access_token,
-    );
+      if (!respuesta.access_token) {
+        throw new Error(
+          "El servidor no devolvió un token de acceso.",
+        );
+      }
 
-    // Obtiene los datos completos del usuario
-    const usuarioActual = await obtenerUsuario();
+      localStorage.setItem(
+        "token",
+        respuesta.access_token,
+      );
 
-    // Guarda el usuario autenticado
-    setUsuario(usuarioActual);
+      const usuarioActual = await obtenerUsuario();
+
+      if (
+        !usuarioActual?.id_usuario ||
+        !usuarioActual?.tipo_de_usuario
+      ) {
+        throw new Error(
+          "No fue posible validar los datos del usuario.",
+        );
+      }
+
+      if (
+        usuarioActual.id_usuario !== respuesta.id_usuario ||
+        usuarioActual.tipo_de_usuario !== respuesta.tipo_de_usuario
+      ) {
+        throw new Error(
+          "Los datos de autenticación no coinciden con el usuario.",
+        );
+      }
+
+      localStorage.setItem(
+        "rol",
+        usuarioActual.tipo_de_usuario,
+      );
+
+      setUsuario(usuarioActual);
+      setToken(respuesta.access_token);
+    } catch (error) {
+      logoutService();
+
+      setToken(null);
+      setUsuario(null);
+
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Cierra la sesión actual
+  // Cerrar sesión.
   const logout = () => {
-    // Elimina los datos guardados de autenticación
     logoutService();
 
-    // Limpia el usuario de React
     setUsuario(null);
-
-    // Limpia el token de React
     setToken(null);
+    setLoading(false);
   };
 
-  // Comparte la autenticación con toda la aplicación
   return (
     <AuthContext.Provider
       value={{
@@ -139,18 +185,14 @@ export function AuthProvider({
   );
 }
 
-// Permite acceder al contexto desde otros componentes
 export function useAuth() {
-  // Obtiene el contexto de autenticación
   const context = useContext(AuthContext);
 
-  // Comprueba que exista el proveedor
   if (!context) {
     throw new Error(
       "useAuth debe utilizarse dentro de AuthProvider",
     );
   }
 
-  // Devuelve los datos de autenticación
   return context;
 }

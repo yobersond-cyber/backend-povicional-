@@ -1,4 +1,3 @@
-
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -21,6 +20,7 @@ from app.schemas.colegio import (
     ColegioResponse,
     ColegioConRectorCreate,
     ColegioConRectorResponse,
+    EstadoColegioUpdate,
 )
 
 from app.services.notificaciones_service import notificar_usuario
@@ -173,7 +173,6 @@ def crear_colegio_con_rector(
 
     try:
         db.add(colegio)
-
         db.flush()
 
         rector = Usuario(
@@ -191,7 +190,6 @@ def crear_colegio_con_rector(
         )
 
         db.add(rector)
-
         db.commit()
 
         db.refresh(colegio)
@@ -215,11 +213,11 @@ def crear_colegio_con_rector(
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Ocurrió un error al crear el colegio y su rector",
+            detail=(
+                "Ocurrió un error al crear el colegio y su rector"
+            ),
         ) from exc
 
-    # El correo se programa únicamente después de confirmar
-    # la creación del colegio y del rector.
     notificar_creacion_rector(
         background_tasks=background_tasks,
         rector=rector,
@@ -292,5 +290,61 @@ def obtener_colegio(
     return APIResponse(
         success=True,
         mensaje="Colegio recuperado exitosamente",
+        data=colegio,
+    )
+
+
+@router.patch(
+    "/{id_colegio}/estado",
+    response_model=APIResponse[ColegioResponse],
+)
+def actualizar_estado_colegio(
+    id_colegio: int,
+    datos: EstadoColegioUpdate,
+    current_user: Usuario = Depends(
+        require_role("administrador")
+    ),
+    db: Session = Depends(get_db),
+):
+    """
+    Permite al administrador global activar o desactivar
+    una institución sin modificar sus demás datos.
+    """
+
+    colegio = (
+        db.query(Colegio)
+        .filter(
+            Colegio.id_colegio == id_colegio
+        )
+        .first()
+    )
+
+    if colegio is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Colegio no encontrado",
+        )
+
+    colegio.estado = datos.estado
+
+    try:
+        db.commit()
+        db.refresh(colegio)
+
+    except Exception as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo actualizar el estado del colegio",
+        ) from exc
+
+    return APIResponse(
+        success=True,
+        mensaje=(
+            "El colegio fue activado correctamente"
+            if datos.estado == "activo"
+            else "El colegio fue desactivado correctamente"
+        ),
         data=colegio,
     )

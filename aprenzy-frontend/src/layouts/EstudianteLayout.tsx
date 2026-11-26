@@ -13,6 +13,7 @@ import {
   FiUser,
 } from "react-icons/fi";
 
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
@@ -29,6 +30,8 @@ import Entregas from "../pages/Entregas";
 import Incapacidades from "../pages/Incapacidades";
 import MaterialesEstudiante from "../pages/MaterialesEstudiante";
 import Materias from "../pages/materias";
+
+import { obtenerAccesos } from "../services/acceso";
 
 /* ==========================================
    MENÚ DEL ESTUDIANTE
@@ -91,7 +94,11 @@ const menu: RoleMenuItem[] = [
    PANEL PRINCIPAL DEL ESTUDIANTE
    ========================================== */
 
-function InicioEstudiante() {
+function InicioEstudiante({
+  accesoAcademicoActivo,
+}: {
+  accesoAcademicoActivo: boolean;
+}) {
   const { usuario } = useAuth();
   const navigate = useNavigate();
 
@@ -123,6 +130,7 @@ function InicioEstudiante() {
       ruta: "/estudiante/materias",
       icono: <FiBookOpen aria-hidden="true" />,
       color: "materias",
+      requiereAcceso: true,
     },
     {
       id: "materiales",
@@ -133,6 +141,7 @@ function InicioEstudiante() {
       ruta: "/estudiante/materiales",
       icono: <FiFileText aria-hidden="true" />,
       color: "materiales",
+      requiereAcceso: true,
     },
     {
       id: "actividades",
@@ -143,6 +152,7 @@ function InicioEstudiante() {
       ruta: "/estudiante/actividades",
       icono: <FiClipboard aria-hidden="true" />,
       color: "actividades",
+      requiereAcceso: true,
     },
     {
       id: "calificaciones",
@@ -153,6 +163,7 @@ function InicioEstudiante() {
       ruta: "/estudiante/calificaciones",
       icono: <FiCheckCircle aria-hidden="true" />,
       color: "calificaciones",
+      requiereAcceso: true,
     },
     {
       id: "entregas",
@@ -163,26 +174,29 @@ function InicioEstudiante() {
       ruta: "/estudiante/entregas",
       icono: <FiCalendar aria-hidden="true" />,
       color: "entregas",
+      requiereAcceso: true,
     },
     {
       id: "incapacidades",
       titulo: "Incapacidades",
       descripcion:
-        "Consulta y gestiona la información de tus incapacidades.",
+        "Envía tus incapacidades y consulta su estado.",
       textoAccion: "Abrir sección",
       ruta: "/estudiante/incapacidades",
       icono: <FiAlertCircle aria-hidden="true" />,
       color: "incapacidades",
+      requiereAcceso: false,
     },
     {
       id: "apelaciones",
       titulo: "Apelaciones",
       descripcion:
-        "Consulta el estado de las apelaciones que hayas registrado.",
+        "Apela las incapacidades que hayan sido rechazadas.",
       textoAccion: "Ver apelaciones",
       ruta: "/estudiante/apelaciones",
       icono: <FiActivity aria-hidden="true" />,
       color: "apelaciones",
+      requiereAcceso: false,
     },
     {
       id: "accesos",
@@ -193,8 +207,14 @@ function InicioEstudiante() {
       ruta: "/estudiante/accesos",
       icono: <FiShield aria-hidden="true" />,
       color: "accesos",
+      requiereAcceso: true,
     },
   ];
+
+  const accesosVisibles = accesosRapidos.filter(
+    (acceso) =>
+      accesoAcademicoActivo || !acceso.requiereAcceso,
+  );
 
   return (
     <div className="role-home role-home-estudiante student-dashboard">
@@ -253,21 +273,27 @@ function InicioEstudiante() {
               Accesos rápidos
             </span>
 
-            <h2>Tu espacio académico</h2>
+            <h2>
+              {accesoAcademicoActivo
+                ? "Tu espacio académico"
+                : "Gestión de incapacidades"}
+            </h2>
 
             <p>
-              Entra directamente a la sección que necesitas.
+              {accesoAcademicoActivo
+                ? "Entra directamente a la sección que necesitas."
+                : "Desde aquí puedes enviar tus incapacidades y gestionar tus apelaciones."}
             </p>
           </div>
 
           <span className="student-section-count">
-            {accesosRapidos.length} secciones
+            {accesosVisibles.length} secciones
           </span>
         </div>
 
         <div className="role-home-grid student-quick-grid">
 
-          {accesosRapidos.map((acceso) => (
+          {accesosVisibles.map((acceso) => (
             <button
               key={acceso.id}
               type="button"
@@ -308,34 +334,36 @@ function InicioEstudiante() {
 
       {/* CONSEJO PARA EL ESTUDIANTE */}
 
-      <section className="student-study-note">
+      {accesoAcademicoActivo && (
+        <section className="student-study-note">
 
-        <div className="student-study-note-icon">
-          <FiCheckCircle aria-hidden="true" />
-        </div>
+          <div className="student-study-note-icon">
+            <FiCheckCircle aria-hidden="true" />
+          </div>
 
-        <div>
-          <h2>Un consejo para tu jornada</h2>
+          <div>
+            <h2>Un consejo para tu jornada</h2>
 
-          <p>
-            Revisa primero las actividades y sus fechas.
-            Después consulta los materiales de apoyo
-            para planear tus entregas con tiempo.
-          </p>
-        </div>
+            <p>
+              Revisa primero las actividades y sus fechas.
+              Después consulta los materiales de apoyo
+              para planear tus entregas con tiempo.
+            </p>
+          </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            navigate("/estudiante/actividades")
-          }
-          className="student-study-note-button"
-        >
-          Ver actividades
-          <FiArrowRight aria-hidden="true" />
-        </button>
+          <button
+            type="button"
+            onClick={() =>
+              navigate("/estudiante/actividades")
+            }
+            className="student-study-note-button"
+          >
+            Ver actividades
+            <FiArrowRight aria-hidden="true" />
+          </button>
 
-      </section>
+        </section>
+      )}
     </div>
   );
 }
@@ -360,10 +388,6 @@ function PerfilEstudiante() {
       valor: usuario?.documento || "No registrado",
     },
     {
-      etiqueta: "Código de usuario",
-      valor: usuario?.codigo_usuario || "No registrado",
-    },
-    {
       etiqueta: "Correo electrónico",
       valor: usuario?.correo || "No registrado",
     },
@@ -374,13 +398,6 @@ function PerfilEstudiante() {
     {
       etiqueta: "Jornada",
       valor: usuario?.jornada || "No registrada",
-    },
-    {
-      etiqueta: "Institución",
-      valor:
-        usuario?.id_colegio != null
-          ? `Institución ${usuario.id_colegio}`
-          : "No asignada",
     },
   ];
 
@@ -442,11 +459,94 @@ function PerfilEstudiante() {
    ========================================== */
 
 export default function EstudianteLayout() {
+  const { usuario } = useAuth();
+
+  const [accesoAcademicoActivo, setAccesoAcademicoActivo] =
+    useState(false);
+
+  /* ==========================================
+     CONSULTAR ESTADO DEL ACCESO ACADÉMICO
+     ========================================== */
+
+  useEffect(() => {
+    let componenteActivo = true;
+
+    const consultarAccesoAcademico = async () => {
+      setAccesoAcademicoActivo(false);
+
+      // Solo las cuentas de estudiante aprobadas
+      // pueden consultar y utilizar el acceso académico.
+      if (
+        usuario?.tipo_de_usuario !== "estudiante" ||
+        usuario?.estado_aprobacion !== "aprobada"
+      ) {
+        return;
+      }
+
+      try {
+        const accesos = await obtenerAccesos();
+
+        const tieneAccesoActivo = accesos.some(
+          (acceso) => acceso.estado === "activo",
+        );
+
+        if (componenteActivo) {
+          setAccesoAcademicoActivo(tieneAccesoActivo);
+        }
+      } catch (error) {
+        console.error(
+          "Error al consultar los accesos académicos:",
+          error,
+        );
+
+        if (componenteActivo) {
+          setAccesoAcademicoActivo(false);
+        }
+      }
+    };
+
+    consultarAccesoAcademico();
+
+    return () => {
+      componenteActivo = false;
+    };
+  }, [
+    usuario?.id_usuario,
+    usuario?.tipo_de_usuario,
+    usuario?.estado_aprobacion,
+  ]);
+
+  /* ==========================================
+     FILTRAR MENÚ SEGÚN EL ACCESO
+     ========================================== */
+
+  const menuDisponible = accesoAcademicoActivo
+    ? menu
+    : menu.filter((item) =>
+        ["incapacidades", "apelaciones"].includes(item.id),
+      );
+
+  /* ==========================================
+     MOSTRAR SECCIÓN SEGÚN PERMISOS
+     ========================================== */
 
   function renderSeccion(seccion: string) {
+    // Mientras no exista un acceso académico activo,
+    // solo se permiten incapacidades y apelaciones.
+    if (
+      !accesoAcademicoActivo &&
+      !["incapacidades", "apelaciones"].includes(seccion)
+    ) {
+      return <Incapacidades />;
+    }
+
     switch (seccion) {
       case "inicio":
-        return <InicioEstudiante />;
+        return (
+          <InicioEstudiante
+            accesoAcademicoActivo={accesoAcademicoActivo}
+          />
+        );
 
       case "materias":
         return <Materias />;
@@ -476,7 +576,9 @@ export default function EstudianteLayout() {
         return <PerfilEstudiante />;
 
       default:
-        return <InicioEstudiante />;
+        return accesoAcademicoActivo
+          ? <InicioEstudiante accesoAcademicoActivo={true} />
+          : <Incapacidades />;
     }
   }
 
@@ -485,8 +587,8 @@ export default function EstudianteLayout() {
       titulo="Estudiante"
       subtitulo="Área estudiantil"
       variante="estudiante"
-      menu={menu}
-      seccionInicial="inicio"
+      menu={menuDisponible}
+      seccionInicial="incapacidades"
       renderSeccion={renderSeccion}
     />
   );

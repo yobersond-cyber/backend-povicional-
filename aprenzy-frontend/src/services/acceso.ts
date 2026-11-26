@@ -1,4 +1,4 @@
-// Importa la función para comunicarnos con FastAPI
+
 import { apiFetch } from "./api";
 
 // Estados permitidos por el backend
@@ -15,43 +15,37 @@ export interface AccesoAcademico {
   estado: EstadoAcceso;
 }
 
-// Obtiene todos los accesos
-// Solo está permitido para administrador
+// Obtiene los accesos académicos del usuario autenticado.
+// El coordinador consulta los de su colegio.
+// El estudiante consulta los propios.
 export async function obtenerAccesos(): Promise<
   AccesoAcademico[]
 > {
-  // Consulta todos los accesos
   const respuesta = await apiFetch("/accesos");
 
-  // Devuelve los datos
-  return respuesta;
+  return respuesta.data ?? [];
 }
 
-// Obtiene un acceso específico
-// El estudiante solo puede consultar el suyo
+// Obtiene un acceso académico específico
 export async function obtenerAcceso(
   id: number,
 ): Promise<AccesoAcademico> {
-  // Consulta el acceso indicado
   const respuesta = await apiFetch(
     `/accesos/${id}`,
   );
 
-  // Devuelve el acceso
-  return respuesta;
+  return respuesta.data;
 }
 
-// Crea un acceso académico
-// Esta operación está permitida para administrador
+// Crea un acceso académico a partir del radicado
+// de una incapacidad aprobada.
 export async function crearAcceso(
-  datos: Omit<AccesoAcademico, "id_acceso">,
+  datos: { numero_radicado: string },
 ): Promise<AccesoAcademico> {
-  // Envía los datos al backend
   const respuesta = await apiFetch("/accesos", {
     method: "POST",
     body: JSON.stringify(datos),
   });
 
-  // Devuelve el acceso creado
-  return respuesta;
+  return respuesta.data;
 }
