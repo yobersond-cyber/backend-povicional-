@@ -11,3 +11,4 @@ email-validator
 pymysql
 mysql-connector-python
 cloudinary
+PyJWT
