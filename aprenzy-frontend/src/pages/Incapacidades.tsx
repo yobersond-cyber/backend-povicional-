@@ -1,3 +1,4 @@
+
 import {
   useEffect,
   useMemo,
@@ -15,9 +16,7 @@ import { useAuth } from "../context/AuthContext";
 
 import {
   actualizarIncapacidad,
-  cambiarEstadoIncapacidad,
   crearIncapacidad,
-  obtenerIncapacidad,
   obtenerIncapacidades,
   type Incapacidad,
 } from "../services/incapacidad";
@@ -33,8 +32,10 @@ function formularioInicial(): FormularioIncapacidad {
     numero_radicado: "",
     fecha_inicio: "",
     fecha_fin: "",
-    archivo: "",
+    archivo: null,
     motivo: "",
+    estado: "pendiente",
+    observacion_revision: "",
   };
 }
 
@@ -50,30 +51,14 @@ function convertirFechaInput(
     : fecha;
 }
 
-function obtenerTextoEstado(
-  estado: Incapacidad["estado"],
-): string {
-  if (estado === "pendiente") {
-    return "Pendiente";
-  }
-
-  if (estado === "aprobada") {
-    return "Aprobada";
-  }
-
-  if (estado === "rechazada") {
-    return "Rechazada";
-  }
-
-  return "Finalizada";
-}
-
 export default function Incapacidades() {
   const { usuario } = useAuth();
 
-  const esAdministrador =
-    usuario?.tipo_de_usuario ===
-    "administrador";
+  const esCoordinador =
+    usuario?.tipo_de_usuario === "coordinador";
+
+  const esEstudiante =
+    usuario?.tipo_de_usuario === "estudiante";
 
   const [
     incapacidades,
@@ -113,88 +98,28 @@ export default function Incapacidades() {
   const [motivoCambio, setMotivoCambio] =
     useState("");
 
-  function obtenerIdsLocales(): number[] {
-    const guardado =
-      localStorage.getItem(
-        "aprenzy_incapacidades",
-      );
-
-    if (!guardado) {
-      return [];
-    }
-
-    try {
-      const ids = JSON.parse(guardado);
-
-      if (!Array.isArray(ids)) {
-        return [];
-      }
-
-      return ids.filter(
-        (id): id is number =>
-          typeof id === "number",
-      );
-    } catch {
-      return [];
-    }
-  }
-
-  function guardarIdLocal(id: number) {
-    const ids = obtenerIdsLocales();
-
-    if (!ids.includes(id)) {
-      ids.push(id);
-
-      localStorage.setItem(
-        "aprenzy_incapacidades",
-        JSON.stringify(ids),
-      );
-    }
-  }
+  // ============================================================
+  // CARGAR INCAPACIDADES DESDE EL BACKEND
+  // ============================================================
 
   async function cargarIncapacidades() {
     setCargando(true);
     setError("");
 
     try {
-      if (esAdministrador) {
-        const datos =
-          await obtenerIncapacidades();
-
-        setIncapacidades(datos);
-
-        return;
-      }
-
-      const ids = obtenerIdsLocales();
-
-      if (ids.length === 0) {
+      if (!esCoordinador && !esEstudiante) {
         setIncapacidades([]);
-
+        setError(
+          "Tu rol no tiene permisos para consultar incapacidades.",
+        );
         return;
       }
 
-      const resultados =
-        await Promise.allSettled(
-          ids.map((id) =>
-            obtenerIncapacidad(id),
-          ),
-        );
+      const datos = await obtenerIncapacidades();
 
-      const datos = resultados
-        .filter(
-          (
-            resultado,
-          ): resultado is PromiseFulfilledResult<Incapacidad> =>
-            resultado.status ===
-            "fulfilled",
-        )
-        .map(
-          (resultado) =>
-            resultado.value,
-        );
-
-      setIncapacidades(datos);
+      setIncapacidades(
+        Array.isArray(datos) ? datos : [],
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -208,7 +133,14 @@ export default function Incapacidades() {
 
   useEffect(() => {
     void cargarIncapacidades();
-  }, [esAdministrador]);
+  }, [
+    usuario?.id_usuario,
+    usuario?.tipo_de_usuario,
+  ]);
+
+  // ============================================================
+  // BÚSQUEDA
+  // ============================================================
 
   const incapacidadesFiltradas =
     useMemo(() => {
@@ -229,22 +161,27 @@ export default function Incapacidades() {
             .includes(texto) ||
           incapacidad.estado
             .toLowerCase()
-            .includes(texto) ||
-          String(
-            incapacidad.id_usuario,
-          ).includes(texto),
+            .includes(texto),
       );
     }, [incapacidades, busqueda]);
 
+  // ============================================================
+  // ACTUALIZAR CAMPOS DEL FORMULARIO
+  // ============================================================
+
   function actualizarCampo(
     campo: keyof FormularioIncapacidad,
-    valor: string,
+    valor: string | File | null,
   ) {
     setFormulario((actual) => ({
       ...actual,
       [campo]: valor,
-    }));
+    }) as FormularioIncapacidad);
   }
+
+  // ============================================================
+  // ABRIR FORMULARIO PARA CREAR
+  // ============================================================
 
   function abrirFormularioCrear() {
     setError("");
@@ -259,9 +196,17 @@ export default function Incapacidades() {
     setMostrarFormulario(true);
   }
 
+  // ============================================================
+  // ABRIR FORMULARIO PARA REVISAR
+  // ============================================================
+
   function abrirFormularioEditar(
     incapacidad: Incapacidad,
   ) {
+    if (!esCoordinador) {
+      return;
+    }
+
     setError("");
     setMensaje("");
     setIncapacidadEditando(incapacidad);
@@ -281,13 +226,22 @@ export default function Incapacidades() {
           incapacidad.fecha_fin,
         ),
 
-      archivo: incapacidad.archivo,
+      archivo: null,
 
       motivo: incapacidad.motivo,
+
+      estado: incapacidad.estado,
+
+      observacion_revision:
+        incapacidad.observacion_revision || "",
     });
 
     setMostrarFormulario(true);
   }
+
+  // ============================================================
+  // CERRAR FORMULARIO
+  // ============================================================
 
   function cerrarFormulario() {
     if (guardando) {
@@ -303,6 +257,10 @@ export default function Incapacidades() {
     );
   }
 
+  // ============================================================
+  // VALIDAR FECHAS
+  // ============================================================
+
   function validarFechas(): boolean {
     if (
       formulario.fecha_inicio &&
@@ -311,7 +269,7 @@ export default function Incapacidades() {
         formulario.fecha_inicio
     ) {
       setError(
-        "La fecha de fin no puede ser anterior a la fecha de inicio.",
+        "La fecha de finalización no puede ser anterior a la fecha de inicio.",
       );
 
       return false;
@@ -319,6 +277,10 @@ export default function Incapacidades() {
 
     return true;
   }
+
+  // ============================================================
+  // ENVIAR FORMULARIO
+  // ============================================================
 
   async function manejarSubmit(
     evento: FormEvent<HTMLFormElement>,
@@ -332,7 +294,6 @@ export default function Incapacidades() {
       setError(
         "No se encontró el usuario autenticado.",
       );
-
       return;
     }
 
@@ -341,38 +302,64 @@ export default function Incapacidades() {
     }
 
     if (
-      !formulario.numero_radicado.trim() &&
-      !incapacidadEditando
-    ) {
-      setError(
-        "El número de radicado es obligatorio.",
-      );
-
-      return;
-    }
-
-    if (
       !formulario.fecha_inicio ||
       !formulario.fecha_fin ||
-      !formulario.archivo.trim() ||
       !formulario.motivo.trim()
     ) {
       setError(
         "Completa todos los campos obligatorios.",
       );
-
       return;
     }
 
-    if (
-      incapacidadEditando &&
-      !motivoCambio.trim()
-    ) {
-      setError(
-        "Debes indicar el motivo del cambio.",
-      );
+    if (!incapacidadEditando) {
+      if (!esEstudiante) {
+        setError(
+          "Solo los estudiantes pueden radicar incapacidades.",
+        );
+        return;
+      }
 
-      return;
+      if (!formulario.numero_radicado.trim()) {
+        setError(
+          "El número de radicado es obligatorio.",
+        );
+        return;
+      }
+
+      if (!formulario.archivo) {
+        setError(
+          "Debes adjuntar el documento de la incapacidad.",
+        );
+        return;
+      }
+    }
+
+    if (incapacidadEditando) {
+      if (!esCoordinador) {
+        setError(
+          "No tienes permisos para modificar esta incapacidad.",
+        );
+        return;
+      }
+
+      if (!motivoCambio.trim()) {
+        setError(
+          "Debes indicar el motivo del cambio.",
+        );
+        return;
+      }
+
+      if (
+        (formulario.estado === "aprobada" ||
+          formulario.estado === "rechazada") &&
+        !formulario.observacion_revision.trim()
+      ) {
+        setError(
+          "Debes escribir una observación para aprobar o rechazar la incapacidad.",
+        );
+        return;
+      }
     }
 
     setGuardando(true);
@@ -389,57 +376,59 @@ export default function Incapacidades() {
               formulario.fecha_fin,
 
             archivo:
-              formulario.archivo.trim(),
+              formulario.archivo,
 
             motivo:
               formulario.motivo.trim(),
 
             estado:
-              incapacidadEditando.estado,
+              formulario.estado,
 
             motivo_cambio:
               motivoCambio.trim(),
 
-            id_usuario_cambio:
-              usuario.id_usuario,
+            observacion_revision:
+              formulario.observacion_revision.trim(),
           },
         );
 
         setMensaje(
-          "Incapacidad actualizada correctamente.",
+          formulario.estado === "aprobada"
+            ? "Incapacidad aprobada correctamente."
+            : formulario.estado === "rechazada"
+              ? "Incapacidad rechazada correctamente."
+              : formulario.estado === "finalizada"
+                ? "Incapacidad finalizada correctamente."
+                : "Incapacidad actualizada correctamente.",
         );
       } else {
-        const creada =
-          await crearIncapacidad({
-            numero_radicado:
-              formulario.numero_radicado.trim(),
+        await crearIncapacidad({
+          numero_radicado:
+            formulario.numero_radicado.trim(),
 
-            fecha_inicio:
-              formulario.fecha_inicio,
+          fecha_inicio:
+            formulario.fecha_inicio,
 
-            fecha_fin:
-              formulario.fecha_fin,
+          fecha_fin:
+            formulario.fecha_fin,
 
-            archivo:
-              formulario.archivo.trim(),
+          archivo:
+            formulario.archivo!,
 
-            motivo:
-              formulario.motivo.trim(),
-
-            id_usuario:
-              usuario.id_usuario,
-          });
-
-        guardarIdLocal(
-          creada.id_incapacidad,
-        );
+          motivo:
+            formulario.motivo.trim(),
+        });
 
         setMensaje(
-          "Incapacidad radicada correctamente.",
+          "Incapacidad radicada correctamente. Está pendiente de revisión por el coordinador.",
         );
       }
 
-      cerrarFormulario();
+      // Cerrar y limpiar el formulario después de guardar.
+      setMostrarFormulario(false);
+      setIncapacidadEditando(null);
+      setMotivoCambio("");
+      setFormulario(formularioInicial());
 
       await cargarIncapacidades();
     } catch (err) {
@@ -453,43 +442,9 @@ export default function Incapacidades() {
     }
   }
 
-  async function cambiarEstado(
-    incapacidad: Incapacidad,
-    estado: Incapacidad["estado"],
-  ) {
-    const confirmado =
-      window.confirm(
-        `¿Deseas cambiar el estado a "${obtenerTextoEstado(
-          estado,
-        )}"?`,
-      );
-
-    if (!confirmado) {
-      return;
-    }
-
-    setError("");
-    setMensaje("");
-
-    try {
-      await cambiarEstadoIncapacidad(
-        incapacidad.id_incapacidad,
-        estado,
-      );
-
-      setMensaje(
-        "Estado actualizado correctamente.",
-      );
-
-      await cargarIncapacidades();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "No fue posible cambiar el estado.",
-      );
-    }
-  }
+  // ============================================================
+  // INTERFAZ
+  // ============================================================
 
   return (
     <div className="incapacidades-page">
@@ -498,9 +453,9 @@ export default function Incapacidades() {
           <h1>Incapacidades</h1>
 
           <p>
-            {esAdministrador
-              ? "Administra, revisa y actualiza las incapacidades de los estudiantes."
-              : "Radica y consulta el estado de tus incapacidades académicas."}
+            {esCoordinador
+              ? "Revisa, aprueba y gestiona las incapacidades de los estudiantes de tu colegio."
+              : "Radica tus incapacidades y consulta el estado de tus solicitudes."}
           </p>
         </div>
 
@@ -517,7 +472,7 @@ export default function Incapacidades() {
             Actualizar
           </button>
 
-          {!esAdministrador && (
+          {esEstudiante && (
             <button
               type="button"
               className="incapacidades-button primary"
@@ -551,9 +506,7 @@ export default function Incapacidades() {
             placeholder="Buscar por radicado, estado o motivo..."
             value={busqueda}
             onChange={(evento) =>
-              setBusqueda(
-                evento.target.value,
-              )
+              setBusqueda(evento.target.value)
             }
           />
         </div>
@@ -573,19 +526,8 @@ export default function Incapacidades() {
           incapacidades={
             incapacidadesFiltradas
           }
-          esAdministrador={
-            esAdministrador
-          }
-          onEditar={
-            abrirFormularioEditar
-          }
-          onCambiarEstado={
-            (incapacidad, estado) =>
-              void cambiarEstado(
-                incapacidad,
-                estado,
-              )
-          }
+          esCoordinador={esCoordinador}
+          onEditar={abrirFormularioEditar}
         />
       )}
 
@@ -597,12 +539,11 @@ export default function Incapacidades() {
         }
         formulario={formulario}
         motivoCambio={motivoCambio}
+        esCoordinador={esCoordinador}
         onSubmit={manejarSubmit}
         onClose={cerrarFormulario}
         onChange={actualizarCampo}
-        onMotivoCambio={
-          setMotivoCambio
-        }
+        onMotivoCambio={setMotivoCambio}
       />
     </div>
   );

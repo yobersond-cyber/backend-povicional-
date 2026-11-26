@@ -6,8 +6,13 @@ import {
   FiHome,
   FiShield,
   FiUsers,
+  FiBarChart2,
+  FiCheckCircle,
+  FiXCircle,
+  FiRefreshCw,
 } from "react-icons/fi";
 
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import RoleLayout, {
@@ -16,9 +21,10 @@ import RoleLayout, {
 
 import AdminInstituciones from "../pages/AdminInstituciones";
 
-/* ==========================================
-   MENÚ DEL ADMINISTRADOR GLOBAL
-   ========================================== */
+import {
+  obtenerResumenInstitucional,
+  type ResumenInstitucional,
+} from "../services/administracion";
 
 const menu: RoleMenuItem[] = [
   {
@@ -28,17 +34,47 @@ const menu: RoleMenuItem[] = [
   },
   {
     id: "instituciones",
-    nombre: "Colegios y coordinadores",
+    nombre: "Colegios y rectores",
     icono: <FiBookOpen />,
+  },
+  {
+    id: "administradores",
+    nombre: "Administradores",
+    icono: <FiUsers />,
   },
 ];
 
-/* ==========================================
-   INICIO DEL ADMINISTRADOR
-   ========================================== */
-
 function InicioAdministrador() {
   const navigate = useNavigate();
+
+  const [resumen, setResumen] =
+    useState<ResumenInstitucional | null>(null);
+
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+
+  const cargarResumen = async () => {
+    try {
+      setCargando(true);
+      setError("");
+
+      const datos = await obtenerResumenInstitucional();
+
+      setResumen(datos);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No fue posible cargar las estadísticas.",
+      );
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => {
+    void cargarResumen();
+  }, []);
 
   const fechaFormateada = new Intl.DateTimeFormat("es-CO", {
     weekday: "long",
@@ -53,12 +89,8 @@ function InicioAdministrador() {
 
   return (
     <div className="role-home role-home-admin admin-dashboard">
-
-      {/* BIENVENIDA */}
-
       <section className="admin-home-hero">
         <div className="admin-home-hero-copy">
-
           <span className="admin-home-badge">
             <FiShield aria-hidden="true" />
             Administrador global
@@ -71,9 +103,9 @@ function InicioAdministrador() {
           <h1>Panel del administrador</h1>
 
           <p className="admin-home-description">
-            Gestiona las instituciones educativas de Aprenzy
-            y las cuentas de sus coordinadores desde un único
-            espacio de administración.
+            Administra los colegios registrados en Aprenzy
+            y consulta el estado general de las instituciones
+            desde un solo lugar.
           </p>
 
           <div className="admin-home-meta">
@@ -87,7 +119,6 @@ function InicioAdministrador() {
               Acceso administrativo global
             </span>
           </div>
-
         </div>
 
         <div
@@ -103,21 +134,18 @@ function InicioAdministrador() {
         </div>
       </section>
 
-      {/* ACCESOS PRINCIPALES */}
-
       <section className="admin-home-section">
-
         <header className="admin-home-section-heading">
           <div>
             <span className="admin-home-section-eyebrow">
               Gestión centralizada
             </span>
 
-            <h2>Administración institucional</h2>
+            <h2>Administración de Aprenzy</h2>
 
             <p>
-              Accede a las herramientas disponibles para
-              administrar colegios y coordinadores.
+              Gestiona las instituciones y consulta
+              los indicadores generales de la plataforma.
             </p>
           </div>
 
@@ -127,9 +155,6 @@ function InicioAdministrador() {
         </header>
 
         <div className="admin-home-grid">
-
-          {/* COLEGIOS Y COORDINADORES */}
-
           <button
             type="button"
             className="admin-home-card admin-home-card-primary"
@@ -146,11 +171,11 @@ function InicioAdministrador() {
                 INSTITUCIONES
               </span>
 
-              <strong>Colegios y coordinadores</strong>
+              <strong>Colegios y rectores</strong>
 
               <span className="admin-home-card-description">
-                Consulta colegios, registra nuevas instituciones
-                y administra las cuentas de los coordinadores.
+                Registra colegios, consulta sus detalles
+                y administra el estado de las instituciones.
               </span>
 
               <span className="admin-home-card-action">
@@ -160,13 +185,11 @@ function InicioAdministrador() {
             </span>
           </button>
 
-          {/* COORDINADORES */}
-
           <button
             type="button"
             className="admin-home-card"
             onClick={() =>
-              navigate("/administrador/instituciones")
+              navigate("/administrador/administradores")
             }
           >
             <span className="admin-home-card-icon">
@@ -175,53 +198,167 @@ function InicioAdministrador() {
 
             <span className="admin-home-card-content">
               <span className="admin-home-card-kicker">
-                CUENTAS
+                SEGURIDAD
               </span>
 
-              <strong>Administración de coordinadores</strong>
+              <strong>Administradores</strong>
 
               <span className="admin-home-card-description">
-                Accede al módulo donde puedes consultar,
-                crear y asociar coordinadores a los colegios.
+                Consulta la información sobre los permisos
+                y el acceso administrativo global.
               </span>
 
               <span className="admin-home-card-action">
-                Ir al módulo
+                Ver información
                 <FiArrowRight aria-hidden="true" />
               </span>
             </span>
           </button>
 
-          {/* SEGURIDAD Y CONTROL */}
-
           <article className="admin-home-card admin-home-card-information">
             <span className="admin-home-card-icon">
-              <FiShield aria-hidden="true" />
+              <FiBarChart2 aria-hidden="true" />
             </span>
 
             <span className="admin-home-card-content">
               <span className="admin-home-card-kicker">
-                CONTROL GLOBAL
+                ESTADÍSTICAS
               </span>
 
-              <strong>Administración segura</strong>
+              <strong>Control institucional</strong>
 
               <span className="admin-home-card-description">
-                Utiliza tu cuenta administrativa para gestionar
-                las instituciones y el acceso de sus responsables.
+                Consulta los indicadores actuales de los
+                colegios registrados en la plataforma.
               </span>
 
               <span className="admin-home-card-status">
                 <span className="admin-home-status-dot" />
-                Área administrativa
+                Datos institucionales
               </span>
             </span>
           </article>
-
         </div>
       </section>
 
-      {/* AVISO INFORMATIVO */}
+      <section className="admin-home-section">
+        <header className="admin-home-section-heading">
+          <div>
+            <span className="admin-home-section-eyebrow">
+              Indicadores generales
+            </span>
+
+            <h2>Estadísticas institucionales</h2>
+
+            <p>
+              Información calculada a partir de los colegios
+              registrados en Aprenzy.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="admin-home-note-button"
+            onClick={() => void cargarResumen()}
+            disabled={cargando}
+          >
+            <FiRefreshCw aria-hidden="true" />
+            Actualizar
+          </button>
+        </header>
+
+        {cargando ? (
+          <div className="admin-home-card admin-home-card-information">
+            <span className="admin-home-card-content">
+              <strong>Cargando estadísticas...</strong>
+              <span className="admin-home-card-description">
+                Consultando la información institucional.
+              </span>
+            </span>
+          </div>
+        ) : error ? (
+          <div className="admin-home-card admin-home-card-information">
+            <span className="admin-home-card-content">
+              <strong>No se pudieron cargar las estadísticas</strong>
+
+              <span className="admin-home-card-description">
+                {error}
+              </span>
+
+              <button
+                type="button"
+                className="admin-home-note-button"
+                onClick={() => void cargarResumen()}
+              >
+                Intentar nuevamente
+                <FiRefreshCw aria-hidden="true" />
+              </button>
+            </span>
+          </div>
+        ) : resumen ? (
+          <div className="admin-home-grid">
+            <article className="admin-home-card">
+              <span className="admin-home-card-icon">
+                <FiBookOpen aria-hidden="true" />
+              </span>
+
+              <span className="admin-home-card-content">
+                <span className="admin-home-card-kicker">
+                  TOTAL REGISTRADO
+                </span>
+
+                <strong className="admin-home-stat-number">
+                  {resumen.totalColegios}
+                </strong>
+
+                <span className="admin-home-card-description">
+                  Colegios registrados en Aprenzy.
+                </span>
+              </span>
+            </article>
+
+            <article className="admin-home-card">
+              <span className="admin-home-card-icon">
+                <FiCheckCircle aria-hidden="true" />
+              </span>
+
+              <span className="admin-home-card-content">
+                <span className="admin-home-card-kicker">
+                  INSTITUCIONES ACTIVAS
+                </span>
+
+                <strong className="admin-home-stat-number">
+                  {resumen.colegiosActivos}
+                </strong>
+
+                <span className="admin-home-card-description">
+                  Colegios habilitados actualmente.
+                </span>
+              </span>
+            </article>
+
+            <article className="admin-home-card">
+              <span className="admin-home-card-icon">
+                <FiXCircle aria-hidden="true" />
+              </span>
+
+              <span className="admin-home-card-content">
+                <span className="admin-home-card-kicker">
+                  INSTITUCIONES INACTIVAS
+                </span>
+
+                <strong className="admin-home-stat-number">
+                  {resumen.colegiosInactivos}
+                </strong>
+
+                <span className="admin-home-card-description">
+                  Colegios deshabilitados actualmente.
+                </span>
+              </span>
+            </article>
+          </div>
+        ) : null}
+      </section>
 
       <section className="admin-home-note">
         <span className="admin-home-note-icon">
@@ -229,12 +366,12 @@ function InicioAdministrador() {
         </span>
 
         <div className="admin-home-note-content">
-          <strong>Control de las instituciones</strong>
+          <strong>Administración institucional</strong>
 
           <p>
-            Para registrar una institución, entra en
-            Colegios y coordinadores. Allí encontrarás los
-            formularios y las opciones de consulta existentes.
+            Cada colegio tendrá su propio rector, quien
+            será responsable de gestionar coordinadores,
+            docentes y estudiantes de su institución.
           </p>
         </div>
 
@@ -249,14 +386,66 @@ function InicioAdministrador() {
           <FiArrowRight aria-hidden="true" />
         </button>
       </section>
-
     </div>
   );
 }
 
-/* ==========================================
-   CONTENIDO DEL PANEL
-   ========================================== */
+function Administradores() {
+  return (
+    <div className="role-home">
+      <section className="admin-home-section">
+        <header className="admin-home-section-heading">
+          <div>
+            <span className="admin-home-section-eyebrow">
+              Seguridad de la plataforma
+            </span>
+
+            <h2>Administración global</h2>
+
+            <p>
+              Información sobre el acceso administrativo
+              y la protección de las cuentas globales.
+            </p>
+          </div>
+        </header>
+
+        <div className="admin-home-card admin-home-card-information">
+          <span className="admin-home-card-icon">
+            <FiShield aria-hidden="true" />
+          </span>
+
+          <span className="admin-home-card-content">
+            <strong>Permisos administrativos</strong>
+
+            <span className="admin-home-card-description">
+              El administrador global tiene permisos para
+              gestionar las instituciones y sus rectores.
+              La creación de otros administradores globales
+              no está habilitada desde este panel.
+            </span>
+          </span>
+        </div>
+
+        <div className="admin-home-card admin-home-card-information">
+          <span className="admin-home-card-icon">
+            <FiUsers aria-hidden="true" />
+          </span>
+
+          <span className="admin-home-card-content">
+            <strong>Usuarios institucionales</strong>
+
+            <span className="admin-home-card-description">
+              Los rectores administran los coordinadores,
+              docentes y estudiantes de sus respectivos
+              colegios. Cada institución mantiene separados
+              sus usuarios y sus datos.
+            </span>
+          </span>
+        </div>
+      </section>
+    </div>
+  );
+}
 
 export default function AdminLayout() {
   function renderSeccion(seccion: string) {
@@ -266,6 +455,9 @@ export default function AdminLayout() {
 
       case "instituciones":
         return <AdminInstituciones />;
+
+      case "administradores":
+        return <Administradores />;
 
       default:
         return <InicioAdministrador />;

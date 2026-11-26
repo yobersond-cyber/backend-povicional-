@@ -13,7 +13,6 @@ import {
 } from "react-icons/fi";
 
 import { useNavigate } from "react-router-dom";
-
 import { useAuth } from "../context/AuthContext";
 
 import RoleLayout, {
@@ -31,10 +30,6 @@ import Historial from "../pages/Historial";
 import Incapacidades from "../pages/Incapacidades";
 import Materias from "../pages/materias";
 
-/* ==========================================
-   MENÚ DEL COORDINADOR
-   ========================================== */
-
 const menu: RoleMenuItem[] = [
   { id: "inicio", nombre: "Inicio", icono: <FiHome /> },
   { id: "estudiantes", nombre: "Estudiantes", icono: <FiUsers /> },
@@ -50,17 +45,12 @@ const menu: RoleMenuItem[] = [
   { id: "perfil", nombre: "Mi perfil", icono: <FiUser /> },
 ];
 
-/* ==========================================
-   INICIO
-   ========================================== */
-
 function InicioCoordinador() {
   const { usuario } = useAuth();
   const navigate = useNavigate();
 
   const primerNombre =
-    usuario?.nombres_compl?.trim().split(/\s+/)[0] ||
-    "coordinador";
+    usuario?.nombres_compl?.trim().split(/\s+/)[0] || "coordinador";
 
   const fechaFormateada = new Intl.DateTimeFormat("es-CO", {
     weekday: "long",
@@ -99,9 +89,17 @@ function InicioCoordinador() {
       icono: <FiBookOpen />,
     },
     {
+      id: "materias",
+      titulo: "Materias",
+      descripcion: "Consulta y administra las materias académicas.",
+      accion: "Gestionar materias",
+      ruta: "/coordinador/materias",
+      icono: <FiBookOpen />,
+    },
+    {
       id: "asignar-materias",
       titulo: "Asignar materias",
-      descripcion: "Accede a la asignación académica.",
+      descripcion: "Administra las asignaciones académicas.",
       accion: "Administrar asignaciones",
       ruta: "/coordinador/asignar-materias",
       icono: <FiFileText />,
@@ -115,9 +113,33 @@ function InicioCoordinador() {
       icono: <FiAlertCircle />,
     },
     {
+      id: "apelaciones",
+      titulo: "Apelaciones",
+      descripcion: "Consulta y realiza seguimiento a las apelaciones.",
+      accion: "Consultar apelaciones",
+      ruta: "/coordinador/apelaciones",
+      icono: <FiFileText />,
+    },
+    {
+      id: "accesos",
+      titulo: "Accesos",
+      descripcion: "Consulta los registros de acceso a la plataforma.",
+      accion: "Consultar accesos",
+      ruta: "/coordinador/accesos",
+      icono: <FiShield />,
+    },
+    {
+      id: "historial",
+      titulo: "Historial",
+      descripcion: "Revisa los registros y movimientos institucionales.",
+      accion: "Ver historial",
+      ruta: "/coordinador/historial",
+      icono: <FiCalendar />,
+    },
+    {
       id: "estadisticas",
       titulo: "Estadísticas",
-      descripcion: "Consulta los indicadores disponibles.",
+      descripcion: "Consulta los indicadores académicos disponibles.",
       accion: "Ver estadísticas",
       ruta: "/coordinador/estadisticas",
       icono: <FiPieChart />,
@@ -126,10 +148,8 @@ function InicioCoordinador() {
 
   return (
     <div className="role-home role-home-coordinador coordinator-dashboard">
-
       <section className="coordinator-welcome">
         <div className="coordinator-welcome-content">
-
           <span className="coordinator-badge">
             <FiBookOpen aria-hidden="true" />
             Gestión académica
@@ -142,9 +162,9 @@ function InicioCoordinador() {
           <h1>¡Bienvenido, {primerNombre}!</h1>
 
           <p className="coordinator-description">
-            Organiza los procesos académicos, gestiona docentes
-            y estudiantes, y consulta la información de tu institución
-            desde un solo lugar.
+            Organiza los procesos académicos, gestiona docentes y
+            estudiantes, administra cursos y materias, y consulta
+            la información de tu institución desde un solo lugar.
           </p>
 
           <div className="coordinator-date">
@@ -157,13 +177,13 @@ function InicioCoordinador() {
           <div className="coordinator-hero-icon">
             <FiBookOpen />
           </div>
+
           <span className="coordinator-dot coordinator-dot-one" />
           <span className="coordinator-dot coordinator-dot-two" />
         </div>
       </section>
 
       <section className="coordinator-access-section">
-
         <div className="coordinator-section-heading">
           <div>
             <span className="coordinator-section-eyebrow">
@@ -218,8 +238,9 @@ function InicioCoordinador() {
           <h2>Mantén organizada tu institución</h2>
 
           <p>
-            Revisa periódicamente los registros y las asignaciones
-            para mantener actualizada la gestión académica.
+            Revisa periódicamente los registros, los cursos, las materias
+            y las asignaciones para mantener actualizada la gestión
+            académica.
           </p>
         </div>
 
@@ -236,10 +257,6 @@ function InicioCoordinador() {
   );
 }
 
-/* ==========================================
-   PERFIL
-   ========================================== */
-
 function PerfilCoordinador() {
   const { usuario } = useAuth();
 
@@ -251,17 +268,29 @@ function PerfilCoordinador() {
     .join(" ") || "Coordinador";
 
   const datos = [
-    { etiqueta: "Nombres", valor: usuario?.nombres_compl || "No registrados" },
-    { etiqueta: "Apellidos", valor: usuario?.apellidos_compl || "No registrados" },
-    { etiqueta: "Documento", valor: usuario?.documento || "No registrado" },
-    { etiqueta: "Código de usuario", valor: usuario?.codigo_usuario || "No registrado" },
-    { etiqueta: "Correo", valor: usuario?.correo || "No registrado" },
-    { etiqueta: "Teléfono", valor: usuario?.telefono || "No registrado" },
+    {
+      etiqueta: "Nombres",
+      valor: usuario?.nombres_compl || "No registrados",
+    },
+    {
+      etiqueta: "Apellidos",
+      valor: usuario?.apellidos_compl || "No registrados",
+    },
+    {
+      etiqueta: "Documento",
+      valor: usuario?.documento || "No registrado",
+    },
+    {
+      etiqueta: "Correo",
+      valor: usuario?.correo || "No registrado",
+    },
+    {
+      etiqueta: "Teléfono",
+      valor: usuario?.telefono || "No registrado",
+    },
     {
       etiqueta: "Institución",
-      valor: usuario?.id_colegio != null
-        ? `Institución ${usuario.id_colegio}`
-        : "No asignada",
+      valor: "Institución asignada",
     },
   ];
 
@@ -308,10 +337,6 @@ function PerfilCoordinador() {
     </div>
   );
 }
-
-/* ==========================================
-   NAVEGACIÓN PRINCIPAL
-   ========================================== */
 
 export default function CoordinadorLayout() {
   function renderSeccion(seccion: string) {

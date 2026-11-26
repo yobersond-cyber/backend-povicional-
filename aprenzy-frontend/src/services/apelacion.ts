@@ -1,105 +1,114 @@
-// Importa el cliente central de la API
+
 import { apiFetch } from "./api";
 
-// Representa una apelación
+// ============================================================
+// TIPOS
+// ============================================================
+
+export type EstadoApelacion =
+  | "pendiente"
+  | "aprobada"
+  | "rechazada";
+
 export interface Apelacion {
   id_apelacion: number;
   id_incapacidad: number;
   fecha_apelacion: string;
   motivo: string;
+  archivo: string | null;
   respuesta: string | null;
-  estado: "pendiente" | "aprobada" | "rechazada";
+  estado: EstadoApelacion;
   id_revisor: number | null;
 }
 
-// Datos para crear o actualizar una apelación
-export interface ApelacionDatos {
-  id_incapacidad: number;
-  fecha_apelacion: string;
+export interface ApelacionCrearDatos {
+  numero_radicado: string;
   motivo: string;
-  respuesta?: string | null;
-  estado?:
-    | "pendiente"
-    | "aprobada"
-    | "rechazada";
-  id_revisor?: number | null;
+  archivo?: File | null;
 }
 
-// Obtiene todas las apelaciones
-export async function obtenerApelaciones(): Promise<
-  Apelacion[]
-> {
-  // Consulta el listado del backend
-  const respuesta =
-    await apiFetch("/apelaciones");
-
-  // Devuelve los datos
-  return respuesta.data;
+export interface ApelacionActualizarDatos {
+  respuesta: string;
+  estado: "aprobada" | "rechazada";
 }
 
-// Obtiene una apelación específica
+// ============================================================
+// OBTENER TODAS LAS APELACIONES DEL USUARIO
+// ============================================================
+
+export async function obtenerApelaciones(): Promise<Apelacion[]> {
+  const respuesta = await apiFetch("/apelaciones");
+
+  return respuesta.data ?? [];
+}
+
+// ============================================================
+// OBTENER UNA APELACIÓN
+// ============================================================
+
 export async function obtenerApelacion(
   id: number,
 ): Promise<Apelacion> {
-  // Consulta la apelación
-  const respuesta =
-    await apiFetch(`/apelaciones/${id}`);
+  const respuesta = await apiFetch(`/apelaciones/${id}`);
 
-  // Devuelve la apelación
   return respuesta.data;
 }
 
-// Crea una nueva apelación
+// ============================================================
+// CREAR UNA APELACIÓN
+// El backend recibe multipart/form-data.
+// No recibe IDs internos ni fechas desde el frontend.
+// ============================================================
+
 export async function crearApelacion(
-  datos: ApelacionDatos,
+  datos: ApelacionCrearDatos,
 ): Promise<Apelacion> {
-  // Envía la apelación al backend
-  const respuesta =
-    await apiFetch("/apelaciones", {
-      method: "POST",
-      body: JSON.stringify({
-        id_incapacidad:
-          datos.id_incapacidad,
-        fecha_apelacion:
-          datos.fecha_apelacion,
-        motivo: datos.motivo,
-        respuesta:
-          datos.respuesta ?? null,
-        estado:
-          datos.estado ?? "pendiente",
-        id_revisor:
-          datos.id_revisor ?? null,
-      }),
-    });
+  const formulario = new FormData();
 
-  // Devuelve la apelación creada
+  formulario.append(
+    "numero_radicado",
+    datos.numero_radicado.trim(),
+  );
+
+  formulario.append(
+    "motivo",
+    datos.motivo.trim(),
+  );
+
+  if (datos.archivo) {
+    formulario.append(
+      "archivo",
+      datos.archivo,
+    );
+  }
+
+  const respuesta = await apiFetch("/apelaciones", {
+    method: "POST",
+    body: formulario,
+  });
+
   return respuesta.data;
 }
 
-// Actualiza una apelación
+// ============================================================
+// ACTUALIZAR UNA APELACIÓN
+// Solo el coordinador puede aprobar o rechazar.
+// ============================================================
+
 export async function actualizarApelacion(
   id: number,
-  datos: ApelacionDatos,
+  datos: ApelacionActualizarDatos,
 ): Promise<Apelacion> {
-  // Envía los cambios al backend
-  const respuesta =
-    await apiFetch(`/apelaciones/${id}`, {
+  const respuesta = await apiFetch(
+    `/apelaciones/${id}`,
+    {
       method: "PUT",
       body: JSON.stringify({
-        id_incapacidad:
-          datos.id_incapacidad,
-        fecha_apelacion:
-          datos.fecha_apelacion,
-        motivo: datos.motivo,
-        respuesta:
-          datos.respuesta ?? null,
-        estado:
-          datos.estado ?? "pendiente",
-        id_revisor:
-          datos.id_revisor ?? null,
+        respuesta: datos.respuesta.trim(),
+        estado: datos.estado,
       }),
-    });
+    },
+  );
 
-  // Devuelve la apelación actualizada
   return respuesta.data;
 }

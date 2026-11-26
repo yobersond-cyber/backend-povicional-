@@ -9,6 +9,11 @@ from fastapi import (
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
+from app.dependencias.auth import (
+    require_role,
+    get_current_user,
+)
+
 from app.database.conection import get_db
 from app.dependencias.auth import require_role
 from app.models.docente_asignacion import DocenteAsignacion
@@ -397,3 +402,55 @@ def eliminar_asignacion(
             "id_asignacion": id_asignacion,
         },
     )
+
+# ============================================================
+# GET /docente-materia/mis-asignaciones
+# Consultar las materias y cursos del docente autenticado.
+# ============================================================
+
+@router.get("/mis-asignaciones")
+def listar_mis_asignaciones(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("docente")),
+):
+    asignaciones = (
+        db.query(
+            DocenteAsignacion.id_asignacion,
+            DocenteAsignacion.id_materia,
+            DocenteAsignacion.id_curso,
+            Materia.nombre_materia,
+            Curso.numero_curso,
+        )
+        .join(
+            Materia,
+            Materia.id_materia == DocenteAsignacion.id_materia,
+        )
+        .join(
+            Curso,
+            Curso.id_curso == DocenteAsignacion.id_curso,
+        )
+        .filter(
+            DocenteAsignacion.id_usuario == current_user.id_usuario,
+            Curso.id_colegio == current_user.id_colegio,
+        )
+        .order_by(
+            Materia.nombre_materia.asc(),
+            Curso.numero_curso.asc(),
+        )
+        .all()
+    )
+
+    return {
+        "success": True,
+        "mensaje": "Tus asignaciones fueron recuperadas correctamente",
+        "data": [
+            {
+                "id_asignacion": item.id_asignacion,
+                "id_materia": item.id_materia,
+                "id_curso": item.id_curso,
+                "nombre_materia": item.nombre_materia,
+                "numero_curso": item.numero_curso,
+            }
+            for item in asignaciones
+        ],
+    }

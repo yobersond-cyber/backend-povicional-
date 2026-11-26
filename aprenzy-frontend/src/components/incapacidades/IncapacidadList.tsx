@@ -1,22 +1,16 @@
+
 import {
-  FiCheckCircle,
   FiEdit2,
   FiFileText,
-  FiX,
 } from "react-icons/fi";
 
 import type { Incapacidad } from "../../services/incapacidad";
 
 interface IncapacidadListProps {
   incapacidades: Incapacidad[];
-  esAdministrador: boolean;
+  esCoordinador: boolean;
 
   onEditar: (incapacidad: Incapacidad) => void;
-
-  onCambiarEstado: (
-    incapacidad: Incapacidad,
-    estado: Incapacidad["estado"],
-  ) => void;
 }
 
 function obtenerTextoEstado(
@@ -79,9 +73,8 @@ function formatearFecha(
 
 export default function IncapacidadList({
   incapacidades,
-  esAdministrador,
+  esCoordinador,
   onEditar,
-  onCambiarEstado,
 }: IncapacidadListProps) {
   if (incapacidades.length === 0) {
     return (
@@ -93,8 +86,8 @@ export default function IncapacidadList({
         </h3>
 
         <p>
-          {esAdministrador
-            ? "Todavía no existen incapacidades registradas."
+          {esCoordinador
+            ? "Todavía no existen incapacidades registradas en tu colegio."
             : "Cuando radiques una incapacidad aparecerá aquí."}
         </p>
       </div>
@@ -114,14 +107,6 @@ export default function IncapacidadList({
                 Radicado{" "}
                 {incapacidad.numero_radicado}
               </h2>
-
-              <div className="incapacidad-card-id">
-                ID incapacidad:{" "}
-                {incapacidad.id_incapacidad}
-
-                {esAdministrador &&
-                  ` · Estudiante ID: ${incapacidad.id_usuario}`}
-              </div>
             </div>
 
             <span
@@ -160,11 +145,21 @@ export default function IncapacidadList({
 
             <div className="incapacidad-info-item">
               <span>
-                Documento / archivo
+                Documento adjunto
               </span>
 
               <strong>
-                {incapacidad.archivo}
+                {incapacidad.archivo ? (
+                  <a
+                    href={incapacidad.archivo}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Ver documento
+                  </a>
+                ) : (
+                  "No disponible"
+                )}
               </strong>
             </div>
           </div>
@@ -175,118 +170,56 @@ export default function IncapacidadList({
             <p>{incapacidad.motivo}</p>
           </div>
 
+          {incapacidad.observacion_revision && (
+            <div className="incapacidad-apelacion">
+              <strong>
+                Observación del coordinador
+              </strong>
+
+              <p>
+                {incapacidad.observacion_revision}
+              </p>
+            </div>
+          )}
+
           {incapacidad.apelacion && (
             <div className="incapacidad-apelacion">
               <strong>Apelación</strong>
 
               <p>
                 Estado:{" "}
-                {
-                  incapacidad.apelacion
-                    .estado
-                }
+                {incapacidad.apelacion.estado}
               </p>
 
               <p>
                 Motivo:{" "}
-                {
-                  incapacidad.apelacion
-                    .motivo
-                }
+                {incapacidad.apelacion.motivo}
               </p>
 
-              {incapacidad.apelacion
-                .respuesta && (
+              {incapacidad.apelacion.respuesta && (
                 <p>
                   Respuesta:{" "}
-                  {
-                    incapacidad.apelacion
-                      .respuesta
-                  }
+                  {incapacidad.apelacion.respuesta}
                 </p>
               )}
             </div>
           )}
 
-          {esAdministrador && (
-            <div className="incapacidad-actions">
-              <button
-                type="button"
-                className="incapacidades-button secondary"
-                onClick={() =>
-                  onEditar(incapacidad)
-                }
-              >
-                <FiEdit2 />
-                Editar
-              </button>
-
-              {incapacidad.estado ===
-                "pendiente" && (
-                <>
-                  <button
-                    type="button"
-                    className="incapacidades-button success"
-                    onClick={() =>
-                      onCambiarEstado(
-                        incapacidad,
-                        "aprobada",
-                      )
-                    }
-                  >
-                    <FiCheckCircle />
-                    Aprobar
-                  </button>
-
-                  <button
-                    type="button"
-                    className="incapacidades-button danger"
-                    onClick={() =>
-                      onCambiarEstado(
-                        incapacidad,
-                        "rechazada",
-                      )
-                    }
-                  >
-                    <FiX />
-                    Rechazar
-                  </button>
-                </>
-              )}
-
-              {incapacidad.estado ===
-                "aprobada" && (
+          {esCoordinador &&
+            incapacidad.estado !== "finalizada" && (
+              <div className="incapacidad-actions">
                 <button
                   type="button"
-                  className="incapacidades-button warning"
+                  className="incapacidades-button secondary"
                   onClick={() =>
-                    onCambiarEstado(
-                      incapacidad,
-                      "finalizada",
-                    )
+                    onEditar(incapacidad)
                   }
                 >
-                  Finalizar
+                  <FiEdit2 />
+                  Revisar incapacidad
                 </button>
-              )}
-
-              {incapacidad.estado ===
-                "rechazada" && (
-                <button
-                  type="button"
-                  className="incapacidades-button success"
-                  onClick={() =>
-                    onCambiarEstado(
-                      incapacidad,
-                      "aprobada",
-                    )
-                  }
-                >
-                  Reconsiderar
-                </button>
-              )}
-            </div>
-          )}
+              </div>
+            )}
         </article>
       ))}
     </div>

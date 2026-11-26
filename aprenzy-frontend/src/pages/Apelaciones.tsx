@@ -1,3 +1,4 @@
+
 import {
   useEffect,
   useMemo,
@@ -24,24 +25,23 @@ import {
 } from "../services/apelacion";
 
 import {
-  obtenerIncapacidad,
-  type Incapacidad,
+  obtenerIncapacidades,
 } from "../services/incapacidad";
 
-// Representa el formulario
+import type {
+  Incapacidad,
+} from "../services/incapacidad";
+
+// Representa el formulario de apelación.
 interface FormularioApelacion {
-  id_incapacidad: string;
-  fecha_apelacion: string;
+  numero_radicado: string;
   motivo: string;
   respuesta: string;
-  estado:
-    | "pendiente"
-    | "aprobada"
-    | "rechazada";
-  id_revisor: string;
+  estado: "aprobada" | "rechazada";
+  archivo: File | null;
 }
 
-// Devuelve el texto del estado
+// Devuelve el texto del estado.
 function obtenerTextoEstado(
   estado: Apelacion["estado"],
 ): string {
@@ -56,7 +56,7 @@ function obtenerTextoEstado(
   return "Pendiente";
 }
 
-// Devuelve la clase visual del estado
+// Devuelve la clase visual del estado.
 function obtenerClaseEstado(
   estado: Apelacion["estado"],
 ): string {
@@ -71,7 +71,7 @@ function obtenerClaseEstado(
   return "apelacion-estado pendiente";
 }
 
-// Formatea una fecha
+// Formatea una fecha.
 function formatearFecha(
   fecha: string,
 ): string {
@@ -79,14 +79,9 @@ function formatearFecha(
     return "-";
   }
 
-  const fechaObjeto =
-    new Date(fecha);
+  const fechaObjeto = new Date(fecha);
 
-  if (
-    Number.isNaN(
-      fechaObjeto.getTime(),
-    )
-  ) {
+  if (Number.isNaN(fechaObjeto.getTime())) {
     return fecha;
   }
 
@@ -99,35 +94,31 @@ function formatearFecha(
   );
 }
 
-// Crea el formulario inicial
+// Crea el formulario inicial.
 function formularioInicial(): FormularioApelacion {
   return {
-    id_incapacidad: "",
-    fecha_apelacion:
-      new Date()
-        .toISOString()
-        .slice(0, 16),
+    numero_radicado: "",
     motivo: "",
     respuesta: "",
-    estado: "pendiente",
-    id_revisor: "",
+    estado: "rechazada",
+    archivo: null,
   };
 }
 
 export default function Apelaciones() {
   const { usuario } = useAuth();
 
-  const esAdministrador =
-    usuario?.tipo_de_usuario ===
-    "administrador";
+  const esCoordinador =
+    usuario?.tipo_de_usuario === "coordinador";
+
+  const esEstudiante =
+    usuario?.tipo_de_usuario === "estudiante";
 
   const [apelaciones, setApelaciones] =
     useState<Apelacion[]>([]);
 
   const [incapacidades, setIncapacidades] =
-    useState<
-      Record<number, Incapacidad>
-    >({});
+    useState<Incapacidad[]>([]);
 
   const [busqueda, setBusqueda] =
     useState("");
@@ -157,81 +148,25 @@ export default function Apelaciones() {
   const [
     apelacionEditando,
     setApelacionEditando,
-  ] = useState<Apelacion | null>(
-    null,
-  );
+  ] = useState<Apelacion | null>(null);
 
-  // Obtiene los IDs de incapacidades guardadas localmente
-  function obtenerIdsIncapacidadesLocales(): number[] {
-    const guardado =
-      localStorage.getItem(
-        "aprenzy_incapacidades",
-      );
-
-    if (!guardado) {
-      return [];
-    }
-
-    try {
-      const ids = JSON.parse(guardado);
-
-      if (!Array.isArray(ids)) {
-        return [];
-      }
-
-      return ids.filter(
-        (id): id is number =>
-          typeof id === "number",
-      );
-    } catch {
-      return [];
-    }
-  }
-
-  // Obtiene las apelaciones
+  // Obtiene las apelaciones y las incapacidades
+  // permitidas para el usuario autenticado.
   async function cargarApelaciones() {
     setCargando(true);
     setError("");
 
     try {
-      if (esAdministrador) {
-        // El administrador puede consultar todas
-        const datos =
-          await obtenerApelaciones();
+      const [
+        apelacionesObtenidas,
+        incapacidadesObtenidas,
+      ] = await Promise.all([
+        obtenerApelaciones(),
+        obtenerIncapacidades(),
+      ]);
 
-        setApelaciones(datos);
-
-        await cargarIncapacidades(
-          datos,
-        );
-
-        return;
-      }
-
-      // El estudiante no tiene endpoint
-      // para listar sus apelaciones.
-      // Consultamos las apelaciones generales
-      // y filtramos las incapacidades conocidas.
-      const datos =
-        await obtenerApelaciones();
-
-      const ids =
-        obtenerIdsIncapacidadesLocales();
-
-      const datosFiltrados =
-        datos.filter((apelacion) =>
-          ids.includes(
-            apelacion.id_incapacidad,
-          ),
-        );
-
-      setApelaciones(
-        datosFiltrados,
-      );
-
-      await cargarIncapacidades(
-        datosFiltrados,
-      );
+      setApelaciones(apelacionesObtenidas);
+      setIncapacidades(incapacidadesObtenidas);
     } catch (err) {
       setError(
         err instanceof Error
@@ -243,108 +178,95 @@ export default function Apelaciones() {
     }
   }
 
-  // Carga las incapacidades relacionadas
-  async function cargarIncapacidades(
-    datos: Apelacion[],
-  ) {
-    const ids = [
-      ...new Set(
-        datos.map(
-          (apelacion) =>
-            apelacion.id_incapacidad,
+  // Carga la información al entrar.
+  useEffect(() => {
+    if (esCoordinador || esEstudiante) {
+      void cargarApelaciones();
+    } else {
+      setCargando(false);
+      setError(
+        "No tienes permisos para consultar las apelaciones.",
+      );
+    }
+  }, [esCoordinador, esEstudiante]);
+
+  // Relaciona cada apelación con su incapacidad.
+  const incapacidadesPorId = useMemo(() => {
+    const mapa = new Map<number, Incapacidad>();
+
+    incapacidades.forEach((incapacidad) => {
+      mapa.set(
+        incapacidad.id_incapacidad,
+        incapacidad,
+      );
+    });
+
+    return mapa;
+  }, [incapacidades]);
+
+  // Identifica las incapacidades que ya tienen apelación.
+  const idsIncapacidadesApeladas = useMemo(
+    () =>
+      new Set(
+        apelaciones.map(
+          (apelacion) => apelacion.id_incapacidad,
         ),
       ),
-    ];
+    [apelaciones],
+  );
 
-    if (ids.length === 0) {
-      setIncapacidades({});
-      return;
+  // El estudiante solo puede apelar incapacidades propias
+  // que estén rechazadas y no tengan una apelación previa.
+  const incapacidadesDisponibles = useMemo(
+    () =>
+      incapacidades.filter(
+        (incapacidad) =>
+          incapacidad.estado === "rechazada" &&
+          !idsIncapacidadesApeladas.has(
+            incapacidad.id_incapacidad,
+          ),
+      ),
+    [
+      incapacidades,
+      idsIncapacidadesApeladas,
+    ],
+  );
+
+  // Filtra las apelaciones.
+  const apelacionesFiltradas = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
+
+    if (!texto) {
+      return apelaciones;
     }
 
-    const resultados =
-      await Promise.allSettled(
-        ids.map((id) =>
-          obtenerIncapacidad(id),
-        ),
+    return apelaciones.filter((apelacion) => {
+      const incapacidad =
+        incapacidadesPorId.get(
+          apelacion.id_incapacidad,
+        );
+
+      return (
+        apelacion.motivo.toLowerCase().includes(texto) ||
+        apelacion.estado.toLowerCase().includes(texto) ||
+        (incapacidad?.numero_radicado ?? "")
+          .toLowerCase()
+          .includes(texto) ||
+        (incapacidad?.motivo ?? "")
+          .toLowerCase()
+          .includes(texto)
       );
+    });
+  }, [
+    apelaciones,
+    incapacidadesPorId,
+    busqueda,
+  ]);
 
-    const mapa: Record<
-      number,
-      Incapacidad
-    > = {};
-
-    resultados.forEach(
-      (resultado) => {
-        if (
-          resultado.status ===
-          "fulfilled"
-        ) {
-          mapa[
-            resultado.value
-              .id_incapacidad
-          ] =
-            resultado.value;
-        }
-      },
-    );
-
-    setIncapacidades(mapa);
-  }
-
-  // Carga la información al entrar
-  useEffect(() => {
-    void cargarApelaciones();
-  }, [esAdministrador]);
-
-  // Filtra las apelaciones
-  const apelacionesFiltradas =
-    useMemo(() => {
-      const texto =
-        busqueda
-          .trim()
-          .toLowerCase();
-
-      if (!texto) {
-        return apelaciones;
-      }
-
-      return apelaciones.filter(
-        (apelacion) => {
-          const incapacidad =
-            incapacidades[
-              apelacion
-                .id_incapacidad
-            ];
-
-          return (
-            String(
-              apelacion.id_apelacion,
-            ).includes(texto) ||
-            String(
-              apelacion.id_incapacidad,
-            ).includes(texto) ||
-            apelacion.motivo
-              .toLowerCase()
-              .includes(texto) ||
-            apelacion.estado
-              .toLowerCase()
-              .includes(texto) ||
-            incapacidad?.numero_radicado
-              ?.toLowerCase()
-              .includes(texto)
-          );
-        },
-      );
-    }, [
-      apelaciones,
-      incapacidades,
-      busqueda,
-    ]);
-
-  // Actualiza un campo
+  // Actualiza un campo del formulario.
   function actualizarCampo(
     campo: keyof FormularioApelacion,
-    valor: string,
+    valor: string | File | null,
   ) {
     setFormulario((actual) => ({
       ...actual,
@@ -352,51 +274,38 @@ export default function Apelaciones() {
     }));
   }
 
-  // Abre el formulario de creación
+  // Abre el formulario de creación.
   function abrirFormularioCrear() {
     setError("");
     setMensaje("");
     setApelacionEditando(null);
-    setFormulario(
-      formularioInicial(),
-    );
+    setFormulario(formularioInicial());
     setMostrarFormulario(true);
   }
 
-  // Abre el formulario de edición
+  // Abre el formulario de revisión.
   function abrirFormularioEditar(
     apelacion: Apelacion,
   ) {
     setError("");
     setMensaje("");
-    setApelacionEditando(
-      apelacion,
-    );
+    setApelacionEditando(apelacion);
 
     setFormulario({
-      id_incapacidad:
-        String(
-          apelacion.id_incapacidad,
-        ),
-      fecha_apelacion:
-        apelacion.fecha_apelacion
-          .slice(0, 16),
-      motivo: apelacion.motivo,
-      respuesta:
-        apelacion.respuesta ?? "",
-      estado: apelacion.estado,
-      id_revisor:
-        apelacion.id_revisor
-          ? String(
-              apelacion.id_revisor,
-            )
-          : "",
+      numero_radicado: "",
+      motivo: "",
+      respuesta: apelacion.respuesta ?? "",
+      estado:
+        apelacion.estado === "aprobada"
+          ? "aprobada"
+          : "rechazada",
+      archivo: null,
     });
 
     setMostrarFormulario(true);
   }
 
-  // Cierra el formulario
+  // Cierra el formulario.
   function cerrarFormulario() {
     if (guardando) {
       return;
@@ -404,12 +313,10 @@ export default function Apelaciones() {
 
     setMostrarFormulario(false);
     setApelacionEditando(null);
-    setFormulario(
-      formularioInicial(),
-    );
+    setFormulario(formularioInicial());
   }
 
-  // Envía el formulario
+  // Envía el formulario.
   async function manejarSubmit(
     evento: FormEvent<HTMLFormElement>,
   ) {
@@ -422,104 +329,83 @@ export default function Apelaciones() {
       setError(
         "No se encontró el usuario autenticado.",
       );
-
       return;
     }
 
-    const idIncapacidad =
-      Number(
-        formulario.id_incapacidad,
-      );
-
-    if (
-      !idIncapacidad ||
-      idIncapacidad <= 0
-    ) {
+    if (apelacionEditando && !esCoordinador) {
       setError(
-        "Debes indicar una incapacidad válida.",
+        "No tienes permisos para revisar apelaciones.",
       );
-
       return;
     }
 
-    if (
-      !formulario.fecha_apelacion
-    ) {
+    if (!apelacionEditando && !esEstudiante) {
       setError(
-        "La fecha de apelación es obligatoria.",
+        "Solo los estudiantes pueden presentar apelaciones.",
       );
-
       return;
     }
 
-    if (
-      !formulario.motivo.trim()
-    ) {
-      setError(
-        "El motivo de la apelación es obligatorio.",
-      );
+    if (apelacionEditando) {
+      if (!formulario.respuesta.trim()) {
+        setError(
+          "Debes escribir una respuesta para la apelación.",
+        );
+        return;
+      }
+    } else {
+      if (!formulario.numero_radicado) {
+        setError(
+          "Debes seleccionar una incapacidad rechazada.",
+        );
+        return;
+      }
 
-      return;
-    }
+      if (!formulario.motivo.trim()) {
+        setError(
+          "El motivo de la apelación es obligatorio.",
+        );
+        return;
+      }
 
-    if (
-      esAdministrador &&
-      !formulario.id_revisor
-    ) {
-      setError(
-        "Indica el ID del revisor.",
-      );
+      const incapacidadSeleccionada =
+        incapacidadesDisponibles.find(
+          (incapacidad) =>
+            incapacidad.numero_radicado ===
+            formulario.numero_radicado,
+        );
 
-      return;
+      if (!incapacidadSeleccionada) {
+        setError(
+          "La incapacidad seleccionada no está disponible para apelación.",
+        );
+        return;
+      }
     }
 
     setGuardando(true);
 
     try {
       if (apelacionEditando) {
-        // Actualiza una apelación
         await actualizarApelacion(
           apelacionEditando.id_apelacion,
           {
-            id_incapacidad:
-              idIncapacidad,
-            fecha_apelacion:
-              new Date(
-                formulario.fecha_apelacion,
-              ).toISOString(),
-            motivo:
-              formulario.motivo.trim(),
-            respuesta:
-              formulario.respuesta.trim() ||
-              null,
-            estado:
-              formulario.estado,
-            id_revisor:
-              formulario.id_revisor
-                ? Number(
-                    formulario.id_revisor,
-                  )
-                : null,
+            respuesta: formulario.respuesta.trim(),
+            estado: formulario.estado,
           },
         );
 
         setMensaje(
-          "Apelación actualizada correctamente.",
+          formulario.estado === "aprobada"
+            ? "Apelación aprobada correctamente. La incapacidad también fue aprobada."
+            : "Apelación rechazada correctamente.",
         );
       } else {
-        // Crea una apelación
         await crearApelacion({
-          id_incapacidad:
-            idIncapacidad,
-          fecha_apelacion:
-            new Date(
-              formulario.fecha_apelacion,
-            ).toISOString(),
-          motivo:
-            formulario.motivo.trim(),
-          respuesta: null,
-          estado: "pendiente",
-          id_revisor: null,
+          numero_radicado:
+            formulario.numero_radicado,
+          motivo: formulario.motivo.trim(),
+          archivo: formulario.archivo,
         });
 
         setMensaje(
@@ -527,7 +413,9 @@ export default function Apelaciones() {
         );
       }
 
-      cerrarFormulario();
+      setMostrarFormulario(false);
+      setApelacionEditando(null);
+      setFormulario(formularioInicial());
 
       await cargarApelaciones();
     } catch (err) {
@@ -901,7 +789,9 @@ export default function Apelaciones() {
             resize: vertical;
           }
 
-          .apelaciones-form input:disabled {
+          .apelaciones-form input:disabled,
+          .apelaciones-form select:disabled,
+          .apelaciones-form textarea:disabled {
             background: #f2f4f7;
           }
 
@@ -909,6 +799,12 @@ export default function Apelaciones() {
             display: flex;
             justify-content: flex-end;
             gap: 10px;
+          }
+
+          .apelaciones-help {
+            color: #667085;
+            font-size: 13px;
+            line-height: 1.5;
           }
 
           @media (max-width: 850px) {
@@ -952,8 +848,8 @@ export default function Apelaciones() {
           <h1>Apelaciones</h1>
 
           <p>
-            {esAdministrador
-              ? "Revisa y gestiona las apelaciones relacionadas con incapacidades."
+            {esCoordinador
+              ? "Revisa las apelaciones presentadas por los estudiantes de tu colegio."
               : "Consulta y presenta apelaciones sobre tus incapacidades rechazadas."}
           </p>
         </div>
@@ -962,22 +858,19 @@ export default function Apelaciones() {
           <button
             type="button"
             className="apelaciones-button secondary"
-            onClick={() =>
-              void cargarApelaciones()
-            }
+            onClick={() => void cargarApelaciones()}
             disabled={cargando}
           >
             <FiRefreshCw />
             Actualizar
           </button>
 
-          {!esAdministrador && (
+          {esEstudiante && (
             <button
               type="button"
               className="apelaciones-button primary"
-              onClick={
-                abrirFormularioCrear
-              }
+              onClick={abrirFormularioCrear}
+              disabled={incapacidadesDisponibles.length === 0}
             >
               <FiPlus />
               Nueva apelación
@@ -1004,21 +897,16 @@ export default function Apelaciones() {
 
           <input
             type="text"
-            placeholder="Buscar por ID, radicado, estado o motivo..."
+            placeholder="Buscar por radicado, estado o motivo..."
             value={busqueda}
             onChange={(evento) =>
-              setBusqueda(
-                evento.target.value,
-              )
+              setBusqueda(evento.target.value)
             }
           />
         </div>
 
         <div className="apelaciones-counter">
-          {
-            apelacionesFiltradas.length
-          }{" "}
-          apelación(es)
+          {apelacionesFiltradas.length} apelación(es)
         </div>
       </div>
 
@@ -1026,8 +914,7 @@ export default function Apelaciones() {
         <div className="apelaciones-loading">
           Cargando apelaciones...
         </div>
-      ) : apelacionesFiltradas.length ===
-        0 ? (
+      ) : apelacionesFiltradas.length === 0 ? (
         <div className="apelaciones-empty">
           <FiFileText />
 
@@ -1036,140 +923,174 @@ export default function Apelaciones() {
           </h3>
 
           <p>
-            Las apelaciones registradas
-            aparecerán aquí.
+            {esEstudiante
+              ? "Cuando presentes una apelación, aparecerá aquí."
+              : "Las apelaciones presentadas por los estudiantes aparecerán aquí."}
           </p>
         </div>
       ) : (
         <div className="apelaciones-list">
-          {apelacionesFiltradas.map(
-            (apelacion) => {
-              const incapacidad =
-                incapacidades[
-                  apelacion
-                    .id_incapacidad
-                ];
+          {apelacionesFiltradas.map((apelacion) => {
+            const incapacidad =
+              incapacidadesPorId.get(
+                apelacion.id_incapacidad,
+              );
 
-              return (
-                <article
-                  className="apelacion-card"
-                  key={
-                    apelacion.id_apelacion
-                  }
-                >
-                  <div className="apelacion-card-header">
-                    <div>
-                      <h2 className="apelacion-card-title">
-                        Apelación #
-                        {
-                          apelacion.id_apelacion
-                        }
-                      </h2>
+            return (
+              <article
+                className="apelacion-card"
+                key={apelacion.id_apelacion}
+              >
+                <div className="apelacion-card-header">
+                  <div>
+                    <h2 className="apelacion-card-title">
+                      Apelación
+                    </h2>
 
-                      <div className="apelacion-card-subtitle">
-                        Incapacidad #
-                        {
-                          apelacion.id_incapacidad
-                        }
-
-                        {incapacidad &&
-                          ` · Radicado ${incapacidad.numero_radicado}`}
-                      </div>
+                    <div className="apelacion-card-subtitle">
+                      {incapacidad
+                        ? `Radicado ${incapacidad.numero_radicado}`
+                        : "Información de incapacidad"}
                     </div>
+                  </div>
 
-                    <span
-                      className={obtenerClaseEstado(
-                        apelacion.estado,
+                  <span
+                    className={obtenerClaseEstado(
+                      apelacion.estado,
+                    )}
+                  >
+                    {obtenerTextoEstado(
+                      apelacion.estado,
+                    )}
+                  </span>
+                </div>
+
+                <div className="apelacion-info-grid">
+                  <div className="apelacion-info-item">
+                    <span>
+                      Fecha de apelación
+                    </span>
+
+                    <strong>
+                      {formatearFecha(
+                        apelacion.fecha_apelacion,
                       )}
-                    >
+                    </strong>
+                  </div>
+
+                  <div className="apelacion-info-item">
+                    <span>
+                      Radicado
+                    </span>
+
+                    <strong>
+                      {incapacidad?.numero_radicado ?? "No disponible"}
+                    </strong>
+                  </div>
+
+                  <div className="apelacion-info-item">
+                    <span>
+                      Estado
+                    </span>
+
+                    <strong>
                       {obtenerTextoEstado(
                         apelacion.estado,
                       )}
-                    </span>
+                    </strong>
                   </div>
+                </div>
 
+                {incapacidad && (
                   <div className="apelacion-info-grid">
                     <div className="apelacion-info-item">
                       <span>
-                        Fecha de apelación
+                        Inicio de incapacidad
                       </span>
 
                       <strong>
-                        {formatearFecha(
-                          apelacion.fecha_apelacion,
-                        )}
+                        {incapacidad.fecha_inicio}
                       </strong>
                     </div>
 
                     <div className="apelacion-info-item">
                       <span>
-                        Revisor
+                        Fin de incapacidad
                       </span>
 
                       <strong>
-                        {apelacion.id_revisor
-                          ? `Usuario #${apelacion.id_revisor}`
-                          : "Sin asignar"}
+                        {incapacidad.fecha_fin}
                       </strong>
                     </div>
 
                     <div className="apelacion-info-item">
                       <span>
-                        Estado
+                        Estado de incapacidad
                       </span>
 
                       <strong>
-                        {obtenerTextoEstado(
-                          apelacion.estado,
-                        )}
+                        {incapacidad.estado}
                       </strong>
                     </div>
                   </div>
+                )}
 
+                <div className="apelacion-motivo">
+                  <strong>
+                    Motivo de la apelación
+                  </strong>
+
+                  <p>
+                    {apelacion.motivo}
+                  </p>
+                </div>
+
+                {apelacion.archivo && (
                   <div className="apelacion-motivo">
                     <strong>
-                      Motivo de la apelación
+                      Documento adjunto
+                    </strong>
+
+                    <a
+                      href={apelacion.archivo}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Ver documento adjunto
+                    </a>
+                  </div>
+                )}
+
+                {apelacion.respuesta && (
+                  <div className="apelacion-respuesta">
+                    <strong>
+                      Respuesta del coordinador
                     </strong>
 
                     <p>
-                      {apelacion.motivo}
+                      {apelacion.respuesta}
                     </p>
                   </div>
+                )}
 
-                  {apelacion.respuesta && (
-                    <div className="apelacion-respuesta">
-                      <strong>
-                        Respuesta
-                      </strong>
-
-                      <p>
-                        {
-                          apelacion.respuesta
-                        }
-                      </p>
-                    </div>
-                  )}
-
-                  {esAdministrador && (
+                {esCoordinador &&
+                  apelacion.estado === "pendiente" && (
                     <div className="apelacion-actions">
                       <button
                         type="button"
                         className="apelaciones-button secondary"
                         onClick={() =>
-                          abrirFormularioEditar(
-                            apelacion,
-                          )
+                          abrirFormularioEditar(apelacion)
                         }
                       >
                         <FiEdit2 />
-                        Revisar / editar
+                        Revisar apelación
                       </button>
                     </div>
                   )}
-                </article>
-              );
-            },
-          )}
+              </article>
+            );
+          })}
         </div>
       )}
 
@@ -1186,18 +1107,17 @@ export default function Apelaciones() {
 
                 <p>
                   {apelacionEditando
-                    ? "Actualiza el estado y la respuesta de la apelación."
-                    : "Presenta una apelación relacionada con una incapacidad."}
+                    ? "Registra la decisión y la respuesta para el estudiante."
+                    : "Selecciona una de tus incapacidades rechazadas y explica el motivo de la apelación."}
                 </p>
               </div>
 
               <button
                 type="button"
                 className="apelaciones-close"
-                onClick={
-                  cerrarFormulario
-                }
+                onClick={cerrarFormulario}
                 disabled={guardando}
+                aria-label="Cerrar formulario"
               >
                 <FiX />
               </button>
@@ -1207,174 +1127,149 @@ export default function Apelaciones() {
               className="apelaciones-form"
               onSubmit={manejarSubmit}
             >
-              <div className="apelaciones-form-group">
-                <label htmlFor="id-incapacidad-apelacion">
-                  ID de incapacidad
-                </label>
+              {!apelacionEditando ? (
+                <>
+                  <div className="apelaciones-form-group">
+                    <label htmlFor="incapacidad-apelacion">
+                      Incapacidad rechazada
+                    </label>
 
-                <input
-                  id="id-incapacidad-apelacion"
-                  type="number"
-                  min="1"
-                  value={
-                    formulario.id_incapacidad
-                  }
-                  onChange={(evento) =>
-                    actualizarCampo(
-                      "id_incapacidad",
-                      evento.target.value,
-                    )
-                  }
-                  disabled={
-                    Boolean(
-                      apelacionEditando,
-                    ) || guardando
-                  }
-                  placeholder="Ej. 15"
-                />
-              </div>
+                    <select
+                      id="incapacidad-apelacion"
+                      value={formulario.numero_radicado}
+                      onChange={(evento) =>
+                        actualizarCampo(
+                          "numero_radicado",
+                          evento.target.value,
+                        )
+                      }
+                      disabled={guardando}
+                      required
+                    >
+                      <option value="">
+                        Selecciona una incapacidad
+                      </option>
 
-              <div className="apelaciones-form-group">
-                <label htmlFor="fecha-apelacion">
-                  Fecha de apelación
-                </label>
-
-                <input
-                  id="fecha-apelacion"
-                  type="datetime-local"
-                  value={
-                    formulario.fecha_apelacion
-                  }
-                  onChange={(evento) =>
-                    actualizarCampo(
-                      "fecha_apelacion",
-                      evento.target.value,
-                    )
-                  }
-                  disabled={guardando}
-                />
-              </div>
-
-              <div className="apelaciones-form-group">
-                <label htmlFor="motivo-apelacion">
-                  Motivo
-                </label>
-
-                <textarea
-                  id="motivo-apelacion"
-                  value={
-                    formulario.motivo
-                  }
-                  onChange={(evento) =>
-                    actualizarCampo(
-                      "motivo",
-                      evento.target.value,
-                    )
-                  }
-                  disabled={guardando}
-                  placeholder="Explica por qué solicitas la revisión..."
-                />
-              </div>
-
-              {esAdministrador &&
-                apelacionEditando && (
-                  <>
-                    <div className="apelaciones-form-row">
-                      <div className="apelaciones-form-group">
-                        <label htmlFor="estado-apelacion">
-                          Estado
-                        </label>
-
-                        <select
-                          id="estado-apelacion"
-                          value={
-                            formulario.estado
-                          }
-                          onChange={(evento) =>
-                            actualizarCampo(
-                              "estado",
-                              evento.target.value,
-                            )
-                          }
-                          disabled={
-                            guardando
-                          }
-                        >
-                          <option value="pendiente">
-                            Pendiente
+                      {incapacidadesDisponibles.map(
+                        (incapacidad) => (
+                          <option
+                            key={incapacidad.id_incapacidad}
+                            value={incapacidad.numero_radicado}
+                          >
+                            {incapacidad.numero_radicado}
+                            {" — "}
+                            {incapacidad.fecha_inicio}
+                            {" a "}
+                            {incapacidad.fecha_fin}
                           </option>
+                        ),
+                      )}
+                    </select>
 
-                          <option value="aprobada">
-                            Aprobada
-                          </option>
+                    {incapacidadesDisponibles.length === 0 && (
+                      <span className="apelaciones-help">
+                        No tienes incapacidades rechazadas disponibles para apelar.
+                      </span>
+                    )}
+                  </div>
 
-                          <option value="rechazada">
-                            Rechazada
-                          </option>
-                        </select>
-                      </div>
+                  <div className="apelaciones-form-group">
+                    <label htmlFor="motivo-apelacion">
+                      Motivo de la apelación
+                    </label>
 
-                      <div className="apelaciones-form-group">
-                        <label htmlFor="revisor-apelacion">
-                          ID del revisor
-                        </label>
+                    <textarea
+                      id="motivo-apelacion"
+                      value={formulario.motivo}
+                      onChange={(evento) =>
+                        actualizarCampo(
+                          "motivo",
+                          evento.target.value,
+                        )
+                      }
+                      disabled={guardando}
+                      placeholder="Explica por qué solicitas que se revise nuevamente tu incapacidad..."
+                      required
+                    />
+                  </div>
 
-                        <input
-                          id="revisor-apelacion"
-                          type="number"
-                          min="1"
-                          value={
-                            formulario.id_revisor
-                          }
-                          onChange={(
-                            evento,
-                          ) =>
-                            actualizarCampo(
-                              "id_revisor",
-                              evento.target.value,
-                            )
-                          }
-                          disabled={
-                            guardando
-                          }
-                          placeholder="ID usuario"
-                        />
-                      </div>
-                    </div>
+                  <div className="apelaciones-form-group">
+                    <label htmlFor="archivo-apelacion">
+                      Documento de soporte (opcional)
+                    </label>
 
-                    <div className="apelaciones-form-group">
-                      <label htmlFor="respuesta-apelacion">
-                        Respuesta
-                      </label>
+                    <input
+                      id="archivo-apelacion"
+                      type="file"
+                      onChange={(evento) =>
+                        actualizarCampo(
+                          "archivo",
+                          evento.target.files?.[0] ?? null,
+                        )
+                      }
+                      disabled={guardando}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="apelaciones-form-group">
+                    <label htmlFor="estado-apelacion">
+                      Decisión
+                    </label>
 
-                      <textarea
-                        id="respuesta-apelacion"
-                        value={
-                          formulario.respuesta
-                        }
-                        onChange={(evento) =>
-                          actualizarCampo(
-                            "respuesta",
-                            evento.target
-                              .value,
-                          )
-                        }
-                        disabled={
-                          guardando
-                        }
-                        placeholder="Escribe la respuesta a la apelación..."
-                      />
-                    </div>
-                  </>
-                )}
+                    <select
+                      id="estado-apelacion"
+                      value={formulario.estado}
+                      onChange={(evento) =>
+                        actualizarCampo(
+                          "estado",
+                          evento.target.value,
+                        )
+                      }
+                      disabled={guardando}
+                    >
+                      <option value="aprobada">
+                        Aprobar apelación
+                      </option>
+
+                      <option value="rechazada">
+                        Rechazar apelación
+                      </option>
+                    </select>
+                  </div>
+
+                  <div className="apelaciones-form-group">
+                    <label htmlFor="respuesta-apelacion">
+                      Respuesta al estudiante
+                    </label>
+
+                    <textarea
+                      id="respuesta-apelacion"
+                      value={formulario.respuesta}
+                      onChange={(evento) =>
+                        actualizarCampo(
+                          "respuesta",
+                          evento.target.value,
+                        )
+                      }
+                      disabled={guardando}
+                      placeholder="Explica la decisión tomada..."
+                      required
+                    />
+                  </div>
+
+                  <p className="apelaciones-help">
+                    Si apruebas la apelación, el sistema también aprobará la incapacidad y gestionará el acceso académico según las fechas registradas.
+                  </p>
+                </>
+              )}
 
               <div className="apelaciones-form-actions">
                 <button
                   type="button"
                   className="apelaciones-button secondary"
-                  onClick={
-                    cerrarFormulario
-                  }
+                  onClick={cerrarFormulario}
                   disabled={guardando}
                 >
                   Cancelar
@@ -1383,7 +1278,11 @@ export default function Apelaciones() {
                 <button
                   type="submit"
                   className="apelaciones-button primary"
-                  disabled={guardando}
+                  disabled={
+                    guardando ||
+                    (!apelacionEditando &&
+                      incapacidadesDisponibles.length === 0)
+                  }
                 >
                   {guardando
                     ? "Guardando..."

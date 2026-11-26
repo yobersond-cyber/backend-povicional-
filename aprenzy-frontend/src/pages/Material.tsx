@@ -1,3 +1,4 @@
+
 import {
   useEffect,
   useState,
@@ -11,20 +12,16 @@ import {
   FiSearch,
   FiPlus,
   FiX,
+  FiUpload,
 } from "react-icons/fi";
 
 import {
   crearMaterial,
   obtenerMateriales,
+  obtenerMisAsignaciones,
   type Material,
+  type AsignacionDocenteMaterial,
 } from "../services/material";
-
-import {
-  obtenerMaterias,
-  type Materia,
-} from "../services/materia";
-
-import { useAuth } from "../context/AuthContext";
 
 // Obtiene la fecha y hora local para datetime-local.
 function obtenerFechaLocal(): string {
@@ -47,11 +44,11 @@ function mensajeError(error: unknown): string {
 }
 
 function Materiales() {
-  const { usuario } = useAuth();
-
-  // Datos de materiales.
+  // Datos de materiales y asignaciones.
   const [materiales, setMateriales] = useState<Material[]>([]);
-  const [materias, setMaterias] = useState<Materia[]>([]);
+  const [asignaciones, setAsignaciones] = useState<
+    AsignacionDocenteMaterial[]
+  >([]);
 
   // Búsqueda y carga.
   const [busqueda, setBusqueda] = useState("");
@@ -63,10 +60,13 @@ function Materiales() {
   const [mostrarFormulario, setMostrarFormulario] =
     useState(false);
 
-  const [idMateria, setIdMateria] = useState("");
+  const [asignacionSeleccionada, setAsignacionSeleccionada] =
+    useState("");
+
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [archivo, setArchivo] = useState("");
+  const [archivo, setArchivo] = useState<File | null>(null);
+
   const [fechaPublicacion, setFechaPublicacion] =
     useState(obtenerFechaLocal);
 
@@ -93,15 +93,14 @@ function Materiales() {
     }
   }
 
-  // Consulta solamente las materias que el docente
-  // puede consultar mediante el endpoint del backend.
+  // Consulta las materias y cursos asignados al docente.
   async function cargarMaterias() {
     setCargandoMaterias(true);
     setErrorMaterias("");
 
     try {
-      const datos = await obtenerMaterias();
-      setMaterias(datos);
+      const datos = await obtenerMisAsignaciones();
+      setAsignaciones(datos);
     } catch (err) {
       setErrorMaterias(mensajeError(err));
     } finally {
@@ -116,12 +115,20 @@ function Materiales() {
 
   // Limpia el formulario.
   function limpiarFormulario() {
-    setIdMateria("");
+    setAsignacionSeleccionada("");
     setTitulo("");
     setDescripcion("");
-    setArchivo("");
+    setArchivo(null);
     setFechaPublicacion(obtenerFechaLocal());
     setErrorFormulario("");
+
+    const selectorArchivo = document.getElementById(
+      "material-archivo",
+    ) as HTMLInputElement | null;
+
+    if (selectorArchivo) {
+      selectorArchivo.value = "";
+    }
   }
 
   // Abre o cierra el formulario.
@@ -130,6 +137,13 @@ function Materiales() {
     setErrorFormulario("");
     setMensaje("");
   }
+
+  // Obtiene la asignación seleccionada.
+  const asignacionActual = asignaciones.find(
+    (asignacion) =>
+      `${asignacion.id_materia}-${asignacion.id_curso}` ===
+      asignacionSeleccionada,
+  );
 
   // Crea un material académico.
   async function guardarMaterial(
@@ -140,38 +154,9 @@ function Materiales() {
     setErrorFormulario("");
     setMensaje("");
 
-    // La identidad del docente proviene de la sesión.
-    if (!usuario) {
+    if (!asignacionActual) {
       setErrorFormulario(
-        "No se encontró la sesión del usuario. " +
-          "Cierra sesión e inicia nuevamente.",
-      );
-      return;
-    }
-
-    const materiaSeleccionada = Number(idMateria);
-
-    if (
-      !Number.isInteger(materiaSeleccionada) ||
-      materiaSeleccionada <= 0
-    ) {
-      setErrorFormulario(
-        "Selecciona una materia válida.",
-      );
-      return;
-    }
-
-    // Verifica que la materia esté entre las asignadas
-    // que devolvió el backend.
-    const materiaPermitida = materias.some(
-      (materia) =>
-        materia.id_materia === materiaSeleccionada,
-    );
-
-    if (!materiaPermitida) {
-      setErrorFormulario(
-        "La materia seleccionada no está disponible " +
-          "entre tus asignaciones.",
+        "Selecciona una materia y un curso válidos.",
       );
       return;
     }
@@ -190,9 +175,9 @@ function Materiales() {
       return;
     }
 
-    if (!archivo.trim()) {
+    if (!archivo) {
       setErrorFormulario(
-        "Ingresa el enlace del material académico.",
+        "Selecciona el archivo que deseas publicar.",
       );
       return;
     }
@@ -213,11 +198,11 @@ function Materiales() {
 
     try {
       await crearMaterial({
-        id_usuario: usuario.id_usuario,
-        id_materia: materiaSeleccionada,
+        id_materia: asignacionActual.id_materia,
+        id_curso: asignacionActual.id_curso,
         titulo: titulo.trim(),
         descripcion: descripcion.trim(),
-        archivo: archivo.trim(),
+        archivo,
         fecha_publicacion: fecha.toISOString(),
       });
 
@@ -236,18 +221,30 @@ function Materiales() {
     }
   }
 
+  // Busca la asignación correspondiente a cada material.
+  function obtenerAsignacionMaterial(
+    material: Material,
+  ): AsignacionDocenteMaterial | undefined {
+    return asignaciones.find(
+      (asignacion) =>
+        asignacion.id_materia === material.id_materia &&
+        (
+          material.id_curso === undefined ||
+          asignacion.id_curso === material.id_curso
+        ),
+    );
+  }
+
   // Filtra los materiales.
   const materialesFiltrados = materiales.filter(
     (material) => {
-      const materia = materias.find(
-        (item) =>
-          item.id_materia === material.id_materia,
-      );
+      const asignacion = obtenerAsignacionMaterial(material);
 
       const texto = `
         ${material.titulo}
         ${material.descripcion ?? ""}
-        ${materia?.nombre_materia ?? ""}
+        ${asignacion?.nombre_materia ?? ""}
+        ${asignacion?.numero_curso ?? ""}
       `.toLowerCase();
 
       return texto.includes(
@@ -441,6 +438,19 @@ function Materiales() {
           text-decoration: underline;
         }
 
+        .material-file-name {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 12px;
+          border: 1px dashed #a5b4fc;
+          border-radius: 8px;
+          background: #eef2ff;
+          color: #3730a3;
+          font-size: 13px;
+          overflow-wrap: anywhere;
+        }
+
         @media (max-width: 650px) {
           .material-create-grid {
             grid-template-columns: 1fr;
@@ -524,36 +534,36 @@ function Materiales() {
           >
             <div className="material-create-field full">
               <label htmlFor="material-materia">
-                Materia asignada *
+                Materia y curso asignados *
               </label>
 
               <select
                 id="material-materia"
                 required
-                value={idMateria}
+                value={asignacionSeleccionada}
                 onChange={(evento) =>
-                  setIdMateria(evento.target.value)
+                  setAsignacionSeleccionada(evento.target.value)
                 }
                 disabled={
                   cargandoMaterias ||
-                  materias.length === 0 ||
+                  asignaciones.length === 0 ||
                   guardando
                 }
               >
                 <option value="">
                   {cargandoMaterias
-                    ? "Cargando materias..."
-                    : "Selecciona una materia"}
+                    ? "Cargando asignaciones..."
+                    : "Selecciona una materia y un curso"}
                 </option>
 
-                {materias.map((materia) => (
+                {asignaciones.map((asignacion) => (
                   <option
-                    key={materia.id_materia}
-                    value={materia.id_materia}
+                    key={`${asignacion.id_materia}-${asignacion.id_curso}`}
+                    value={`${asignacion.id_materia}-${asignacion.id_curso}`}
                   >
-                    {materia.nombre_materia}
+                    {asignacion.nombre_materia}
                     {" — Curso "}
-                    {materia.id_curso}
+                    {asignacion.numero_curso}
                   </option>
                 ))}
               </select>
@@ -563,18 +573,18 @@ function Materiales() {
                   className="material-create-error"
                   role="alert"
                 >
-                  No se pudieron cargar tus materias:{" "}
+                  No se pudieron cargar tus asignaciones:{" "}
                   {errorMaterias}
                 </div>
               )}
 
               {!cargandoMaterias &&
                 !errorMaterias &&
-                materias.length === 0 && (
+                asignaciones.length === 0 && (
                   <p className="material-create-help">
-                    No tienes materias disponibles. Comprueba
-                    con el coordinador que estén asignadas a
-                    tu cuenta.
+                    No tienes materias y cursos disponibles.
+                    Comprueba con el coordinador que estén
+                    asignados a tu cuenta.
                   </p>
                 )}
             </div>
@@ -616,26 +626,33 @@ function Materiales() {
 
             <div className="material-create-field full">
               <label htmlFor="material-archivo">
-                Enlace al material *
+                Archivo del material *
               </label>
 
               <input
                 id="material-archivo"
-                type="url"
+                type="file"
                 required
-                maxLength={255}
-                value={archivo}
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png"
                 onChange={(evento) =>
-                  setArchivo(evento.target.value)
+                  setArchivo(
+                    evento.target.files?.[0] ?? null,
+                  )
                 }
-                placeholder="https://..."
                 disabled={guardando}
               />
 
               <p className="material-create-help">
-                Pega un enlace accesible al PDF, documento,
-                presentación o recurso que deseas compartir.
+                Selecciona el documento, presentación o imagen
+                que deseas compartir con tus estudiantes.
               </p>
+
+              {archivo && (
+                <div className="material-file-name">
+                  <FiFileText />
+                  <span>{archivo.name}</span>
+                </div>
+              )}
             </div>
 
             <div className="material-create-field">
@@ -683,10 +700,10 @@ function Materiales() {
                 disabled={
                   guardando ||
                   cargandoMaterias ||
-                  materias.length === 0
+                  asignaciones.length === 0
                 }
               >
-                <FiPlus />
+                <FiUpload />
                 {guardando
                   ? "Publicando..."
                   : "Publicar material"}
@@ -719,10 +736,8 @@ function Materiales() {
       {!loading && !error && (
         <div className="materials-grid">
           {materialesFiltrados.map((material) => {
-            const materia = materias.find(
-              (item) =>
-                item.id_materia === material.id_materia,
-            );
+            const asignacion =
+              obtenerAsignacionMaterial(material);
 
             return (
               <article
@@ -755,9 +770,15 @@ function Materiales() {
 
                     <span>
                       Materia:{" "}
-                      {materia?.nombre_materia ??
-                        `#${material.id_materia}`}
+                      {asignacion?.nombre_materia ??
+                        "Materia académica"}
                     </span>
+
+                    {asignacion && (
+                      <span>
+                        Curso: {asignacion.numero_curso}
+                      </span>
+                    )}
                   </div>
 
                   {material.archivo && (

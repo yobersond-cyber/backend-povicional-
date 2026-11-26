@@ -286,29 +286,46 @@ def notificar_publicacion_material(
         )
 
 
-@router.post(
-    "",
-    response_model=MaterialAcademicoResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("")
 async def crear_material(
     background_tasks: BackgroundTasks,
     titulo: str = Form(...),
     descripcion: str = Form(...),
     fecha_publicacion: datetime = Form(...),
-    nombre_materia: str = Form(...),
-    numero_curso: str = Form(...),
+    id_materia: int = Form(...),
+    id_curso: int = Form(...),
     archivo: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("docente")),
 ):
-    asignacion = obtener_asignacion_docente(
+    # Verificar que la materia y el curso estén asignados
+    # al docente que está publicando el material.
+    verificar_asignacion_docente(
         db,
-        current_user,
-        nombre_materia,
-        numero_curso,
+        current_user.id_usuario,
+        id_materia,
+        id_curso,
     )
 
+    materia = (
+        db.query(Materia)
+        .filter(Materia.id_materia == id_materia)
+        .first()
+    )
+
+    curso = (
+        db.query(Curso)
+        .filter(Curso.id_curso == id_curso)
+        .first()
+    )
+
+    if not materia or not curso:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="La materia o el curso seleccionado no existe.",
+        )
+
+    # Subir el archivo al almacenamiento.
     archivo_subido = await subir_archivo(
         archivo,
         "materiales",
@@ -316,8 +333,8 @@ async def crear_material(
 
     nuevo_material = MaterialAcademico(
         id_usuario=current_user.id_usuario,
-        id_materia=asignacion.id_materia,
-        id_curso=asignacion.id_curso,
+        id_materia=id_materia,
+        id_curso=id_curso,
         titulo=titulo,
         descripcion=descripcion,
         archivo=archivo_subido["url"],
@@ -341,30 +358,14 @@ async def crear_material(
 
         raise
 
-    materia = (
-        db.query(Materia)
-        .filter(
-            Materia.id_materia == nuevo_material.id_materia,
-        )
-        .first()
+    # Mantener las notificaciones por correo a los estudiantes.
+    notificar_publicacion_material(
+        background_tasks,
+        db,
+        nuevo_material,
+        materia,
+        curso,
     )
-
-    curso = (
-        db.query(Curso)
-        .filter(
-            Curso.id_curso == nuevo_material.id_curso,
-        )
-        .first()
-    )
-
-    if materia is not None and curso is not None:
-        notificar_publicacion_material(
-            background_tasks,
-            db,
-            nuevo_material,
-            materia,
-            curso,
-        )
 
     return nuevo_material
 

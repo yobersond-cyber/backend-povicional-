@@ -1,43 +1,34 @@
-// Importa las herramientas necesarias de React
+
 import {
   useEffect,
   useMemo,
   useState,
-  type FormEvent,
 } from "react";
 
-// Importa los iconos de la interfaz
 import {
   FiCheckCircle,
   FiClock,
   FiFileText,
-  FiPlus,
   FiRefreshCw,
   FiSearch,
   FiShield,
   FiUser,
-  FiX,
   FiXCircle,
 } from "react-icons/fi";
 
-// Importa la autenticación
 import { useAuth } from "../context/AuthContext";
 
-// Importa los servicios de acceso
 import {
-  crearAcceso,
-  obtenerAcceso,
   obtenerAccesos,
   type AccesoAcademico,
   type EstadoAcceso,
 } from "../services/acceso";
 
-// Representa los datos del formulario
-interface FormularioAcceso {
-  id_usuario: string;
-  id_incapacidad: string;
-  estado: EstadoAcceso;
-}
+import {
+  obtenerSolicitudesEstudiantes,
+  actualizarAprobacionEstudiante,
+  type SolicitudEstudiante,
+} from "../services/solicitudesEstudiantes";
 
 // Obtiene el texto visual del estado
 function obtenerTextoEstado(
@@ -84,33 +75,6 @@ function obtenerIconoEstado(
   return <FiXCircle />;
 }
 
-// Calcula los días restantes usando una fecha de finalización
-/* function calcularDiasRestantes(
-  fechaFin: string | undefined,
-): number | null {
-  // Si no existe fecha no se puede calcular
-  if (!fechaFin) {
-    return null;
-  }
-
-  // Obtiene la fecha actual
-  const hoy = new Date();
-
-  // Convierte la fecha recibida
-  const fin = new Date(`${fechaFin}T23:59:59`);
-
-  // Calcula la diferencia
-  const diferencia =
-    fin.getTime() - hoy.getTime();
-
-  // Convierte milisegundos a días
-  const dias = Math.ceil(
-    diferencia / (1000 * 60 * 60 * 24),
-  );
-
-  return Math.max(0, dias);
-}
- */
 // Formatea una fecha para mostrarla
 /* function formatearFecha(
   fecha: string | undefined,
@@ -137,6 +101,10 @@ function obtenerIconoEstado(
   );
 } */
 
+type SeccionAccesos =
+  | "solicitudes"
+  | "academicos";
+
 export default function Accesos() {
   // Obtiene el usuario autenticado
   const { usuario } = useAuth();
@@ -146,15 +114,24 @@ export default function Accesos() {
     AccesoAcademico[]
   >([]);
 
-  // Guarda el acceso consultado por estudiante
-  const [accesoEstudiante, setAccesoEstudiante] =
-    useState<AccesoAcademico | null>(null);
+  // Guarda las solicitudes de estudiantes
+  const [solicitudes, setSolicitudes] = useState<
+    SolicitudEstudiante[]
+  >([]);
 
-  // Controla la carga
+  // Controla la carga general
   const [cargando, setCargando] = useState(true);
+
+  // Controla la carga de solicitudes
+  const [cargandoSolicitudes, setCargandoSolicitudes] =
+    useState(false);
 
   // Guarda errores
   const [error, setError] = useState("");
+
+  // Guarda errores de solicitudes
+  const [errorSolicitudes, setErrorSolicitudes] =
+    useState("");
 
   // Guarda mensajes exitosos
   const [mensaje, setMensaje] = useState("");
@@ -162,265 +139,191 @@ export default function Accesos() {
   // Guarda el texto de búsqueda
   const [busqueda, setBusqueda] = useState("");
 
-  // Controla la ventana de creación
-  const [mostrarFormulario, setMostrarFormulario] =
-    useState(false);
+  // Controla la solicitud que se está procesando
+  const [procesando, setProcesando] = useState<
+    number | null
+  >(null);
 
-  // Guarda el ID que introduce un estudiante
-  const [idConsulta, setIdConsulta] =
-    useState("");
+  // Controla la sección activa
+  const [seccion, setSeccion] =
+    useState<SeccionAccesos>("solicitudes");
 
-  // Guarda los datos del formulario
-  const [formulario, setFormulario] =
-    useState<FormularioAcceso>({
-      id_usuario: "",
-      id_incapacidad: "",
-      estado: "activo",
-    });
+  // Determina si el usuario es coordinador
+  const esCoordinador =
+    usuario?.tipo_de_usuario === "coordinador";
 
-  // Determina si el usuario es administrador
-  const esAdministrador =
-    usuario?.tipo_de_usuario ===
-    "administrador";
+  // Determina si el usuario es estudiante
+  const esEstudiante =
+    usuario?.tipo_de_usuario === "estudiante";
 
-  // Carga los accesos del administrador
+  // Carga los accesos académicos
   async function cargarAccesos() {
-    // Limpia mensajes anteriores
     setError("");
-    setMensaje("");
-
-    // Activa la carga
     setCargando(true);
 
     try {
-      // Consulta los accesos
       const datos = await obtenerAccesos();
-
-      // Guarda los resultados
       setAccesos(datos);
     } catch (err) {
-      // Muestra el error
       setError(
         err instanceof Error
           ? err.message
-          : "No fue posible cargar los accesos",
+          : "No fue posible cargar los accesos académicos.",
       );
     } finally {
-      // Finaliza la carga
       setCargando(false);
     }
   }
 
-  // Consulta un acceso específico
-  async function consultarAcceso(
-    event?: FormEvent,
-  ) {
-    // Evita recargar la página
-    event?.preventDefault();
-
-    // Limpia mensajes
-    setError("");
-    setMensaje("");
-
-    // Convierte el ID a número
-    const id = Number(idConsulta);
-
-    // Valida el ID
-    if (!Number.isInteger(id) || id <= 0) {
-      setError(
-        "Ingresa un ID de acceso válido.",
-      );
-      return;
-    }
-
-    // Activa la carga
-    setCargando(true);
+  // Carga las solicitudes de cuentas de estudiantes
+  async function cargarSolicitudes() {
+    setErrorSolicitudes("");
+    setCargandoSolicitudes(true);
 
     try {
-      // Consulta el acceso
-      const acceso = await obtenerAcceso(id);
+      const datos =
+        await obtenerSolicitudesEstudiantes();
 
-      // Guarda el resultado
-      setAccesoEstudiante(acceso);
-
-      // Guarda el ID para futuras consultas
-      localStorage.setItem(
-        "aprenzy_acceso_id",
-        String(id),
-      );
+      setSolicitudes(datos);
     } catch (err) {
-      // Limpia el resultado anterior
-      setAccesoEstudiante(null);
-
-      // Muestra el error
-      setError(
+      setErrorSolicitudes(
         err instanceof Error
           ? err.message
-          : "No fue posible consultar el acceso",
+          : "No fue posible cargar las solicitudes de estudiantes.",
       );
     } finally {
-      // Finaliza la carga
-      setCargando(false);
+      setCargandoSolicitudes(false);
     }
   }
 
-  // Crea un acceso académico
-  async function guardarAcceso(
-    event: FormEvent,
-  ) {
-    // Evita recargar la página
-    event.preventDefault();
-
-    // Limpia mensajes
-    setError("");
+  // Actualiza la información de la pantalla
+  async function actualizarInformacion() {
     setMensaje("");
+    setError("");
 
-    // Convierte los IDs
-    const idUsuario = Number(
-      formulario.id_usuario,
-    );
-
-    const idIncapacidad = Number(
-      formulario.id_incapacidad,
-    );
-
-    // Valida los datos
-    if (
-      !Number.isInteger(idUsuario) ||
-      idUsuario <= 0
-    ) {
-      setError(
-        "El ID del estudiante no es válido.",
-      );
-      return;
-    }
-
-    if (
-      !Number.isInteger(idIncapacidad) ||
-      idIncapacidad <= 0
-    ) {
-      setError(
-        "El ID de la incapacidad no es válido.",
-      );
-      return;
-    }
-
-    // Activa la carga
-    setCargando(true);
-
-    try {
-      // Envía el nuevo acceso
-      const nuevoAcceso = await crearAcceso({
-        id_usuario: idUsuario,
-        id_incapacidad: idIncapacidad,
-        estado: formulario.estado,
-      });
-
-      // Actualiza la lista local
-      setAccesos((actuales) => [
-        ...actuales,
-        nuevoAcceso,
+    if (esCoordinador) {
+      await Promise.all([
+        cargarAccesos(),
+        cargarSolicitudes(),
       ]);
 
-      // Guarda el ID para facilitar la consulta
-      localStorage.setItem(
-        "aprenzy_acceso_id",
-        String(nuevoAcceso.id_acceso),
+      return;
+    }
+
+    if (esEstudiante) {
+      await cargarAccesos();
+    }
+  }
+
+  // Aprueba o rechaza una cuenta de estudiante
+  async function procesarSolicitud(
+    solicitud: SolicitudEstudiante,
+    estado: "aprobada" | "rechazada",
+  ) {
+    setErrorSolicitudes("");
+    setMensaje("");
+    setProcesando(solicitud.id_usuario);
+
+    try {
+      await actualizarAprobacionEstudiante(
+        solicitud.id_usuario,
+        estado,
       );
 
-      // Limpia el formulario
-      setFormulario({
-        id_usuario: "",
-        id_incapacidad: "",
-        estado: "activo",
-      });
+      setSolicitudes((actuales) =>
+        actuales.map((item) =>
+          item.id_usuario === solicitud.id_usuario
+            ? {
+                ...item,
+                estado_aprobacion: estado,
+              }
+            : item,
+        ),
+      );
 
-      // Cierra el formulario
-      setMostrarFormulario(false);
-
-      // Muestra confirmación
       setMensaje(
-        "El acceso académico fue creado correctamente.",
+        estado === "aprobada"
+          ? "La cuenta del estudiante fue aprobada correctamente."
+          : "La cuenta del estudiante fue rechazada correctamente.",
       );
     } catch (err) {
-      // Muestra el error
-      setError(
+      setErrorSolicitudes(
         err instanceof Error
           ? err.message
-          : "No fue posible crear el acceso",
+          : "No fue posible actualizar la solicitud.",
       );
     } finally {
-      // Finaliza la carga
-      setCargando(false);
+      setProcesando(null);
     }
   }
 
   // Carga automáticamente la información según el rol
   useEffect(() => {
-    // Administrador obtiene todos los accesos
-    if (esAdministrador) {
+    if (esCoordinador) {
+      void Promise.all([
+        cargarAccesos(),
+        cargarSolicitudes(),
+      ]);
+
+      return;
+    }
+
+    if (esEstudiante) {
       void cargarAccesos();
       return;
     }
 
-    // Recupera el último ID guardado
-    const idGuardado = localStorage.getItem(
-      "aprenzy_acceso_id",
+    setError(
+      "No tienes permisos para consultar esta sección.",
     );
+    setCargando(false);
+  }, [esCoordinador, esEstudiante]);
 
-    // Si existe, lo coloca en el formulario
-    if (idGuardado) {
-      setIdConsulta(idGuardado);
+  // Filtra las solicitudes de estudiantes
+  const solicitudesFiltradas = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase();
 
-      // Consulta automáticamente el acceso
-      const id = Number(idGuardado);
-
-      if (Number.isInteger(id) && id > 0) {
-        setCargando(true);
-
-        obtenerAcceso(id)
-          .then((acceso) => {
-            setAccesoEstudiante(acceso);
-          })
-          .catch(() => {
-            setAccesoEstudiante(null);
-          })
-          .finally(() => {
-            setCargando(false);
-          });
-
-        return;
-      }
+    if (!texto) {
+      return solicitudes;
     }
 
-    // No hay acceso guardado
-    setCargando(false);
-  }, [esAdministrador]);
+    return solicitudes.filter((solicitud) => {
+      const nombre = [
+        solicitud.nombres_compl,
+        solicitud.apellidos_compl,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
-  // Filtra la lista de administrador
+      return (
+        nombre.includes(texto) ||
+        solicitud.documento
+          .toLowerCase()
+          .includes(texto) ||
+        solicitud.correo
+          .toLowerCase()
+          .includes(texto) ||
+        solicitud.estado_aprobacion.includes(
+          texto,
+        )
+      );
+    });
+  }, [solicitudes, busqueda]);
+
+  // Filtra los accesos académicos
   const accesosFiltrados = useMemo(() => {
-    const texto = busqueda
-      .trim()
-      .toLowerCase();
+    const texto = busqueda.trim().toLowerCase();
 
     if (!texto) {
       return accesos;
     }
 
-    return accesos.filter((acceso) => {
-      return (
-        String(acceso.id_acceso).includes(
-          texto,
-        ) ||
-        String(acceso.id_usuario).includes(
-          texto,
-        ) ||
-        String(
-          acceso.id_incapacidad,
-        ).includes(texto) ||
-        acceso.estado.includes(texto)
-      );
-    });
+    return accesos.filter((acceso) =>
+      obtenerTextoEstado(acceso.estado)
+        .toLowerCase()
+        .includes(texto),
+    );
   }, [accesos, busqueda]);
 
   // Calcula estadísticas
@@ -436,9 +339,23 @@ export default function Accesos() {
     (acceso) => acceso.estado === "finalizado",
   ).length;
 
-  // Obtiene el ID del acceso mostrado
-  const idAccesoMostrado =
-    accesoEstudiante?.id_acceso;
+  // Calcula solicitudes pendientes
+  const cantidadPendientes = solicitudes.filter(
+    (solicitud) =>
+      solicitud.estado_aprobacion === "pendiente",
+  ).length;
+
+  // Calcula solicitudes aprobadas
+  const cantidadAprobadas = solicitudes.filter(
+    (solicitud) =>
+      solicitud.estado_aprobacion === "aprobada",
+  ).length;
+
+  // Calcula solicitudes rechazadas
+  const cantidadRechazadas = solicitudes.filter(
+    (solicitud) =>
+      solicitud.estado_aprobacion === "rechazada",
+  ).length;
 
   return (
     <div className="accesos-page">
@@ -493,6 +410,16 @@ export default function Accesos() {
           .accesos-button-secondary {
             background: #eef2ff;
             color: #3949ab;
+          }
+
+          .accesos-button-success {
+            background: #ecfdf3;
+            color: #027a48;
+          }
+
+          .accesos-button-danger {
+            background: #fff1f2;
+            color: #b42318;
           }
 
           .accesos-button:disabled {
@@ -605,9 +532,7 @@ export default function Accesos() {
             outline: none;
           }
 
-          .accesos-search input:focus,
-          .accesos-form input:focus,
-          .accesos-form select:focus {
+          .accesos-search input:focus {
             border-color: #4f46e5;
           }
 
@@ -625,7 +550,6 @@ export default function Accesos() {
             padding: 14px 18px;
             text-align: left;
             border-bottom: 1px solid #eef1f4;
-            white-space: nowrap;
           }
 
           .accesos-table th {
@@ -665,6 +589,21 @@ export default function Accesos() {
             color: #475467;
           }
 
+          .estado-pendiente {
+            background: #fffaeb;
+            color: #b54708;
+          }
+
+          .estado-aprobada {
+            background: #ecfdf3;
+            color: #027a48;
+          }
+
+          .estado-rechazada {
+            background: #fff1f2;
+            color: #b42318;
+          }
+
           .accesos-empty {
             padding: 40px 20px;
             text-align: center;
@@ -677,91 +616,115 @@ export default function Accesos() {
             color: #98a2b3;
           }
 
-          .accesos-form-card {
-            margin-bottom: 22px;
-            padding: 20px;
-            background: #fff;
-            border: 1px solid #e8ecf1;
-            border-radius: 14px;
-          }
-
-          .accesos-form-card h2 {
-            margin: 0 0 18px;
-            color: #172033;
-            font-size: 18px;
-          }
-
-          .accesos-form {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 15px;
-          }
-
-          .accesos-form-group {
+          .accesos-tabs {
             display: flex;
-            flex-direction: column;
-            gap: 7px;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
           }
 
-          .accesos-form-group label {
-            color: #344054;
-            font-size: 13px;
+          .accesos-tab {
+            border: 1px solid #e0e5ec;
+            border-radius: 9px;
+            background: #fff;
+            color: #475467;
+            padding: 11px 16px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
             font-weight: 700;
           }
 
-          .accesos-form-group input,
-          .accesos-form-group select {
-            width: 100%;
-            box-sizing: border-box;
-            border: 1px solid #d0d5dd;
-            border-radius: 9px;
-            padding: 11px 12px;
-            outline: none;
-            background: #fff;
+          .accesos-tab.active {
+            background: #4f46e5;
+            color: #fff;
+            border-color: #4f46e5;
           }
 
-          .accesos-form-actions {
-            grid-column: 1 / -1;
+          .accesos-tab-count {
+            padding: 2px 7px;
+            border-radius: 20px;
+            background: rgba(79, 70, 229, 0.12);
+            color: #4f46e5;
+            font-size: 12px;
+          }
+
+          .accesos-tab.active .accesos-tab-count {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+          }
+
+          .solicitudes-lista {
             display: flex;
-            justify-content: flex-end;
-            gap: 10px;
+            flex-direction: column;
+          }
+
+          .solicitud-item {
+            padding: 18px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            border-bottom: 1px solid #eef1f4;
+          }
+
+          .solicitud-item:last-child {
+            border-bottom: 0;
+          }
+
+          .solicitud-informacion {
+            display: flex;
+            align-items: flex-start;
+            gap: 13px;
+            min-width: 0;
+          }
+
+          .solicitud-icono {
+            width: 43px;
+            height: 43px;
+            flex-shrink: 0;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #eef2ff;
+            color: #4f46e5;
+            font-size: 20px;
+          }
+
+          .solicitud-datos {
+            min-width: 0;
+          }
+
+          .solicitud-datos h3 {
+            margin: 0 0 5px;
+            color: #172033;
+            font-size: 15px;
+          }
+
+          .solicitud-datos p {
+            margin: 3px 0;
+            color: #667085;
+            font-size: 13px;
+            overflow-wrap: anywhere;
+          }
+
+          .solicitud-acciones {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+          }
+
+          .solicitud-estado {
+            margin-top: 8px;
           }
 
           .acceso-estudiante {
             display: grid;
             grid-template-columns: minmax(0, 1fr);
             gap: 20px;
-          }
-
-          .acceso-consulta {
-            background: #fff;
-            border: 1px solid #e8ecf1;
-            border-radius: 14px;
-            padding: 20px;
-          }
-
-          .acceso-consulta h2 {
-            margin: 0 0 6px;
-            color: #172033;
-          }
-
-          .acceso-consulta-description {
-            margin: 0 0 18px;
-            color: #667085;
-          }
-
-          .acceso-consulta-form {
-            display: flex;
-            gap: 10px;
-            max-width: 550px;
-          }
-
-          .acceso-consulta-form input {
-            flex: 1;
-            border: 1px solid #d0d5dd;
-            border-radius: 9px;
-            padding: 11px 12px;
-            outline: none;
           }
 
           .acceso-detalle {
@@ -798,29 +761,6 @@ export default function Accesos() {
             font-weight: 700;
           }
 
-          .acceso-info-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 15px;
-          }
-
-          .acceso-info-item {
-            padding: 16px;
-            border: 1px solid #eef1f4;
-            border-radius: 11px;
-          }
-
-          .acceso-info-item span {
-            display: block;
-            color: #667085;
-            font-size: 12px;
-            margin-bottom: 5px;
-          }
-
-          .acceso-info-item strong {
-            color: #172033;
-          }
-
           .acceso-notice {
             margin-top: 18px;
             padding: 15px;
@@ -836,14 +776,6 @@ export default function Accesos() {
               grid-template-columns: 1fr;
             }
 
-            .accesos-form {
-              grid-template-columns: 1fr;
-            }
-
-            .acceso-info-grid {
-              grid-template-columns: 1fr;
-            }
-
             .accesos-header,
             .accesos-card-header {
               flex-direction: column;
@@ -853,15 +785,42 @@ export default function Accesos() {
             .accesos-search {
               min-width: 0;
             }
+
+            .solicitud-item {
+              flex-direction: column;
+              align-items: stretch;
+            }
+
+            .solicitud-acciones {
+              justify-content: flex-start;
+            }
           }
 
           @media (max-width: 600px) {
-            .acceso-consulta-form {
+            .accesos-header h1 {
+              font-size: 24px;
+            }
+
+            .accesos-tabs {
               flex-direction: column;
             }
 
-            .accesos-header h1 {
-              font-size: 24px;
+            .accesos-tab {
+              justify-content: center;
+            }
+
+            .acceso-detalle-top {
+              flex-direction: column;
+              align-items: flex-start;
+            }
+
+            .accesos-header-actions {
+              width: 100%;
+            }
+
+            .accesos-header-actions button {
+              flex: 1;
+              justify-content: center;
             }
           }
         `}
@@ -869,47 +828,35 @@ export default function Accesos() {
 
       <div className="accesos-header">
         <div>
-          <h1>Accesos académicos</h1>
+          <h1>
+            {esCoordinador
+              ? "Accesos y solicitudes"
+              : "Mis accesos académicos"}
+          </h1>
 
           <p>
-            Consulta y administra los accesos
-            académicos asociados a incapacidades.
+            {esCoordinador
+              ? "Administra las solicitudes de cuentas y consulta los accesos académicos de tu institución."
+              : "Consulta el estado de tus accesos académicos asociados a incapacidades."}
           </p>
         </div>
 
-        {esAdministrador && (
-          <div className="accesos-header-actions">
-            <button
-              type="button"
-              className="accesos-button accesos-button-secondary"
-              onClick={() => void cargarAccesos()}
-              disabled={cargando}
-            >
-              <FiRefreshCw />
-              Actualizar
-            </button>
-
-            <button
-              type="button"
-              className="accesos-button accesos-button-primary"
-              onClick={() =>
-                setMostrarFormulario(
-                  !mostrarFormulario,
-                )
-              }
-            >
-              {mostrarFormulario ? (
-                <FiX />
-              ) : (
-                <FiPlus />
-              )}
-
-              {mostrarFormulario
-                ? "Cancelar"
-                : "Nuevo acceso"}
-            </button>
-          </div>
-        )}
+        <div className="accesos-header-actions">
+          <button
+            type="button"
+            className="accesos-button accesos-button-secondary"
+            onClick={() =>
+              void actualizarInformacion()
+            }
+            disabled={
+              cargando ||
+              cargandoSolicitudes
+            }
+          >
+            <FiRefreshCw />
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -924,8 +871,404 @@ export default function Accesos() {
         </div>
       )}
 
-      {esAdministrador ? (
+      {!esCoordinador && !esEstudiante && (
+        <div className="accesos-card">
+          <div className="accesos-empty">
+            <FiShield />
+            <div>
+              No tienes permisos para consultar esta sección.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {esCoordinador && (
         <>
+          <div className="accesos-tabs">
+            <button
+              type="button"
+              className={`accesos-tab ${
+                seccion === "solicitudes"
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() => {
+                setSeccion("solicitudes");
+                setBusqueda("");
+                setErrorSolicitudes("");
+              }}
+            >
+              <FiUser />
+              Solicitudes de cuentas
+
+              <span className="accesos-tab-count">
+                {cantidadPendientes}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className={`accesos-tab ${
+                seccion === "academicos"
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() => {
+                setSeccion("academicos");
+                setBusqueda("");
+                setError("");
+              }}
+            >
+              <FiShield />
+              Accesos académicos
+
+              <span className="accesos-tab-count">
+                {accesos.length}
+              </span>
+            </button>
+          </div>
+
+          {seccion === "solicitudes" && (
+            <>
+              <div className="accesos-stats">
+                <div className="accesos-stat">
+                  <div className="accesos-stat-icon">
+                    <FiClock />
+                  </div>
+
+                  <div>
+                    <span>Pendientes</span>
+                    <strong>
+                      {cantidadPendientes}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="accesos-stat">
+                  <div className="accesos-stat-icon">
+                    <FiCheckCircle />
+                  </div>
+
+                  <div>
+                    <span>Aprobadas</span>
+                    <strong>
+                      {cantidadAprobadas}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="accesos-stat">
+                  <div className="accesos-stat-icon">
+                    <FiXCircle />
+                  </div>
+
+                  <div>
+                    <span>Rechazadas</span>
+                    <strong>
+                      {cantidadRechazadas}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              {errorSolicitudes && (
+                <div className="accesos-alert accesos-alert-error">
+                  {errorSolicitudes}
+                </div>
+              )}
+
+              <div className="accesos-card">
+                <div className="accesos-card-header">
+                  <h2>
+                    Solicitudes de registro de estudiantes
+                  </h2>
+
+                  <div className="accesos-search">
+                    <FiSearch />
+
+                    <input
+                      type="text"
+                      value={busqueda}
+                      onChange={(event) =>
+                        setBusqueda(
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Buscar estudiante..."
+                    />
+                  </div>
+                </div>
+
+                {cargandoSolicitudes ? (
+                  <div className="accesos-empty">
+                    <FiRefreshCw />
+                    <div>
+                      Cargando solicitudes...
+                    </div>
+                  </div>
+                ) : solicitudesFiltradas.length ===
+                  0 ? (
+                  <div className="accesos-empty">
+                    <FiFileText />
+                    <div>
+                      No hay solicitudes de estudiantes para mostrar.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="solicitudes-lista">
+                    {solicitudesFiltradas.map(
+                      (solicitud) => {
+                        const nombre = [
+                          solicitud.nombres_compl,
+                          solicitud.apellidos_compl,
+                        ]
+                          .filter(Boolean)
+                          .join(" ");
+
+                        const pendiente =
+                          solicitud.estado_aprobacion ===
+                          "pendiente";
+
+                        return (
+                          <div
+                            className="solicitud-item"
+                            key={solicitud.id_usuario}
+                          >
+                            <div className="solicitud-informacion">
+                              <div className="solicitud-icono">
+                                <FiUser />
+                              </div>
+
+                              <div className="solicitud-datos">
+                                <h3>
+                                  {nombre ||
+                                    "Estudiante"}
+                                </h3>
+
+                                <p>
+                                  Documento:{" "}
+                                  {solicitud.documento}
+                                </p>
+
+                                <p>
+                                  Correo:{" "}
+                                  {solicitud.correo}
+                                </p>
+
+                                {solicitud.telefono && (
+                                  <p>
+                                    Teléfono:{" "}
+                                    {solicitud.telefono}
+                                  </p>
+                                )}
+
+                                <div className="solicitud-estado">
+                                  <span
+                                    className={`accesos-status estado-${solicitud.estado_aprobacion}`}
+                                  >
+                                    {solicitud.estado_aprobacion ===
+                                    "pendiente" ? (
+                                      <FiClock />
+                                    ) : solicitud.estado_aprobacion ===
+                                      "aprobada" ? (
+                                      <FiCheckCircle />
+                                    ) : (
+                                      <FiXCircle />
+                                    )}
+
+                                    {solicitud.estado_aprobacion ===
+                                    "pendiente"
+                                      ? "Pendiente"
+                                      : solicitud.estado_aprobacion ===
+                                        "aprobada"
+                                      ? "Aprobada"
+                                      : "Rechazada"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {pendiente && (
+                              <div className="solicitud-acciones">
+                                <button
+                                  type="button"
+                                  className="accesos-button accesos-button-success"
+                                  onClick={() =>
+                                    void procesarSolicitud(
+                                      solicitud,
+                                      "aprobada",
+                                    )
+                                  }
+                                  disabled={
+                                    procesando !== null
+                                  }
+                                >
+                                  <FiCheckCircle />
+
+                                  {procesando ===
+                                  solicitud.id_usuario
+                                    ? "Procesando..."
+                                    : "Aprobar"}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="accesos-button accesos-button-danger"
+                                  onClick={() =>
+                                    void procesarSolicitud(
+                                      solicitud,
+                                      "rechazada",
+                                    )
+                                  }
+                                  disabled={
+                                    procesando !== null
+                                  }
+                                >
+                                  <FiXCircle />
+                                  Rechazar
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      },
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {seccion === "academicos" && (
+            <>
+              <div className="accesos-stats">
+                <div className="accesos-stat">
+                  <div className="accesos-stat-icon">
+                    <FiCheckCircle />
+                  </div>
+
+                  <div>
+                    <span>Activos</span>
+                    <strong>
+                      {cantidadActivos}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="accesos-stat">
+                  <div className="accesos-stat-icon">
+                    <FiClock />
+                  </div>
+
+                  <div>
+                    <span>Suspendidos</span>
+                    <strong>
+                      {cantidadSuspendidos}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="accesos-stat">
+                  <div className="accesos-stat-icon">
+                    <FiXCircle />
+                  </div>
+
+                  <div>
+                    <span>Finalizados</span>
+                    <strong>
+                      {cantidadFinalizados}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="accesos-card">
+                <div className="accesos-card-header">
+                  <h2>
+                    Accesos académicos por incapacidad
+                  </h2>
+
+                  <div className="accesos-search">
+                    <FiSearch />
+
+                    <input
+                      type="text"
+                      value={busqueda}
+                      onChange={(event) =>
+                        setBusqueda(
+                          event.target.value,
+                        )
+                      }
+                      placeholder="Buscar por estado..."
+                    />
+                  </div>
+                </div>
+
+                {cargando ? (
+                  <div className="accesos-empty">
+                    <FiRefreshCw />
+                    <div>
+                      Cargando accesos...
+                    </div>
+                  </div>
+                ) : accesosFiltrados.length ===
+                  0 ? (
+                  <div className="accesos-empty">
+                    <FiFileText />
+                    <div>
+                      No hay accesos académicos registrados.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="accesos-table-wrapper">
+                    <table className="accesos-table">
+                      <thead>
+                        <tr>
+                          <th>Tipo</th>
+                          <th>Estado</th>
+                        </tr>
+                      </thead>
+
+                      <tbody>
+                        {accesosFiltrados.map(
+                          (acceso) => (
+                            <tr
+                              key={acceso.id_acceso}
+                            >
+                              <td>
+                                Acceso académico por incapacidad
+                              </td>
+
+                              <td>
+                                <span
+                                  className={`accesos-status ${obtenerClaseEstado(
+                                    acceso.estado,
+                                  )}`}
+                                >
+                                  {obtenerIconoEstado(
+                                    acceso.estado,
+                                  )}
+
+                                  {obtenerTextoEstado(
+                                    acceso.estado,
+                                  )}
+                                </span>
+                              </td>
+                            </tr>
+                          ),
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {esEstudiante && (
+        <div className="acceso-estudiante">
           <div className="accesos-stats">
             <div className="accesos-stat">
               <div className="accesos-stat-icon">
@@ -967,365 +1310,81 @@ export default function Accesos() {
             </div>
           </div>
 
-          {mostrarFormulario && (
-            <div className="accesos-form-card">
-              <h2>Crear acceso académico</h2>
-
-              <form
-                className="accesos-form"
-                onSubmit={guardarAcceso}
-              >
-                <div className="accesos-form-group">
-                  <label htmlFor="id_usuario">
-                    ID del estudiante
-                  </label>
-
-                  <input
-                    id="id_usuario"
-                    type="number"
-                    min="1"
-                    value={
-                      formulario.id_usuario
-                    }
-                    onChange={(event) =>
-                      setFormulario({
-                        ...formulario,
-                        id_usuario:
-                          event.target.value,
-                      })
-                    }
-                    placeholder="Ej. 12"
-                    required
-                  />
-                </div>
-
-                <div className="accesos-form-group">
-                  <label htmlFor="id_incapacidad">
-                    ID de la incapacidad
-                  </label>
-
-                  <input
-                    id="id_incapacidad"
-                    type="number"
-                    min="1"
-                    value={
-                      formulario.id_incapacidad
-                    }
-                    onChange={(event) =>
-                      setFormulario({
-                        ...formulario,
-                        id_incapacidad:
-                          event.target.value,
-                      })
-                    }
-                    placeholder="Ej. 5"
-                    required
-                  />
-                </div>
-
-                <div className="accesos-form-group">
-                  <label htmlFor="estado">
-                    Estado inicial
-                  </label>
-
-                  <select
-                    id="estado"
-                    value={formulario.estado}
-                    onChange={(event) =>
-                      setFormulario({
-                        ...formulario,
-                        estado:
-                          event.target
-                            .value as EstadoAcceso,
-                      })
-                    }
-                  >
-                    <option value="activo">
-                      Activo
-                    </option>
-
-                    <option value="suspendido">
-                      Suspendido
-                    </option>
-
-                    <option value="finalizado">
-                      Finalizado
-                    </option>
-                  </select>
-                </div>
-
-                <div className="accesos-form-actions">
-                  <button
-                    type="button"
-                    className="accesos-button accesos-button-secondary"
-                    onClick={() =>
-                      setMostrarFormulario(false)
-                    }
-                  >
-                    Cancelar
-                  </button>
-
-                  <button
-                    type="submit"
-                    className="accesos-button accesos-button-primary"
-                    disabled={cargando}
-                  >
-                    <FiPlus />
-                    Crear acceso
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
           <div className="accesos-card">
             <div className="accesos-card-header">
-              <h2>Lista de accesos</h2>
-
-              <div className="accesos-search">
-                <FiSearch />
-
-                <input
-                  type="text"
-                  value={busqueda}
-                  onChange={(event) =>
-                    setBusqueda(
-                      event.target.value,
-                    )
-                  }
-                  placeholder="Buscar acceso..."
-                />
-              </div>
+              <h2>Mis accesos académicos</h2>
             </div>
 
             {cargando ? (
               <div className="accesos-empty">
                 <FiRefreshCw />
-
                 <div>
-                  Cargando accesos...
+                  Cargando tus accesos...
                 </div>
               </div>
-            ) : accesosFiltrados.length === 0 ? (
+            ) : accesos.length === 0 ? (
               <div className="accesos-empty">
-                <FiFileText />
-
+                <FiShield />
                 <div>
-                  No hay accesos académicos
-                  registrados.
+                  No tienes accesos académicos registrados.
                 </div>
               </div>
             ) : (
-              <div className="accesos-table-wrapper">
-                <table className="accesos-table">
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Estudiante</th>
-                      <th>Incapacidad</th>
-                      <th>Estado</th>
-                    </tr>
-                  </thead>
+              <div className="solicitudes-lista">
+                {accesos.map((acceso) => (
+                  <div
+                    className="solicitud-item"
+                    key={acceso.id_acceso}
+                  >
+                    <div className="solicitud-informacion">
+                      <div className="solicitud-icono">
+                        <FiShield />
+                      </div>
 
-                  <tbody>
-                    {accesosFiltrados.map(
-                      (acceso) => (
-                        <tr
-                          key={
-                            acceso.id_acceso
-                          }
-                        >
-                          <td>
-                            #{acceso.id_acceso}
-                          </td>
+                      <div className="solicitud-datos">
+                        <h3>
+                          Acceso académico por incapacidad
+                        </h3>
 
-                          <td>
-                            <span
-                              style={{
-                                display: "inline-flex",
-                                alignItems:
-                                  "center",
-                                gap: "7px",
-                              }}
-                            >
-                              <FiUser />
-                              {acceso.id_usuario}
-                            </span>
-                          </td>
+                        <p>
+                          Estado de tu acceso académico
+                        </p>
 
-                          <td>
-                            #{acceso.id_incapacidad}
-                          </td>
+                        <div className="solicitud-estado">
+                          <span
+                            className={`accesos-status ${obtenerClaseEstado(
+                              acceso.estado,
+                            )}`}
+                          >
+                            {obtenerIconoEstado(
+                              acceso.estado,
+                            )}
 
-                          <td>
-                            <span
-                              className={`accesos-status ${obtenerClaseEstado(
-                                acceso.estado,
-                              )}`}
-                            >
-                              {obtenerIconoEstado(
-                                acceso.estado,
-                              )}
+                            {obtenerTextoEstado(
+                              acceso.estado,
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
 
-                              {obtenerTextoEstado(
-                                acceso.estado,
-                              )}
-                            </span>
-                          </td>
-                        </tr>
-                      ),
-                    )}
-                  </tbody>
-                </table>
+                    <div className="solicitud-acciones">
+                      <span className="acceso-notice">
+                        {acceso.estado === "activo" &&
+                          "Tu acceso académico se encuentra activo."}
+
+                        {acceso.estado === "suspendido" &&
+                          "Tu acceso académico se encuentra suspendido temporalmente."}
+
+                        {acceso.estado === "finalizado" &&
+                          "Tu acceso académico ha finalizado."}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        </>
-      ) : (
-        <div className="acceso-estudiante">
-          <div className="acceso-consulta">
-            <h2>
-              Consultar mi acceso
-            </h2>
-
-            <p className="acceso-consulta-description">
-              Ingresa el ID de tu acceso académico
-              para consultar su estado.
-            </p>
-
-            <form
-              className="acceso-consulta-form"
-              onSubmit={consultarAcceso}
-            >
-              <input
-                type="number"
-                min="1"
-                value={idConsulta}
-                onChange={(event) =>
-                  setIdConsulta(
-                    event.target.value,
-                  )
-                }
-                placeholder="ID del acceso"
-                required
-              />
-
-              <button
-                type="submit"
-                className="accesos-button accesos-button-primary"
-                disabled={cargando}
-              >
-                <FiSearch />
-                Consultar
-              </button>
-            </form>
-          </div>
-
-          {cargando ? (
-            <div className="acceso-detalle">
-              <div className="accesos-empty">
-                <FiRefreshCw />
-                <div>
-                  Consultando acceso...
-                </div>
-              </div>
-            </div>
-          ) : accesoEstudiante ? (
-            <div className="acceso-detalle">
-              <div className="acceso-detalle-top">
-                <div>
-                  <h2>
-                    Acceso #
-                    {idAccesoMostrado}
-                  </h2>
-
-                  <p>
-                    Información de tu acceso
-                    académico temporal.
-                  </p>
-                </div>
-
-                <span
-                  className={`acceso-detalle-status ${obtenerClaseEstado(
-                    accesoEstudiante.estado,
-                  )}`}
-                >
-                  {obtenerIconoEstado(
-                    accesoEstudiante.estado,
-                  )}
-
-                  {obtenerTextoEstado(
-                    accesoEstudiante.estado,
-                  )}
-                </span>
-              </div>
-
-              <div className="acceso-info-grid">
-                <div className="acceso-info-item">
-                  <span>
-                    Estudiante
-                  </span>
-
-                  <strong>
-                    #{accesoEstudiante.id_usuario}
-                  </strong>
-                </div>
-
-                <div className="acceso-info-item">
-                  <span>
-                    Incapacidad
-                  </span>
-
-                  <strong>
-                    #
-                    {
-                      accesoEstudiante.id_incapacidad
-                    }
-                  </strong>
-                </div>
-
-                <div className="acceso-info-item">
-                  <span>
-                    Estado actual
-                  </span>
-
-                  <strong>
-                    {obtenerTextoEstado(
-                      accesoEstudiante.estado,
-                    )}
-                  </strong>
-                </div>
-              </div>
-
-              <div className="acceso-notice">
-                <strong>
-                  Estado del acceso:
-                </strong>{" "}
-                {accesoEstudiante.estado ===
-                  "activo" &&
-                  "Tu acceso académico se encuentra activo."}
-
-                {accesoEstudiante.estado ===
-                  "suspendido" &&
-                  "Tu acceso académico se encuentra suspendido."}
-
-                {accesoEstudiante.estado ===
-                  "finalizado" &&
-                  "Tu acceso académico ya finalizó."}
-              </div>
-            </div>
-          ) : (
-            <div className="acceso-detalle">
-              <div className="accesos-empty">
-                <FiShield />
-
-                <div>
-                  No hay un acceso consultado
-                  todavía.
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
     </div>

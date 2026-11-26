@@ -1,24 +1,19 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 
 import {
+  actualizarEstadoColegio,
   crearColegio,
-  crearCoordinador,
   listarColegios,
-  listarCoordinadores,
   obtenerColegio,
   type Colegio,
-  type Coordinador,
   type DatosColegio,
-  type DatosCoordinador,
+  type DatosRector,
+  type EstadoColegio,
 } from "../services/administracion";
 
-type Vista =
-  | "colegios"
-  | "crear-colegio"
-  | "coordinadores"
-  | "crear-coordinador"
-  | "detalle";
+type Vista = "colegios" | "crear-colegio" | "detalle";
 
 const colegioVacio = (): DatosColegio => ({
   nombre_colegio: "",
@@ -29,11 +24,9 @@ const colegioVacio = (): DatosColegio => ({
   correo_institucional: "",
   municipio: "",
   departamento: "",
-  estado: "activo",
 });
 
-const coordinadorVacio = (): DatosCoordinador => ({
-  codigo_usuario: "",
+const rectorVacio = (): DatosRector => ({
   documento: "",
   nombres_compl: "",
   apellidos_compl: "",
@@ -43,10 +36,7 @@ const coordinadorVacio = (): DatosCoordinador => ({
 });
 
 function mensajeError(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
+  if (error instanceof Error) return error.message;
   return "Ocurrió un error inesperado.";
 }
 
@@ -58,21 +48,10 @@ export default function AdminInstituciones() {
   const [vista, setVista] = useState<Vista>("colegios");
 
   const [colegios, setColegios] = useState<Colegio[]>([]);
-  const [coordinadores, setCoordinadores] = useState<
-    Coordinador[]
-  >([]);
-
   const [colegioForm, setColegioForm] =
     useState<DatosColegio>(colegioVacio());
-
-  const [coordinadorInicial, setCoordinadorInicial] =
-    useState<DatosCoordinador>(coordinadorVacio());
-
-  const [coordinadorForm, setCoordinadorForm] =
-    useState<DatosCoordinador>(coordinadorVacio());
-
-  const [idColegioSeleccionado, setIdColegioSeleccionado] =
-    useState("");
+  const [rectorForm, setRectorForm] =
+    useState<DatosRector>(rectorVacio());
 
   const [colegioSeleccionado, setColegioSeleccionado] =
     useState<Colegio | null>(null);
@@ -81,29 +60,24 @@ export default function AdminInstituciones() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [detalleCargando, setDetalleCargando] = useState(false);
+  const [actualizandoEstado, setActualizandoEstado] = useState(false);
+
+  const [mostrarContrasena, setMostrarContrasena] =
+    useState(false);
+
+  const [nuevoEstado, setNuevoEstado] =
+    useState<EstadoColegio>("activo");
 
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
-
-  const [mostrarContrasenaInicial, setMostrarContrasenaInicial] =
-    useState(false);
-
-  const [mostrarContrasenaNueva, setMostrarContrasenaNueva] =
-    useState(false);
 
   async function cargarDatos() {
     setCargando(true);
     setError("");
 
     try {
-      const [listaColegios, listaCoordinadores] =
-        await Promise.all([
-          listarColegios(),
-          listarCoordinadores(),
-        ]);
-
-      setColegios(listaColegios);
-      setCoordinadores(listaCoordinadores);
+      const datos = await listarColegios();
+      setColegios(datos);
     } catch (err) {
       setError(mensajeError(err));
     } finally {
@@ -131,6 +105,7 @@ export default function AdminInstituciones() {
       const detalle = await obtenerColegio(idColegio);
 
       setColegioSeleccionado(detalle);
+      setNuevoEstado(detalle.estado);
       setVista("detalle");
     } catch (err) {
       setError(mensajeError(err));
@@ -140,10 +115,9 @@ export default function AdminInstituciones() {
   }
 
   async function guardarColegio(
-    evento: React.FormEvent<HTMLFormElement>,
+    evento: FormEvent<HTMLFormElement>,
   ) {
     evento.preventDefault();
-
     setError("");
     setMensaje("");
 
@@ -153,17 +127,19 @@ export default function AdminInstituciones() {
     }
 
     if (
-      !coordinadorInicial.codigo_usuario.trim() ||
-      !coordinadorInicial.documento.trim() ||
-      !coordinadorInicial.nombres_compl.trim() ||
-      !coordinadorInicial.apellidos_compl.trim() ||
-      !coordinadorInicial.telefono.trim() ||
-      !coordinadorInicial.correo.trim() ||
-      !coordinadorInicial.contrasena
+      !rectorForm.documento.trim() ||
+      !rectorForm.nombres_compl.trim() ||
+      !rectorForm.apellidos_compl.trim() ||
+      !rectorForm.telefono.trim() ||
+      !rectorForm.correo.trim() ||
+      !rectorForm.contrasena
     ) {
-      setError(
-        "Completa todos los campos obligatorios del coordinador.",
-      );
+      setError("Completa todos los campos obligatorios del rector.");
+      return;
+    }
+
+    if (rectorForm.contrasena.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
 
@@ -172,7 +148,6 @@ export default function AdminInstituciones() {
     try {
       await crearColegio({
         colegio: {
-          ...colegioForm,
           nombre_colegio: colegioForm.nombre_colegio.trim(),
           codigo_dane: colegioForm.codigo_dane?.trim() || null,
           nit: colegioForm.nit?.trim() || null,
@@ -183,30 +158,25 @@ export default function AdminInstituciones() {
           municipio: colegioForm.municipio?.trim() || null,
           departamento: colegioForm.departamento?.trim() || null,
         },
-        coordinador: {
-          ...coordinadorInicial,
-          codigo_usuario:
-            coordinadorInicial.codigo_usuario.trim(),
-          documento: coordinadorInicial.documento.trim(),
-          nombres_compl:
-            coordinadorInicial.nombres_compl.trim(),
-          apellidos_compl:
-            coordinadorInicial.apellidos_compl.trim(),
-          telefono: coordinadorInicial.telefono.trim(),
-          correo: coordinadorInicial.correo.trim(),
+        rector: {
+          documento: rectorForm.documento.trim(),
+          nombres_compl: rectorForm.nombres_compl.trim(),
+          apellidos_compl: rectorForm.apellidos_compl.trim(),
+          telefono: rectorForm.telefono.trim(),
+          correo: rectorForm.correo.trim(),
+          contrasena: rectorForm.contrasena,
         },
       });
 
       setColegioForm(colegioVacio());
-      setCoordinadorInicial(coordinadorVacio());
-      setMostrarContrasenaInicial(false);
+      setRectorForm(rectorVacio());
+      setMostrarContrasena(false);
 
       await cargarDatos();
 
       setMensaje(
-        "El colegio y su coordinador inicial se crearon correctamente.",
+        "El colegio y su rector se crearon correctamente.",
       );
-
       setVista("colegios");
     } catch (err) {
       setError(mensajeError(err));
@@ -215,66 +185,45 @@ export default function AdminInstituciones() {
     }
   }
 
-  async function guardarCoordinador(
-    evento: React.FormEvent<HTMLFormElement>,
-  ) {
-    evento.preventDefault();
+  async function guardarEstadoColegio() {
+    if (!colegioSeleccionado) return;
 
+    if (nuevoEstado === colegioSeleccionado.estado) {
+      setMensaje("El colegio ya tiene ese estado.");
+      setError("");
+      return;
+    }
+
+    setActualizandoEstado(true);
     setError("");
     setMensaje("");
 
-    const idColegio = Number(idColegioSeleccionado);
-
-    if (
-      !Number.isInteger(idColegio) ||
-      idColegio <= 0
-    ) {
-      setError("Selecciona un colegio válido.");
-      return;
-    }
-
-    if (
-      !coordinadorForm.codigo_usuario.trim() ||
-      !coordinadorForm.documento.trim() ||
-      !coordinadorForm.nombres_compl.trim() ||
-      !coordinadorForm.apellidos_compl.trim() ||
-      !coordinadorForm.telefono.trim() ||
-      !coordinadorForm.correo.trim() ||
-      !coordinadorForm.contrasena
-    ) {
-      setError(
-        "Completa todos los campos obligatorios del coordinador.",
-      );
-      return;
-    }
-
-    setGuardando(true);
-
     try {
-      await crearCoordinador({
-        ...coordinadorForm,
-        codigo_usuario: coordinadorForm.codigo_usuario.trim(),
-        documento: coordinadorForm.documento.trim(),
-        nombres_compl: coordinadorForm.nombres_compl.trim(),
-        apellidos_compl:
-          coordinadorForm.apellidos_compl.trim(),
-        telefono: coordinadorForm.telefono.trim(),
-        correo: coordinadorForm.correo.trim(),
-        id_colegio: idColegio,
-      });
+      const actualizado = await actualizarEstadoColegio(
+        colegioSeleccionado.id_colegio,
+        nuevoEstado,
+      );
 
-      setCoordinadorForm(coordinadorVacio());
-      setIdColegioSeleccionado("");
-      setMostrarContrasenaNueva(false);
+      setColegioSeleccionado(actualizado);
 
-      await cargarDatos();
+      setColegios((actuales) =>
+        actuales.map((colegio) =>
+          colegio.id_colegio === actualizado.id_colegio
+            ? actualizado
+            : colegio,
+        ),
+      );
 
-      setMensaje("El coordinador se creó correctamente.");
-      setVista("coordinadores");
+      setMensaje(
+        nuevoEstado === "activo"
+          ? "El colegio fue activado correctamente."
+          : "El colegio fue desactivado correctamente.",
+      );
     } catch (err) {
       setError(mensajeError(err));
+      setNuevoEstado(colegioSeleccionado.estado);
     } finally {
-      setGuardando(false);
+      setActualizandoEstado(false);
     }
   }
 
@@ -290,40 +239,23 @@ export default function AdminInstituciones() {
     );
   });
 
-  const coordinadoresFiltrados = coordinadores.filter(
-    (coordinador) => {
-      const texto = normalizarTexto(busqueda);
-
-      const nombre =
-        `${coordinador.nombres_compl} ${coordinador.apellidos_compl}`;
-
-      const colegio = colegios.find(
-        (item) => item.id_colegio === coordinador.id_colegio,
-      );
-
-      return (
-        normalizarTexto(nombre).includes(texto) ||
-        normalizarTexto(coordinador.documento).includes(texto) ||
-        normalizarTexto(coordinador.codigo_usuario).includes(texto) ||
-        normalizarTexto(coordinador.correo).includes(texto) ||
-        normalizarTexto(colegio?.nombre_colegio).includes(texto)
-      );
-    },
-  );
-
   const colegiosActivos = colegios.filter(
     (colegio) => colegio.estado === "activo",
+  );
+
+  const colegiosInactivos = colegios.filter(
+    (colegio) => colegio.estado === "inactivo",
   );
 
   return (
     <div className="admin-instituciones">
       <style>{`
         .admin-instituciones {
-          color: #1e293b;
           width: 100%;
           max-width: 1400px;
           margin: 0 auto;
-          padding: 4px 0 24px;
+          padding: 4px 0 28px;
+          color: #1e293b;
           box-sizing: border-box;
         }
 
@@ -349,17 +281,17 @@ export default function AdminInstituciones() {
         }
 
         .ai-title {
-          font-size: clamp(24px, 3vw, 32px);
           margin: 8px 0;
           color: #0f172a;
+          font-size: clamp(24px, 3vw, 32px);
         }
 
         .ai-subtitle {
+          max-width: 650px;
+          margin: 0;
           color: #64748b;
           font-size: 14px;
           line-height: 1.6;
-          margin: 0;
-          max-width: 650px;
         }
 
         .ai-stats {
@@ -370,17 +302,17 @@ export default function AdminInstituciones() {
         }
 
         .ai-stat {
+          min-width: 0;
+          padding: 19px;
           background: #fff;
           border: 1px solid #e2e8f0;
           border-radius: 14px;
-          padding: 19px;
-          min-width: 0;
         }
 
         .ai-stat-label {
+          margin-bottom: 10px;
           color: #64748b;
           font-size: 13px;
-          margin-bottom: 10px;
         }
 
         .ai-stat-number {
@@ -399,15 +331,15 @@ export default function AdminInstituciones() {
         }
 
         .ai-tab {
-          border: 1px solid #e2e8f0;
-          background: #fff;
-          border-radius: 9px;
           padding: 11px 15px;
-          cursor: pointer;
+          border: 1px solid #e2e8f0;
+          border-radius: 9px;
+          background: #fff;
           color: #475569;
+          cursor: pointer;
           white-space: nowrap;
-          font-weight: 600;
           font-size: 13px;
+          font-weight: 600;
         }
 
         .ai-tab:hover {
@@ -416,17 +348,17 @@ export default function AdminInstituciones() {
         }
 
         .ai-tab-active {
-          color: #fff;
-          background: #4f46e5;
           border-color: #4f46e5;
+          background: #4f46e5;
+          color: #fff;
         }
 
         .ai-panel {
-          background: #fff;
+          min-width: 0;
+          padding: 22px;
           border: 1px solid #e2e8f0;
           border-radius: 14px;
-          padding: 22px;
-          min-width: 0;
+          background: #fff;
         }
 
         .ai-panel-heading {
@@ -439,15 +371,15 @@ export default function AdminInstituciones() {
         }
 
         .ai-panel-heading h2 {
-          font-size: 19px;
           margin: 0 0 6px;
           color: #0f172a;
+          font-size: 19px;
         }
 
         .ai-panel-heading p {
+          margin: 0;
           color: #64748b;
           font-size: 13px;
-          margin: 0;
           line-height: 1.5;
         }
 
@@ -457,13 +389,14 @@ export default function AdminInstituciones() {
           padding: 11px 13px;
           border: 1px solid #cbd5e1;
           border-radius: 9px;
-          font-size: 14px;
           outline: none;
+          font-size: 14px;
         }
 
         .ai-search:focus,
         .ai-field input:focus,
-        .ai-field select:focus {
+        .ai-field select:focus,
+        .ai-state-select:focus {
           border-color: #6366f1;
           box-shadow: 0 0 0 3px #6366f11c;
         }
@@ -475,19 +408,19 @@ export default function AdminInstituciones() {
 
         .ai-table {
           width: 100%;
+          min-width: 650px;
           border-collapse: collapse;
-          min-width: 680px;
           font-size: 13px;
         }
 
         .ai-table th {
-          text-align: left;
           padding: 12px;
-          color: #64748b;
-          background: #f8fafc;
           border-bottom: 1px solid #e2e8f0;
-          font-weight: 700;
+          background: #f8fafc;
+          color: #64748b;
+          text-align: left;
           white-space: nowrap;
+          font-weight: 700;
         }
 
         .ai-table td {
@@ -501,20 +434,20 @@ export default function AdminInstituciones() {
         }
 
         .ai-muted {
+          margin-top: 4px;
           color: #64748b;
           font-size: 12px;
-          margin-top: 4px;
         }
 
         .ai-status {
           display: inline-block;
-          border-radius: 30px;
           padding: 5px 9px;
+          border-radius: 30px;
+          background: #f1f5f9;
+          color: #475569;
           font-size: 11px;
           font-weight: 700;
           text-transform: capitalize;
-          background: #f1f5f9;
-          color: #475569;
         }
 
         .ai-status-active {
@@ -528,14 +461,14 @@ export default function AdminInstituciones() {
         }
 
         .ai-button {
+          padding: 10px 13px;
           border: 1px solid #cbd5e1;
+          border-radius: 8px;
           background: #fff;
           color: #334155;
-          border-radius: 8px;
-          padding: 10px 13px;
+          cursor: pointer;
           font-size: 13px;
           font-weight: 700;
-          cursor: pointer;
         }
 
         .ai-button:hover {
@@ -543,9 +476,9 @@ export default function AdminInstituciones() {
         }
 
         .ai-button-primary {
-          background: #4f46e5;
-          color: white;
           border-color: #4f46e5;
+          background: #4f46e5;
+          color: #fff;
         }
 
         .ai-button-primary:hover {
@@ -566,36 +499,38 @@ export default function AdminInstituciones() {
         .ai-field {
           display: flex;
           flex-direction: column;
-          gap: 7px;
           min-width: 0;
+          gap: 7px;
         }
 
         .ai-field label {
-          font-weight: 700;
-          font-size: 13px;
           color: #334155;
+          font-size: 13px;
+          font-weight: 700;
         }
 
         .ai-field input,
-        .ai-field select {
+        .ai-field select,
+        .ai-state-select {
           width: 100%;
           min-width: 0;
           padding: 11px 12px;
           border: 1px solid #cbd5e1;
           border-radius: 8px;
-          background: white;
+          background: #fff;
           color: #0f172a;
           outline: none;
           font: inherit;
           font-size: 14px;
         }
 
-        .ai-span {
+        .ai-span,
+        .ai-form-section,
+        .ai-form-actions {
           grid-column: 1 / -1;
         }
 
         .ai-form-section {
-          grid-column: 1 / -1;
           padding-top: 10px;
           border-top: 1px solid #e2e8f0;
           margin-top: 4px;
@@ -603,18 +538,18 @@ export default function AdminInstituciones() {
 
         .ai-form-section h3 {
           margin: 0 0 5px;
+          color: #0f172a;
           font-size: 16px;
         }
 
         .ai-form-section p {
+          margin: 0;
           color: #64748b;
           font-size: 13px;
-          margin: 0;
           line-height: 1.5;
         }
 
         .ai-form-actions {
-          grid-column: 1 / -1;
           display: flex;
           justify-content: flex-end;
           gap: 9px;
@@ -631,21 +566,21 @@ export default function AdminInstituciones() {
         }
 
         .ai-alert-error {
-          background: #fef2f2;
           border: 1px solid #fecaca;
+          background: #fef2f2;
           color: #991b1b;
         }
 
         .ai-alert-success {
-          background: #f0fdf4;
           border: 1px solid #bbf7d0;
+          background: #f0fdf4;
           color: #166534;
         }
 
         .ai-empty {
-          text-align: center;
-          color: #64748b;
           padding: 35px 15px;
+          color: #64748b;
+          text-align: center;
           font-size: 14px;
         }
 
@@ -656,16 +591,72 @@ export default function AdminInstituciones() {
         }
 
         .ai-detail-item span {
-          color: #64748b;
-          font-size: 12px;
           display: block;
           margin-bottom: 5px;
+          color: #64748b;
+          font-size: 12px;
         }
 
         .ai-detail-item strong {
+          color: #0f172a;
           overflow-wrap: anywhere;
           font-size: 14px;
-          color: #0f172a;
+        }
+
+        .ai-state-box {
+          display: flex;
+          align-items: flex-end;
+          gap: 12px;
+          flex-wrap: wrap;
+          padding: 17px;
+          border: 1px solid #e2e8f0;
+          border-radius: 11px;
+          background: #f8fafc;
+          margin-bottom: 22px;
+        }
+
+        .ai-state-field {
+          flex: 1;
+          min-width: 190px;
+          max-width: 340px;
+        }
+
+        .ai-state-field label {
+          display: block;
+          margin-bottom: 7px;
+          color: #334155;
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .ai-password-control {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .ai-password-control input {
+          padding-right: 46px;
+        }
+
+        .ai-password-toggle {
+          position: absolute;
+          right: 5px;
+          display: grid;
+          width: 36px;
+          height: 36px;
+          place-items: center;
+          border: 0;
+          border-radius: 7px;
+          background: transparent;
+          color: #64748b;
+          cursor: pointer;
+          font-size: 18px;
+        }
+
+        .ai-password-toggle:hover {
+          background: #f1f5f9;
+          color: #4338ca;
         }
 
         @media (max-width: 720px) {
@@ -695,6 +686,18 @@ export default function AdminInstituciones() {
           .ai-form-actions button {
             flex: 1;
           }
+
+          .ai-search {
+            max-width: none;
+          }
+
+          .ai-state-field {
+            max-width: none;
+          }
+
+          .ai-state-box > button {
+            width: 100%;
+          }
         }
       `}</style>
 
@@ -705,12 +708,12 @@ export default function AdminInstituciones() {
           </span>
 
           <h1 className="ai-title">
-            Colegios y coordinadores
+            Colegios y rectores
           </h1>
 
           <p className="ai-subtitle">
-            Administra las instituciones de Aprenzy y las
-            cuentas de sus coordinadores desde un solo lugar.
+            Administra las instituciones de APRENZY y registra
+            el rector responsable de cada colegio.
           </p>
         </div>
 
@@ -726,32 +729,21 @@ export default function AdminInstituciones() {
 
       <section className="ai-stats">
         <div className="ai-stat">
-          <div className="ai-stat-label">
-            Total de colegios
-          </div>
-
-          <div className="ai-stat-number">
-            {colegios.length}
-          </div>
+          <div className="ai-stat-label">Total de colegios</div>
+          <div className="ai-stat-number">{colegios.length}</div>
         </div>
 
         <div className="ai-stat">
-          <div className="ai-stat-label">
-            Colegios activos
-          </div>
-
+          <div className="ai-stat-label">Colegios activos</div>
           <div className="ai-stat-number">
             {colegiosActivos.length}
           </div>
         </div>
 
         <div className="ai-stat">
-          <div className="ai-stat-label">
-            Coordinadores registrados
-          </div>
-
+          <div className="ai-stat-label">Colegios inactivos</div>
           <div className="ai-stat-number">
-            {coordinadores.length}
+            {colegiosInactivos.length}
           </div>
         </div>
       </section>
@@ -776,29 +768,7 @@ export default function AdminInstituciones() {
           }`}
           onClick={() => cambiarVista("crear-colegio")}
         >
-          Crear colegio
-        </button>
-
-        <button
-          type="button"
-          className={`ai-tab ${
-            vista === "coordinadores" ? "ai-tab-active" : ""
-          }`}
-          onClick={() => cambiarVista("coordinadores")}
-        >
-          Consultar coordinadores
-        </button>
-
-        <button
-          type="button"
-          className={`ai-tab ${
-            vista === "crear-coordinador"
-              ? "ai-tab-active"
-              : ""
-          }`}
-          onClick={() => cambiarVista("crear-coordinador")}
-        >
-          Crear coordinador
+          Crear colegio y rector
         </button>
       </nav>
 
@@ -810,10 +780,7 @@ export default function AdminInstituciones() {
       )}
 
       {mensaje && (
-        <div
-          className="ai-alert ai-alert-success"
-          role="status"
-        >
+        <div className="ai-alert ai-alert-success" role="status">
           {mensaje}
         </div>
       )}
@@ -832,7 +799,7 @@ export default function AdminInstituciones() {
                 <div>
                   <h2>Instituciones registradas</h2>
                   <p>
-                    Consulta los colegios registrados en Aprenzy.
+                    Consulta los colegios registrados en APRENZY.
                   </p>
                 </div>
 
@@ -864,20 +831,13 @@ export default function AdminInstituciones() {
                     {colegiosFiltrados.map((colegio) => (
                       <tr key={colegio.id_colegio}>
                         <td>
-                          <strong>
-                            {colegio.nombre_colegio}
-                          </strong>
-
-                          <div className="ai-muted">
-                            ID: {colegio.id_colegio}
-                          </div>
+                          <strong>{colegio.nombre_colegio}</strong>
                         </td>
 
                         <td>
                           <div>
                             NIT: {colegio.nit || "No registrado"}
                           </div>
-
                           <div className="ai-muted">
                             DANE: {colegio.codigo_dane || "No registrado"}
                           </div>
@@ -887,9 +847,7 @@ export default function AdminInstituciones() {
                           {[
                             colegio.municipio,
                             colegio.departamento,
-                          ]
-                            .filter(Boolean)
-                            .join(", ") || "No registrada"}
+                          ].filter(Boolean).join(", ") || "No registrada"}
                         </td>
 
                         <td>
@@ -910,9 +868,7 @@ export default function AdminInstituciones() {
                             className="ai-button"
                             disabled={detalleCargando}
                             onClick={() =>
-                              void consultarColegio(
-                                colegio.id_colegio,
-                              )
+                              void consultarColegio(colegio.id_colegio)
                             }
                           >
                             {detalleCargando
@@ -927,8 +883,7 @@ export default function AdminInstituciones() {
                       <tr>
                         <td colSpan={5}>
                           <div className="ai-empty">
-                            No hay colegios que coincidan con
-                            la búsqueda.
+                            No hay colegios que coincidan con la búsqueda.
                           </div>
                         </td>
                       </tr>
@@ -943,13 +898,8 @@ export default function AdminInstituciones() {
             <section className="ai-panel">
               <div className="ai-panel-heading">
                 <div>
-                  <h2>
-                    {colegioSeleccionado.nombre_colegio}
-                  </h2>
-
-                  <p>
-                    Detalle de la institución seleccionada.
-                  </p>
+                  <h2>{colegioSeleccionado.nombre_colegio}</h2>
+                  <p>Detalle de la institución seleccionada.</p>
                 </div>
 
                 <button
@@ -961,19 +911,54 @@ export default function AdminInstituciones() {
                 </button>
               </div>
 
+              <div className="ai-state-box">
+                <div className="ai-state-field">
+                  <label htmlFor="ai-estado-detalle">
+                    Estado de la institución
+                  </label>
+
+                  <select
+                    id="ai-estado-detalle"
+                    className="ai-state-select"
+                    value={nuevoEstado}
+                    disabled={actualizandoEstado}
+                    onChange={(evento) =>
+                      setNuevoEstado(
+                        evento.target.value as EstadoColegio,
+                      )
+                    }
+                  >
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  className="ai-button ai-button-primary"
+                  disabled={
+                    actualizandoEstado ||
+                    nuevoEstado === colegioSeleccionado.estado
+                  }
+                  onClick={() => void guardarEstadoColegio()}
+                >
+                  {actualizandoEstado
+                    ? "Guardando..."
+                    : "Guardar estado"}
+                </button>
+
+                <span
+                  className={`ai-status ${
+                    colegioSeleccionado.estado === "activo"
+                      ? "ai-status-active"
+                      : "ai-status-inactive"
+                  }`}
+                >
+                  Estado actual: {colegioSeleccionado.estado}
+                </span>
+              </div>
+
               <div className="ai-detail-grid">
-                <div className="ai-detail-item">
-                  <span>ID del colegio</span>
-                  <strong>
-                    {colegioSeleccionado.id_colegio}
-                  </strong>
-                </div>
-
-                <div className="ai-detail-item">
-                  <span>Estado</span>
-                  <strong>{colegioSeleccionado.estado}</strong>
-                </div>
-
                 <div className="ai-detail-item">
                   <span>Código DANE</span>
                   <strong>
@@ -1016,9 +1001,7 @@ export default function AdminInstituciones() {
                     {[
                       colegioSeleccionado.municipio,
                       colegioSeleccionado.departamento,
-                    ]
-                      .filter(Boolean)
-                      .join(", ") || "No registrados"}
+                    ].filter(Boolean).join(", ") || "No registrados"}
                   </strong>
                 </div>
 
@@ -1040,25 +1023,20 @@ export default function AdminInstituciones() {
             <section className="ai-panel">
               <div className="ai-panel-heading">
                 <div>
-                  <h2>Registrar colegio</h2>
-
+                  <h2>Registrar colegio y rector</h2>
                   <p>
-                    Se creará el colegio y su coordinador inicial
-                    en una sola operación.
+                    Ambos se crearán juntos y quedarán asociados
+                    automáticamente.
                   </p>
                 </div>
               </div>
 
-              <form
-                className="ai-form"
-                onSubmit={guardarColegio}
-              >
+              <form className="ai-form" onSubmit={guardarColegio}>
                 <div className="ai-form-section">
                   <h3>Datos de la institución</h3>
-
                   <p>
-                    El nombre es obligatorio. Los demás datos
-                    institucionales son opcionales.
+                    Registra la información del colegio.
+                    El estado inicial será activo automáticamente.
                   </p>
                 </div>
 
@@ -1066,7 +1044,6 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-nombre-colegio">
                     Nombre del colegio *
                   </label>
-
                   <input
                     id="ai-nombre-colegio"
                     required
@@ -1083,7 +1060,6 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-dane">Código DANE</label>
-
                   <input
                     id="ai-dane"
                     maxLength={20}
@@ -1099,7 +1075,6 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-nit">NIT</label>
-
                   <input
                     id="ai-nit"
                     maxLength={20}
@@ -1115,7 +1090,6 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-direccion">Dirección</label>
-
                   <input
                     id="ai-direccion"
                     maxLength={250}
@@ -1133,7 +1107,6 @@ export default function AdminInstituciones() {
                   <label htmlFor="ai-telefono-colegio">
                     Teléfono institucional
                   </label>
-
                   <input
                     id="ai-telefono-colegio"
                     maxLength={20}
@@ -1149,7 +1122,6 @@ export default function AdminInstituciones() {
 
                 <div className="ai-field">
                   <label htmlFor="ai-municipio">Municipio</label>
-
                   <input
                     id="ai-municipio"
                     maxLength={100}
@@ -1164,10 +1136,7 @@ export default function AdminInstituciones() {
                 </div>
 
                 <div className="ai-field">
-                  <label htmlFor="ai-departamento">
-                    Departamento
-                  </label>
-
+                  <label htmlFor="ai-departamento">Departamento</label>
                   <input
                     id="ai-departamento"
                     maxLength={100}
@@ -1181,11 +1150,10 @@ export default function AdminInstituciones() {
                   />
                 </div>
 
-                <div className="ai-field">
+                <div className="ai-field ai-span">
                   <label htmlFor="ai-correo-colegio">
                     Correo institucional
                   </label>
-
                   <input
                     id="ai-correo-colegio"
                     type="email"
@@ -1199,67 +1167,26 @@ export default function AdminInstituciones() {
                   />
                 </div>
 
-                <div className="ai-field">
-                  <label htmlFor="ai-estado-colegio">Estado</label>
-
-                  <select
-                    id="ai-estado-colegio"
-                    value={colegioForm.estado}
-                    onChange={(evento) =>
-                      setColegioForm({
-                        ...colegioForm,
-                        estado: evento.target.value as
-                          | "activo"
-                          | "inactivo",
-                      })
-                    }
-                  >
-                    <option value="activo">Activo</option>
-                    <option value="inactivo">Inactivo</option>
-                  </select>
-                </div>
-
                 <div className="ai-form-section">
-                  <h3>Coordinador inicial</h3>
-
+                  <h3>Datos del rector</h3>
                   <p>
-                    Esta cuenta quedará asociada al colegio
-                    que estás creando.
+                    El rector será el responsable de administrar
+                    este colegio dentro de APRENZY.
                   </p>
                 </div>
 
                 <div className="ai-field">
-                  <label htmlFor="ai-coord-codigo">
-                    Código de usuario *
-                  </label>
-
-                  <input
-                    id="ai-coord-codigo"
-                    required
-                    maxLength={20}
-                    value={coordinadorInicial.codigo_usuario}
-                    onChange={(evento) =>
-                      setCoordinadorInicial({
-                        ...coordinadorInicial,
-                        codigo_usuario: evento.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="ai-field">
-                  <label htmlFor="ai-coord-documento">
+                  <label htmlFor="ai-rector-documento">
                     Documento *
                   </label>
-
                   <input
-                    id="ai-coord-documento"
+                    id="ai-rector-documento"
                     required
                     maxLength={20}
-                    value={coordinadorInicial.documento}
+                    value={rectorForm.documento}
                     onChange={(evento) =>
-                      setCoordinadorInicial({
-                        ...coordinadorInicial,
+                      setRectorForm({
+                        ...rectorForm,
                         documento: evento.target.value,
                       })
                     }
@@ -1267,16 +1194,15 @@ export default function AdminInstituciones() {
                 </div>
 
                 <div className="ai-field">
-                  <label htmlFor="ai-coord-nombres">Nombres *</label>
-
+                  <label htmlFor="ai-rector-nombres">Nombres *</label>
                   <input
-                    id="ai-coord-nombres"
+                    id="ai-rector-nombres"
                     required
                     maxLength={80}
-                    value={coordinadorInicial.nombres_compl}
+                    value={rectorForm.nombres_compl}
                     onChange={(evento) =>
-                      setCoordinadorInicial({
-                        ...coordinadorInicial,
+                      setRectorForm({
+                        ...rectorForm,
                         nombres_compl: evento.target.value,
                       })
                     }
@@ -1284,18 +1210,15 @@ export default function AdminInstituciones() {
                 </div>
 
                 <div className="ai-field">
-                  <label htmlFor="ai-coord-apellidos">
-                    Apellidos *
-                  </label>
-
+                  <label htmlFor="ai-rector-apellidos">Apellidos *</label>
                   <input
-                    id="ai-coord-apellidos"
+                    id="ai-rector-apellidos"
                     required
                     maxLength={80}
-                    value={coordinadorInicial.apellidos_compl}
+                    value={rectorForm.apellidos_compl}
                     onChange={(evento) =>
-                      setCoordinadorInicial({
-                        ...coordinadorInicial,
+                      setRectorForm({
+                        ...rectorForm,
                         apellidos_compl: evento.target.value,
                       })
                     }
@@ -1303,63 +1226,56 @@ export default function AdminInstituciones() {
                 </div>
 
                 <div className="ai-field">
-                  <label htmlFor="ai-coord-telefono">
-                    Teléfono *
-                  </label>
-
+                  <label htmlFor="ai-rector-telefono">Teléfono *</label>
                   <input
-                    id="ai-coord-telefono"
+                    id="ai-rector-telefono"
                     required
                     maxLength={20}
-                    value={coordinadorInicial.telefono}
+                    value={rectorForm.telefono}
                     onChange={(evento) =>
-                      setCoordinadorInicial({
-                        ...coordinadorInicial,
+                      setRectorForm({
+                        ...rectorForm,
                         telefono: evento.target.value,
                       })
                     }
                   />
                 </div>
 
-                <div className="ai-field">
-                  <label htmlFor="ai-coord-correo">Correo *</label>
-
+                <div className="ai-field ai-span">
+                  <label htmlFor="ai-rector-correo">
+                    Correo electrónico *
+                  </label>
                   <input
-                    id="ai-coord-correo"
+                    id="ai-rector-correo"
                     type="email"
                     required
-                    value={coordinadorInicial.correo}
+                    value={rectorForm.correo}
                     onChange={(evento) =>
-                      setCoordinadorInicial({
-                        ...coordinadorInicial,
+                      setRectorForm({
+                        ...rectorForm,
                         correo: evento.target.value,
                       })
                     }
                   />
                 </div>
 
-                {/* CONTRASEÑA DEL COORDINADOR INICIAL */}
                 <div className="ai-field ai-span">
-                  <label htmlFor="ai-coord-contrasena">
+                  <label htmlFor="ai-rector-contrasena">
                     Contraseña inicial *
                   </label>
 
                   <div className="ai-password-control">
                     <input
-                      id="ai-coord-contrasena"
-                      type={
-                        mostrarContrasenaInicial
-                          ? "text"
-                          : "password"
-                      }
+                      id="ai-rector-contrasena"
+                      type={mostrarContrasena ? "text" : "password"}
                       required
                       minLength={6}
                       maxLength={255}
                       autoComplete="new-password"
-                      value={coordinadorInicial.contrasena}
+                      value={rectorForm.contrasena}
                       onChange={(evento) =>
-                        setCoordinadorInicial({
-                          ...coordinadorInicial,
+                        setRectorForm({
+                          ...rectorForm,
                           contrasena: evento.target.value,
                         })
                       }
@@ -1369,22 +1285,20 @@ export default function AdminInstituciones() {
                       type="button"
                       className="ai-password-toggle"
                       aria-label={
-                        mostrarContrasenaInicial
+                        mostrarContrasena
                           ? "Ocultar contraseña"
                           : "Mostrar contraseña"
                       }
                       title={
-                        mostrarContrasenaInicial
+                        mostrarContrasena
                           ? "Ocultar contraseña"
                           : "Mostrar contraseña"
                       }
                       onClick={() =>
-                        setMostrarContrasenaInicial(
-                          (visible) => !visible,
-                        )
+                        setMostrarContrasena((visible) => !visible)
                       }
                     >
-                      {mostrarContrasenaInicial ? (
+                      {mostrarContrasena ? (
                         <FiEyeOff aria-hidden="true" />
                       ) : (
                         <FiEye aria-hidden="true" />
@@ -1409,340 +1323,8 @@ export default function AdminInstituciones() {
                     disabled={guardando}
                   >
                     {guardando
-                      ? "Creando colegio..."
-                      : "Crear colegio y coordinador"}
-                  </button>
-                </div>
-              </form>
-            </section>
-          )}
-
-          {vista === "coordinadores" && (
-            <section className="ai-panel">
-              <div className="ai-panel-heading">
-                <div>
-                  <h2>Coordinadores registrados</h2>
-
-                  <p>
-                    Consulta las cuentas y las instituciones
-                    a las que pertenecen.
-                  </p>
-                </div>
-
-                <input
-                  className="ai-search"
-                  type="search"
-                  placeholder="Buscar nombre, documento, correo o colegio..."
-                  value={busqueda}
-                  onChange={(evento) =>
-                    setBusqueda(evento.target.value)
-                  }
-                  aria-label="Buscar coordinadores"
-                />
-              </div>
-
-              <div className="ai-table-wrap">
-                <table className="ai-table">
-                  <thead>
-                    <tr>
-                      <th>Coordinador</th>
-                      <th>Documento</th>
-                      <th>Correo</th>
-                      <th>Colegio</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {coordinadoresFiltrados.map(
-                      (coordinador) => {
-                        const colegio = colegios.find(
-                          (item) =>
-                            item.id_colegio ===
-                            coordinador.id_colegio,
-                        );
-
-                        return (
-                          <tr key={coordinador.id_usuario}>
-                            <td>
-                              <strong>
-                                {coordinador.nombres_compl}{" "}
-                                {coordinador.apellidos_compl}
-                              </strong>
-
-                              <div className="ai-muted">
-                                Código: {coordinador.codigo_usuario}
-                              </div>
-                            </td>
-
-                            <td>{coordinador.documento}</td>
-                            <td>{coordinador.correo}</td>
-
-                            <td>
-                              {colegio?.nombre_colegio ??
-                                `Colegio ID ${coordinador.id_colegio}`}
-                            </td>
-                          </tr>
-                        );
-                      },
-                    )}
-
-                    {coordinadoresFiltrados.length === 0 && (
-                      <tr>
-                        <td colSpan={4}>
-                          <div className="ai-empty">
-                            No hay coordinadores que coincidan
-                            con la búsqueda.
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
-          {vista === "crear-coordinador" && (
-            <section className="ai-panel">
-              <div className="ai-panel-heading">
-                <div>
-                  <h2>Registrar coordinador</h2>
-
-                  <p>
-                    Selecciona un colegio activo y crea una
-                    cuenta para su coordinador.
-                  </p>
-                </div>
-              </div>
-
-              <form
-                className="ai-form"
-                onSubmit={guardarCoordinador}
-              >
-                <div className="ai-field ai-span">
-                  <label htmlFor="ai-colegio-existente">
-                    Colegio al que pertenecerá *
-                  </label>
-
-                  <select
-                    id="ai-colegio-existente"
-                    required
-                    value={idColegioSeleccionado}
-                    onChange={(evento) =>
-                      setIdColegioSeleccionado(
-                        evento.target.value,
-                      )
-                    }
-                  >
-                    <option value="">
-                      Selecciona un colegio activo
-                    </option>
-
-                    {colegiosActivos.map((colegio) => (
-                      <option
-                        key={colegio.id_colegio}
-                        value={colegio.id_colegio}
-                      >
-                        {colegio.nombre_colegio}
-                      </option>
-                    ))}
-                  </select>
-
-                  {colegiosActivos.length === 0 && (
-                    <span className="ai-muted">
-                      Primero debes registrar o activar un colegio.
-                    </span>
-                  )}
-                </div>
-
-                <div className="ai-field">
-                  <label htmlFor="ai-nuevo-codigo">
-                    Código de usuario *
-                  </label>
-
-                  <input
-                    id="ai-nuevo-codigo"
-                    required
-                    maxLength={20}
-                    value={coordinadorForm.codigo_usuario}
-                    onChange={(evento) =>
-                      setCoordinadorForm({
-                        ...coordinadorForm,
-                        codigo_usuario: evento.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="ai-field">
-                  <label htmlFor="ai-nuevo-documento">
-                    Documento *
-                  </label>
-
-                  <input
-                    id="ai-nuevo-documento"
-                    required
-                    maxLength={20}
-                    value={coordinadorForm.documento}
-                    onChange={(evento) =>
-                      setCoordinadorForm({
-                        ...coordinadorForm,
-                        documento: evento.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="ai-field">
-                  <label htmlFor="ai-nuevo-nombres">Nombres *</label>
-
-                  <input
-                    id="ai-nuevo-nombres"
-                    required
-                    maxLength={80}
-                    value={coordinadorForm.nombres_compl}
-                    onChange={(evento) =>
-                      setCoordinadorForm({
-                        ...coordinadorForm,
-                        nombres_compl: evento.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="ai-field">
-                  <label htmlFor="ai-nuevo-apellidos">
-                    Apellidos *
-                  </label>
-
-                  <input
-                    id="ai-nuevo-apellidos"
-                    required
-                    maxLength={80}
-                    value={coordinadorForm.apellidos_compl}
-                    onChange={(evento) =>
-                      setCoordinadorForm({
-                        ...coordinadorForm,
-                        apellidos_compl: evento.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="ai-field">
-                  <label htmlFor="ai-nuevo-telefono">
-                    Teléfono *
-                  </label>
-
-                  <input
-                    id="ai-nuevo-telefono"
-                    required
-                    maxLength={20}
-                    value={coordinadorForm.telefono}
-                    onChange={(evento) =>
-                      setCoordinadorForm({
-                        ...coordinadorForm,
-                        telefono: evento.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="ai-field">
-                  <label htmlFor="ai-nuevo-correo">Correo *</label>
-
-                  <input
-                    id="ai-nuevo-correo"
-                    type="email"
-                    required
-                    value={coordinadorForm.correo}
-                    onChange={(evento) =>
-                      setCoordinadorForm({
-                        ...coordinadorForm,
-                        correo: evento.target.value,
-                      })
-                    }
-                  />
-                </div>
-
-                {/* CONTRASEÑA DEL NUEVO COORDINADOR */}
-                <div className="ai-field ai-span">
-                  <label htmlFor="ai-nuevo-contrasena">
-                    Contraseña inicial *
-                  </label>
-
-                  <div className="ai-password-control">
-                    <input
-                      id="ai-nuevo-contrasena"
-                      type={
-                        mostrarContrasenaNueva
-                          ? "text"
-                          : "password"
-                      }
-                      required
-                      minLength={6}
-                      maxLength={255}
-                      autoComplete="new-password"
-                      value={coordinadorForm.contrasena}
-                      onChange={(evento) =>
-                        setCoordinadorForm({
-                          ...coordinadorForm,
-                          contrasena: evento.target.value,
-                        })
-                      }
-                    />
-
-                    <button
-                      type="button"
-                      className="ai-password-toggle"
-                      aria-label={
-                        mostrarContrasenaNueva
-                          ? "Ocultar contraseña"
-                          : "Mostrar contraseña"
-                      }
-                      title={
-                        mostrarContrasenaNueva
-                          ? "Ocultar contraseña"
-                          : "Mostrar contraseña"
-                      }
-                      onClick={() =>
-                        setMostrarContrasenaNueva(
-                          (visible) => !visible,
-                        )
-                      }
-                    >
-                      {mostrarContrasenaNueva ? (
-                        <FiEyeOff aria-hidden="true" />
-                      ) : (
-                        <FiEye aria-hidden="true" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="ai-form-actions">
-                  <button
-                    type="button"
-                    className="ai-button"
-                    disabled={guardando}
-                    onClick={() =>
-                      cambiarVista("coordinadores")
-                    }
-                  >
-                    Cancelar
-                  </button>
-
-                  <button
-                    type="submit"
-                    className="ai-button ai-button-primary"
-                    disabled={
-                      guardando ||
-                      colegiosActivos.length === 0
-                    }
-                  >
-                    {guardando
-                      ? "Creando coordinador..."
-                      : "Crear coordinador"}
+                      ? "Creando colegio y rector..."
+                      : "Crear colegio y rector"}
                   </button>
                 </div>
               </form>

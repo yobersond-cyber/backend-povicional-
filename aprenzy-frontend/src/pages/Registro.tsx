@@ -1,608 +1,530 @@
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
-    FiUser,
-    FiMail,
-    FiLock,
-    FiHash,
-    FiPhone,
-    FiBookOpen,
-    FiEye,
-    FiEyeOff,
+  FiUser,
+  FiMail,
+  FiLock,
+  FiHash,
+  FiPhone,
+  FiBookOpen,
+  FiEye,
+  FiEyeOff,
 } from "react-icons/fi";
-import { crearUsuario } from "../services/usuario";
 
-type RolRegistro = "docente" | "estudiante";
+import {
+  obtenerColegiosDisponibles,
+  obtenerCursosDisponibles,
+  registrarEstudiante,
+  type ColegioDisponible,
+  type CursoDisponible,
+} from "../services/usuario";
 
-const roles: {
-    value: RolRegistro;
-    label: string;
-    description: string;
-}[] = [
-    {
-        value: "estudiante",
-        label: "Estudiante",
-        description: "Consulta materiales y entrega actividades.",
-    },
-    {
-        value: "docente",
-        label: "Docente",
-        description: "Publica materiales y gestiona actividades.",
-    },
-];
-
-interface Props {
-    onBackToLogin: () => void;
+interface RegistroProps {
+  onBackToLogin: () => void;
 }
 
-export default function Registro({ onBackToLogin }: Props) {
-    const [rol, setRol] = useState<RolRegistro>("estudiante");
+interface FormularioRegistro {
+  id_colegio: string;
+  id_curso: string;
+  documento: string;
+  nombres_compl: string;
+  apellidos_compl: string;
+  telefono: string;
+  correo: string;
+  contrasena: string;
+  confirmarContrasena: string;
+}
 
-    const [mostrarContrasena, setMostrarContrasena] = useState(false);
+const formularioInicial: FormularioRegistro = {
+  id_colegio: "",
+  id_curso: "",
+  documento: "",
+  nombres_compl: "",
+  apellidos_compl: "",
+  telefono: "",
+  correo: "",
+  contrasena: "",
+  confirmarContrasena: "",
+};
 
-    const [
-        mostrarConfirmarContrasena,
-        setMostrarConfirmarContrasena,
-    ] = useState(false);
+export default function Registro({ onBackToLogin }: RegistroProps) {
+  const [formulario, setFormulario] =
+    useState<FormularioRegistro>(formularioInicial);
 
-    const [form, setForm] = useState({
-        id_colegio: "",
-        codigo_usuario: "",
-        documento: "",
-        nombres_compl: "",
-        apellidos_compl: "",
-        telefono: "",
-        correo: "",
-        contrasena: "",
-        confirmarContrasena: "",
-        jornada: "",
-        id_curso: "",
-    });
+  const [colegios, setColegios] = useState<ColegioDisponible[]>([]);
+  const [cursos, setCursos] = useState<CursoDisponible[]>([]);
 
-    const [error, setError] = useState("");
-    const [mensaje, setMensaje] = useState("");
-    const [loading, setLoading] = useState(false);
+  const [cargandoColegios, setCargandoColegios] = useState(true);
+  const [cargandoCursos, setCargandoCursos] = useState(false);
+  const [registrando, setRegistrando] = useState(false);
 
-    const update = (
-        field: keyof typeof form,
-        value: string
-    ) => {
-        setForm((previous) => ({
-            ...previous,
-            [field]: value,
-        }));
-    };
+  const [mostrarContrasena, setMostrarContrasena] = useState(false);
+  const [mostrarConfirmacion, setMostrarConfirmacion] = useState(false);
 
-    const handleSubmit = async (
-        event: FormEvent<HTMLFormElement>
-    ) => {
-        event.preventDefault();
+  const [error, setError] = useState("");
+  const [mensajeExito, setMensajeExito] = useState("");
+
+  useEffect(() => {
+    let activo = true;
+
+    const cargarColegios = async () => {
+      try {
+        setCargandoColegios(true);
         setError("");
-        setMensaje("");
 
-        if (form.contrasena !== form.confirmarContrasena) {
-            setError("Las contraseñas no coinciden.");
-            return;
+        const resultado = await obtenerColegiosDisponibles();
+
+        if (!activo) return;
+
+        setColegios(resultado);
+
+        if (resultado.length === 0) {
+          setError(
+            "Actualmente no hay colegios disponibles para realizar el registro."
+          );
         }
+      } catch (err) {
+        if (!activo) return;
 
-        if (form.contrasena.length < 6) {
-            setError(
-                "La contraseña debe tener al menos 6 caracteres."
-            );
-            return;
+        setError(
+          err instanceof Error
+            ? err.message
+            : "No fue posible cargar los colegios disponibles."
+        );
+      } finally {
+        if (activo) {
+          setCargandoColegios(false);
         }
-
-        if (
-            !form.id_colegio.trim() ||
-            Number(form.id_colegio) < 1
-        ) {
-            setError("Ingresa un ID de institución válido.");
-            return;
-        }
-
-        if (
-            rol === "estudiante" &&
-            (
-                !form.id_curso.trim() ||
-                Number(form.id_curso) < 1
-            )
-        ) {
-            setError(
-                "El estudiante debe indicar un ID de curso válido."
-            );
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            await crearUsuario({
-                id_colegio: Number(form.id_colegio),
-                codigo_usuario: form.codigo_usuario.trim(),
-                documento: form.documento.trim(),
-                nombres_compl: form.nombres_compl.trim(),
-                apellidos_compl: form.apellidos_compl.trim(),
-                telefono: form.telefono.trim(),
-                correo: form.correo.trim(),
-                contrasena: form.contrasena,
-                tipo_de_usuario: rol,
-                jornada: form.jornada || null,
-                id_curso:
-                    rol === "estudiante"
-                        ? Number(form.id_curso)
-                        : null,
-            });
-
-            setMensaje(
-                "Registro creado correctamente. Ya puedes iniciar sesión."
-            );
-
-            setForm({
-                id_colegio: "",
-                codigo_usuario: "",
-                documento: "",
-                nombres_compl: "",
-                apellidos_compl: "",
-                telefono: "",
-                correo: "",
-                contrasena: "",
-                confirmarContrasena: "",
-                jornada: "",
-                id_curso: "",
-            });
-
-            setMostrarContrasena(false);
-            setMostrarConfirmarContrasena(false);
-        } catch (e) {
-            setError(
-                e instanceof Error
-                    ? e.message
-                    : "No fue posible completar el registro."
-            );
-        } finally {
-            setLoading(false);
-        }
+      }
     };
 
-    return (
-        <main className="login-container register-container">
-            <section className="login-card register-card">
-                <div className="login-logo">A</div>
+    cargarColegios();
 
-                <h1>Crear cuenta en Aprenzy</h1>
+    return () => {
+      activo = false;
+    };
+  }, []);
 
-                <p className="login-description">
-                    Selecciona tu tipo de usuario para mostrar
-                    únicamente los campos necesarios.
-                </p>
+  const manejarCambio = (
+    campo: keyof FormularioRegistro,
+    valor: string
+  ) => {
+    setFormulario((actual) => ({
+      ...actual,
+      [campo]: valor,
+    }));
 
-                <label htmlFor="tipo-usuario">
-                    ¿Qué tipo de usuario eres?
-                </label>
+    setError("");
+    setMensajeExito("");
+  };
+
+  const manejarCambioColegio = async (idColegio: string) => {
+    setFormulario((actual) => ({
+      ...actual,
+      id_colegio: idColegio,
+      id_curso: "",
+    }));
+
+    setCursos([]);
+    setError("");
+    setMensajeExito("");
+
+    if (!idColegio) return;
+
+    try {
+      setCargandoCursos(true);
+
+      const resultado = await obtenerCursosDisponibles(
+        Number(idColegio)
+      );
+
+      setCursos(resultado);
+
+      if (resultado.length === 0) {
+        setError(
+          "El colegio seleccionado no tiene cursos disponibles para el registro."
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No fue posible cargar los cursos del colegio seleccionado."
+      );
+    } finally {
+      setCargandoCursos(false);
+    }
+  };
+
+  const manejarRegistro = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    setError("");
+    setMensajeExito("");
+
+    if (
+      !formulario.id_colegio ||
+      !formulario.id_curso ||
+      !formulario.documento.trim() ||
+      !formulario.nombres_compl.trim() ||
+      !formulario.apellidos_compl.trim() ||
+      !formulario.telefono.trim() ||
+      !formulario.correo.trim() ||
+      !formulario.contrasena
+    ) {
+      setError("Por favor completa todos los campos obligatorios.");
+      return;
+    }
+
+    if (formulario.contrasena.length < 6) {
+      setError("La contraseña debe tener mínimo 6 caracteres.");
+      return;
+    }
+
+    if (formulario.contrasena !== formulario.confirmarContrasena) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
+
+    try {
+      setRegistrando(true);
+
+      await registrarEstudiante({
+        id_colegio: Number(formulario.id_colegio),
+        id_curso: Number(formulario.id_curso),
+        documento: formulario.documento.trim(),
+        nombres_compl: formulario.nombres_compl.trim(),
+        apellidos_compl: formulario.apellidos_compl.trim(),
+        telefono: formulario.telefono.trim(),
+        correo: formulario.correo.trim().toLowerCase(),
+        contrasena: formulario.contrasena,
+      });
+
+      setMensajeExito(
+        "¡Solicitud enviada correctamente! Tu cuenta quedó pendiente de aprobación por parte del coordinador de tu colegio. Podrás iniciar sesión cuando sea aprobada."
+      );
+
+      setFormulario(formularioInicial);
+      setCursos([]);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "No fue posible enviar tu solicitud de registro."
+      );
+    } finally {
+      setRegistrando(false);
+    }
+  };
+
+  return (
+    <div className="login-container register-container">
+      <div className="login-card register-card">
+        <div className="login-logo">
+          <h1>APRENZY</h1>
+        </div>
+
+        <p className="login-description">
+          Crea tu cuenta de estudiante y comienza tu experiencia académica
+          con APRENZY.
+        </p>
+
+        <div className="role-description">
+          <strong>Registro de estudiante</strong>
+          <p>
+            Completa tus datos y selecciona tu colegio y curso. Tu cuenta
+            será revisada por el coordinador de tu institución.
+          </p>
+        </div>
+
+        <form onSubmit={manejarRegistro}>
+          <div className="register-grid">
+            <div className="register-field">
+              <label htmlFor="nombres_compl">Nombres</label>
+
+              <div className="register-input-wrapper">
+                <FiUser />
+                <input
+                  id="nombres_compl"
+                  type="text"
+                  placeholder="Ingresa tus nombres"
+                  value={formulario.nombres_compl}
+                  onChange={(e) =>
+                    manejarCambio("nombres_compl", e.target.value)
+                  }
+                  autoComplete="given-name"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="register-field">
+              <label htmlFor="apellidos_compl">Apellidos</label>
+
+              <div className="register-input-wrapper">
+                <FiUser />
+                <input
+                  id="apellidos_compl"
+                  type="text"
+                  placeholder="Ingresa tus apellidos"
+                  value={formulario.apellidos_compl}
+                  onChange={(e) =>
+                    manejarCambio("apellidos_compl", e.target.value)
+                  }
+                  autoComplete="family-name"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="register-field">
+              <label htmlFor="documento">Documento de identidad</label>
+
+              <div className="register-input-wrapper">
+                <FiHash />
+                <input
+                  id="documento"
+                  type="text"
+                  placeholder="Número de documento"
+                  value={formulario.documento}
+                  onChange={(e) =>
+                    manejarCambio("documento", e.target.value)
+                  }
+                  autoComplete="off"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="register-field">
+              <label htmlFor="telefono">Teléfono</label>
+
+              <div className="register-input-wrapper">
+                <FiPhone />
+                <input
+                  id="telefono"
+                  type="tel"
+                  placeholder="Número de teléfono"
+                  value={formulario.telefono}
+                  onChange={(e) =>
+                    manejarCambio("telefono", e.target.value)
+                  }
+                  autoComplete="tel"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="register-field register-field-full">
+              <label htmlFor="correo">Correo electrónico</label>
+
+              <div className="register-input-wrapper">
+                <FiMail />
+                <input
+                  id="correo"
+                  type="email"
+                  placeholder="ejemplo@correo.com"
+                  value={formulario.correo}
+                  onChange={(e) =>
+                    manejarCambio("correo", e.target.value)
+                  }
+                  autoComplete="email"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="register-field register-field-full">
+              <label htmlFor="id_colegio">Colegio</label>
+
+              <div className="register-input-wrapper">
+                <FiBookOpen />
 
                 <select
-                    id="tipo-usuario"
-                    name="tipo_de_usuario"
-                    className="role-select"
-                    value={rol}
-                    onChange={(e) => {
-                        setRol(e.target.value as RolRegistro);
-                        setError("");
-                        setMensaje("");
-                    }}
+                  id="id_colegio"
+                  value={formulario.id_colegio}
+                  onChange={(e) =>
+                    manejarCambioColegio(e.target.value)
+                  }
+                  disabled={cargandoColegios || registrando}
+                  required
                 >
-                    {roles.map((item) => (
-                        <option
-                            value={item.value}
-                            key={item.value}
-                        >
-                            {item.label}
-                        </option>
-                    ))}
+                  <option value="">
+                    {cargandoColegios
+                      ? "Cargando colegios..."
+                      : "Selecciona tu colegio"}
+                  </option>
+
+                  {colegios.map((colegio) => (
+                    <option
+                      key={colegio.id_colegio}
+                      value={colegio.id_colegio}
+                    >
+                      {colegio.nombre_colegio}
+                    </option>
+                  ))}
                 </select>
+              </div>
+            </div>
 
-                <p className="role-description">
-                    {
-                        roles.find(
-                            (item) => item.value === rol
-                        )?.description
-                    }
-                </p>
+            <div className="register-field register-field-full">
+              <label htmlFor="id_curso">Curso</label>
 
-                <form onSubmit={handleSubmit} autoComplete="off">
-                    <div className="register-grid">
+              <div className="register-input-wrapper">
+                <FiBookOpen />
 
-                        {/* NOMBRES */}
-                        <div className="register-field">
-                            <label htmlFor="nombres">
-                                <FiUser /> Nombres
-                            </label>
+                <select
+                  id="id_curso"
+                  value={formulario.id_curso}
+                  onChange={(e) =>
+                    manejarCambio("id_curso", e.target.value)
+                  }
+                  disabled={
+                    !formulario.id_colegio ||
+                    cargandoCursos ||
+                    cursos.length === 0 ||
+                    registrando
+                  }
+                  required
+                >
+                  <option value="">
+                    {!formulario.id_colegio
+                      ? "Primero selecciona tu colegio"
+                      : cargandoCursos
+                        ? "Cargando cursos..."
+                        : cursos.length === 0
+                          ? "No hay cursos disponibles"
+                          : "Selecciona tu curso"}
+                  </option>
 
-                            <input
-                                id="nombres"
-                                name="given-name"
-                                type="text"
-                                autoComplete="given-name"
-                                value={form.nombres_compl}
-                                onChange={(e) =>
-                                    update(
-                                        "nombres_compl",
-                                        e.target.value
-                                    )
-                                }
-                                maxLength={80}
-                                required
-                            />
-                        </div>
-
-                        {/* APELLIDOS */}
-                        <div className="register-field">
-                            <label htmlFor="apellidos">
-                                <FiUser /> Apellidos
-                            </label>
-
-                            <input
-                                id="apellidos"
-                                name="family-name"
-                                type="text"
-                                autoComplete="family-name"
-                                value={form.apellidos_compl}
-                                onChange={(e) =>
-                                    update(
-                                        "apellidos_compl",
-                                        e.target.value
-                                    )
-                                }
-                                maxLength={80}
-                                required
-                            />
-                        </div>
-
-                        {/* DOCUMENTO */}
-                        <div className="register-field">
-                            <label htmlFor="documento">
-                                <FiHash /> Documento
-                            </label>
-
-                            <input
-                                id="documento"
-                                name="documento"
-                                type="text"
-                                autoComplete="off"
-                                value={form.documento}
-                                onChange={(e) =>
-                                    update(
-                                        "documento",
-                                        e.target.value
-                                    )
-                                }
-                                maxLength={20}
-                                required
-                            />
-                        </div>
-
-                        {/* CÓDIGO DE USUARIO */}
-                        <div className="register-field">
-                            <label htmlFor="codigo">
-                                <FiHash /> Código de usuario
-                            </label>
-
-                            <input
-                                id="codigo"
-                                name="codigo_usuario"
-                                type="text"
-                                autoComplete="off"
-                                value={form.codigo_usuario}
-                                onChange={(e) =>
-                                    update(
-                                        "codigo_usuario",
-                                        e.target.value
-                                    )
-                                }
-                                maxLength={20}
-                                required
-                            />
-                        </div>
-
-                        {/* CORREO */}
-                        <div className="register-field">
-                            <label htmlFor="correo">
-                                <FiMail /> Correo electrónico
-                            </label>
-
-                            <input
-                                id="correo"
-                                name="email"
-                                type="email"
-                                autoComplete="email"
-                                value={form.correo}
-                                onChange={(e) =>
-                                    update(
-                                        "correo",
-                                        e.target.value
-                                    )
-                                }
-                                required
-                            />
-                        </div>
-
-                        {/* TELÉFONO */}
-                        <div className="register-field">
-                            <label htmlFor="telefono">
-                                <FiPhone /> Teléfono
-                            </label>
-
-                            <input
-                                id="telefono"
-                                name="tel"
-                                type="tel"
-                                autoComplete="tel"
-                                value={form.telefono}
-                                onChange={(e) =>
-                                    update(
-                                        "telefono",
-                                        e.target.value
-                                    )
-                                }
-                                maxLength={20}
-                                required
-                            />
-                        </div>
-
-                        {/* INSTITUCIÓN */}
-                        <div className="register-field">
-                            <label htmlFor="colegio">
-                                <FiBookOpen /> ID de institución/colegio
-                            </label>
-
-                            <input
-                                id="colegio"
-                                name="id_colegio"
-                                type="number"
-                                min="1"
-                                autoComplete="off"
-                                value={form.id_colegio}
-                                onChange={(e) =>
-                                    update(
-                                        "id_colegio",
-                                        e.target.value
-                                    )
-                                }
-                                required
-                            />
-                        </div>
-
-                        {/* JORNADA */}
-                        <div className="register-field">
-                            <label htmlFor="jornada">
-                                Jornada
-                            </label>
-
-                            <select
-                                id="jornada"
-                                name="jornada"
-                                value={form.jornada}
-                                onChange={(e) =>
-                                    update(
-                                        "jornada",
-                                        e.target.value
-                                    )
-                                }
-                                required
-                            >
-                                <option value="">
-                                    Selecciona una jornada
-                                </option>
-
-                                <option value="mañana">
-                                    Mañana
-                                </option>
-
-                                <option value="tarde">
-                                    Tarde
-                                </option>
-
-                                <option value="noche">
-                                    Noche
-                                </option>
-
-                                <option value="única">
-                                    Única
-                                </option>
-                            </select>
-                        </div>
-
-                        {/* CURSO: SOLO PARA ESTUDIANTES */}
-                        {rol === "estudiante" && (
-                            <div className="register-field">
-                                <label htmlFor="curso">
-                                    <FiBookOpen /> ID del curso
-                                </label>
-
-                                <input
-                                    id="curso"
-                                    name="id_curso"
-                                    type="number"
-                                    min="1"
-                                    autoComplete="off"
-                                    value={form.id_curso}
-                                    onChange={(e) =>
-                                        update(
-                                            "id_curso",
-                                            e.target.value
-                                        )
-                                    }
-                                    required
-                                />
-
-                                <small>
-                                    Usa el identificador de un curso
-                                    que ya exista en APRENZY.
-                                </small>
-                            </div>
-                        )}
-
-                        {/* CONTRASEÑA CON BOTÓN DE VISIBILIDAD */}
-                        <div className="register-field">
-                            <label htmlFor="contrasena">
-                                <FiLock /> Contraseña
-                            </label>
-
-                            <div className="register-password-control">
-                                <input
-                                    id="contrasena"
-                                    name="new-password"
-                                    type={
-                                        mostrarContrasena
-                                            ? "text"
-                                            : "password"
-                                    }
-                                    autoComplete="new-password"
-                                    value={form.contrasena}
-                                    onChange={(e) =>
-                                        update(
-                                            "contrasena",
-                                            e.target.value
-                                        )
-                                    }
-                                    minLength={6}
-                                    required
-                                />
-
-                                <button
-                                    type="button"
-                                    className="register-password-toggle"
-                                    aria-label={
-                                        mostrarContrasena
-                                            ? "Ocultar contraseña"
-                                            : "Mostrar contraseña"
-                                    }
-                                    title={
-                                        mostrarContrasena
-                                            ? "Ocultar contraseña"
-                                            : "Mostrar contraseña"
-                                    }
-                                    onClick={() =>
-                                        setMostrarContrasena(
-                                            (visible) => !visible
-                                        )
-                                    }
-                                >
-                                    {mostrarContrasena ? (
-                                        <FiEyeOff aria-hidden="true" />
-                                    ) : (
-                                        <FiEye aria-hidden="true" />
-                                    )}
-                                </button>
-                            </div>
-
-                            <small>
-                                La contraseña debe tener al menos
-                                6 caracteres.
-                            </small>
-                        </div>
-
-                        {/* CONFIRMAR CONTRASEÑA */}
-                        <div className="register-field">
-                            <label htmlFor="confirmar">
-                                <FiLock /> Confirmar contraseña
-                            </label>
-
-                            <div className="register-password-control">
-                                <input
-                                    id="confirmar"
-                                    name="confirmarContrasena"
-                                    type={
-                                        mostrarConfirmarContrasena
-                                            ? "text"
-                                            : "password"
-                                    }
-                                    autoComplete="new-password"
-                                    value={form.confirmarContrasena}
-                                    onChange={(e) =>
-                                        update(
-                                            "confirmarContrasena",
-                                            e.target.value
-                                        )
-                                    }
-                                    minLength={6}
-                                    required
-                                />
-
-                                <button
-                                    type="button"
-                                    className="register-password-toggle"
-                                    aria-label={
-                                        mostrarConfirmarContrasena
-                                            ? "Ocultar confirmación"
-                                            : "Mostrar confirmación"
-                                    }
-                                    title={
-                                        mostrarConfirmarContrasena
-                                            ? "Ocultar confirmación"
-                                            : "Mostrar confirmación"
-                                    }
-                                    onClick={() =>
-                                        setMostrarConfirmarContrasena(
-                                            (visible) => !visible
-                                        )
-                                    }
-                                >
-                                    {mostrarConfirmarContrasena ? (
-                                        <FiEyeOff aria-hidden="true" />
-                                    ) : (
-                                        <FiEye aria-hidden="true" />
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    {/* MENSAJE DE ERROR */}
-                    {error && (
-                        <p
-                            className="login-error"
-                            role="alert"
-                        >
-                            {error}
-                        </p>
-                    )}
-
-                    {/* MENSAJE DE ÉXITO */}
-                    {mensaje && (
-                        <p
-                            className="register-success"
-                            role="status"
-                        >
-                            {mensaje}
-                        </p>
-                    )}
-
-                    {/* BOTÓN DE REGISTRO */}
-                    <button
-                        type="submit"
-                        disabled={loading}
+                  {cursos.map((curso) => (
+                    <option
+                      key={curso.id_curso}
+                      value={curso.id_curso}
                     >
-                        {loading
-                            ? "Creando cuenta..."
-                            : "Crear cuenta"}
-                    </button>
-                </form>
+                      {`Grado ${curso.grado} - Curso ${curso.numero_curso} · ${curso.jornada}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-                {/* REGRESAR AL LOGIN */}
-                <p className="register-switch">
-                    ¿Ya tienes cuenta?{" "}
+            <div className="register-field">
+              <label htmlFor="contrasena">Contraseña</label>
 
-                    <button
-                        type="button"
-                        className="text-button"
-                        onClick={onBackToLogin}
-                    >
-                        Inicia sesión
-                    </button>
-                </p>
-            </section>
-        </main>
-    );
+              <div className="register-password-control">
+                <FiLock />
+
+                <input
+                  id="contrasena"
+                  type={mostrarContrasena ? "text" : "password"}
+                  placeholder="Mínimo 6 caracteres"
+                  value={formulario.contrasena}
+                  onChange={(e) =>
+                    manejarCambio("contrasena", e.target.value)
+                  }
+                  autoComplete="new-password"
+                  required
+                />
+
+                <button
+                  type="button"
+                  className="register-password-toggle"
+                  onClick={() =>
+                    setMostrarContrasena(!mostrarContrasena)
+                  }
+                  aria-label={
+                    mostrarContrasena
+                      ? "Ocultar contraseña"
+                      : "Mostrar contraseña"
+                  }
+                >
+                  {mostrarContrasena ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
+            </div>
+
+            <div className="register-field">
+              <label htmlFor="confirmarContrasena">
+                Confirmar contraseña
+              </label>
+
+              <div className="register-password-control">
+                <FiLock />
+
+                <input
+                  id="confirmarContrasena"
+                  type={mostrarConfirmacion ? "text" : "password"}
+                  placeholder="Repite tu contraseña"
+                  value={formulario.confirmarContrasena}
+                  onChange={(e) =>
+                    manejarCambio(
+                      "confirmarContrasena",
+                      e.target.value
+                    )
+                  }
+                  autoComplete="new-password"
+                  required
+                />
+
+                <button
+                  type="button"
+                  className="register-password-toggle"
+                  onClick={() =>
+                    setMostrarConfirmacion(!mostrarConfirmacion)
+                  }
+                  aria-label={
+                    mostrarConfirmacion
+                      ? "Ocultar confirmación"
+                      : "Mostrar confirmación"
+                  }
+                >
+                  {mostrarConfirmacion ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <div className="login-error" role="alert">
+              {error}
+            </div>
+          )}
+
+          {mensajeExito && (
+            <div className="register-success" role="status">
+              {mensajeExito}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="login-button"
+            disabled={
+              registrando ||
+              cargandoColegios ||
+              cargandoCursos ||
+              colegios.length === 0
+            }
+          >
+            {registrando
+              ? "Enviando solicitud..."
+              : "Crear cuenta de estudiante"}
+          </button>
+        </form>
+
+        <div className="register-switch">
+          <p>¿Ya tienes una cuenta?</p>
+
+          <button
+            type="button"
+            onClick={onBackToLogin}
+            disabled={registrando}
+          >
+            Iniciar sesión
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

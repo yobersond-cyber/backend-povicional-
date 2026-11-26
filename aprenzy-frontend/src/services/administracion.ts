@@ -1,3 +1,4 @@
+
 import { apiFetch } from "./api";
 
 // ============================================
@@ -20,20 +21,18 @@ export interface Colegio {
   fecha_creacion: string;
 }
 
-export interface Coordinador {
+export interface Rector {
   id_usuario: number;
   id_colegio: number;
-  codigo_usuario: string;
   documento: string;
   nombres_compl: string;
   apellidos_compl: string;
   telefono: string;
   correo: string;
-  tipo_de_usuario: "coordinador";
+  tipo_de_usuario: "rector";
 }
 
-export interface DatosCoordinador {
-  codigo_usuario: string;
+export interface DatosRector {
   documento: string;
   nombres_compl: string;
   apellidos_compl: string;
@@ -51,27 +50,23 @@ export interface DatosColegio {
   correo_institucional?: string | null;
   municipio?: string | null;
   departamento?: string | null;
-  estado: EstadoColegio;
 }
 
 export interface CrearColegioPayload {
   colegio: DatosColegio;
-  coordinador: DatosCoordinador;
+  rector: DatosRector;
 }
 
-export interface CrearCoordinadorPayload
-  extends DatosCoordinador {
-  id_colegio: number;
-}
-
-export interface ColegioConCoordinador {
+export interface ColegioConRector {
   colegio: Colegio;
-  coordinador: Coordinador;
+  rector: Rector;
 }
 
-// ============================================
-// RESPUESTA ESTÁNDAR DEL BACKEND
-// ============================================
+export interface ResumenInstitucional {
+  totalColegios: number;
+  colegiosActivos: number;
+  colegiosInactivos: number;
+}
 
 interface RespuestaAPI<T> {
   success: boolean;
@@ -83,11 +78,10 @@ async function obtenerData<T>(
   endpoint: string,
   options?: RequestInit,
 ): Promise<T> {
-  const respuesta =
-    (await apiFetch(
-      endpoint,
-      options,
-    )) as RespuestaAPI<T>;
+  const respuesta = await apiFetch(
+    endpoint,
+    options,
+  ) as RespuestaAPI<T>;
 
   if (!respuesta.success || respuesta.data === null) {
     throw new Error(
@@ -100,16 +94,12 @@ async function obtenerData<T>(
 }
 
 // ============================================
-// CONSULTAR COLEGIOS
+// COLEGIOS
 // ============================================
 
 export async function listarColegios(): Promise<Colegio[]> {
   return obtenerData<Colegio[]>("/colegios");
 }
-
-// ============================================
-// CONSULTAR UN COLEGIO
-// ============================================
 
 export async function obtenerColegio(
   idColegio: number,
@@ -119,14 +109,10 @@ export async function obtenerColegio(
   );
 }
 
-// ============================================
-// CREAR COLEGIO Y SU COORDINADOR INICIAL
-// ============================================
-
 export async function crearColegio(
   datos: CrearColegioPayload,
-): Promise<ColegioConCoordinador> {
-  return obtenerData<ColegioConCoordinador>(
+): Promise<ColegioConRector> {
+  return obtenerData<ColegioConRector>(
     "/colegios",
     {
       method: "POST",
@@ -135,30 +121,33 @@ export async function crearColegio(
   );
 }
 
-// ============================================
-// CONSULTAR COORDINADORES
-// ============================================
-
-export async function listarCoordinadores(): Promise<
-  Coordinador[]
-> {
-  return obtenerData<Coordinador[]>(
-    "/usuarios/coordinadores",
+export async function actualizarEstadoColegio(
+  idColegio: number,
+  estado: EstadoColegio,
+): Promise<Colegio> {
+  return obtenerData<Colegio>(
+    `/colegios/${idColegio}/estado`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ estado }),
+    },
   );
 }
 
 // ============================================
-// CREAR COORDINADOR EN UN COLEGIO EXISTENTE
+// RESUMEN ESTADÍSTICO INSTITUCIONAL
 // ============================================
 
-export async function crearCoordinador(
-  datos: CrearCoordinadorPayload,
-): Promise<Coordinador> {
-  return obtenerData<Coordinador>(
-    "/usuarios/coordinadores",
-    {
-      method: "POST",
-      body: JSON.stringify(datos),
-    },
-  );
+export async function obtenerResumenInstitucional(): Promise<ResumenInstitucional> {
+  const colegios = await listarColegios();
+
+  return {
+    totalColegios: colegios.length,
+    colegiosActivos: colegios.filter(
+      (colegio) => colegio.estado === "activo",
+    ).length,
+    colegiosInactivos: colegios.filter(
+      (colegio) => colegio.estado === "inactivo",
+    ).length,
+  };
 }

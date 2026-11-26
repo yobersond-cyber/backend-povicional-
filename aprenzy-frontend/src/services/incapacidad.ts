@@ -1,4 +1,4 @@
-// Importa la función central para comunicarnos con FastAPI
+
 import { apiFetch } from "./api";
 
 // Representa una incapacidad
@@ -11,6 +11,7 @@ export interface Incapacidad {
   motivo: string;
   estado: "pendiente" | "aprobada" | "rechazada" | "finalizada";
   id_usuario: number;
+  observacion_revision?: string | null;
   apelacion?: ApelacionResumen | null;
 }
 
@@ -28,100 +29,162 @@ export interface CrearIncapacidadDatos {
   numero_radicado: string;
   fecha_inicio: string;
   fecha_fin: string;
-  archivo: string;
+  archivo: File;
   motivo: string;
-  id_usuario: number;
 }
 
 // Datos necesarios para actualizar una incapacidad
 export interface ActualizarIncapacidadDatos {
   fecha_inicio: string;
   fecha_fin: string;
-  archivo: string;
+  archivo?: File | null;
   motivo: string;
-  estado: string;
+  estado: Incapacidad["estado"];
   motivo_cambio: string;
-  id_usuario_cambio: number;
+  observacion_revision?: string;
 }
 
-// Obtiene todas las incapacidades
-// Solo funciona para administrador según el backend
+// Obtiene las incapacidades del usuario autenticado.
+// El backend devuelve las propias al estudiante y las
+// de todo su colegio al coordinador.
 export async function obtenerIncapacidades(): Promise<
   Incapacidad[]
 > {
-  // Consulta todas las incapacidades
   const respuesta = await apiFetch("/incapacidades");
 
-  // Devuelve los datos recibidos
-  return respuesta.data;
+  return respuesta.data ?? [];
 }
 
 // Obtiene una incapacidad específica
-// Un estudiante solo puede consultar una propia
 export async function obtenerIncapacidad(
   id: number,
 ): Promise<Incapacidad> {
-  // Consulta la incapacidad indicada
   const respuesta = await apiFetch(
     `/incapacidades/${id}`,
   );
 
-  // Devuelve la incapacidad
   return respuesta.data;
 }
 
-// Crea una incapacidad
+// Crea una incapacidad enviando el documento real.
+// El backend obtiene el usuario desde el token.
 export async function crearIncapacidad(
   datos: CrearIncapacidadDatos,
 ): Promise<Incapacidad> {
-  // Envía la información al backend
+  const formulario = new FormData();
+
+  formulario.append(
+    "numero_radicado",
+    datos.numero_radicado,
+  );
+
+  formulario.append(
+    "fecha_inicio",
+    datos.fecha_inicio,
+  );
+
+  formulario.append(
+    "fecha_fin",
+    datos.fecha_fin,
+  );
+
+  formulario.append(
+    "motivo",
+    datos.motivo,
+  );
+
+  formulario.append(
+    "archivo",
+    datos.archivo,
+  );
+
   const respuesta = await apiFetch(
     "/incapacidades",
     {
       method: "POST",
-      body: JSON.stringify(datos),
+      body: formulario,
     },
   );
 
-  // Devuelve la incapacidad creada
   return respuesta.data;
 }
 
-// Actualiza completamente una incapacidad
-// Solo administrador
+// Actualiza una incapacidad.
+// El backend exige multipart/form-data.
 export async function actualizarIncapacidad(
   id: number,
   datos: ActualizarIncapacidadDatos,
 ): Promise<Incapacidad> {
-  // Envía la actualización al backend
+  const formulario = new FormData();
+
+  formulario.append(
+    "fecha_inicio",
+    datos.fecha_inicio,
+  );
+
+  formulario.append(
+    "fecha_fin",
+    datos.fecha_fin,
+  );
+
+  formulario.append(
+    "motivo",
+    datos.motivo,
+  );
+
+  formulario.append(
+    "estado",
+    datos.estado,
+  );
+
+  formulario.append(
+    "motivo_cambio",
+    datos.motivo_cambio,
+  );
+
+  if (datos.observacion_revision?.trim()) {
+    formulario.append(
+      "observacion_revision",
+      datos.observacion_revision.trim(),
+    );
+  }
+
+  if (datos.archivo) {
+    formulario.append(
+      "archivo",
+      datos.archivo,
+    );
+  }
+
   const respuesta = await apiFetch(
     `/incapacidades/${id}`,
     {
       method: "PUT",
-      body: JSON.stringify(datos),
+      body: formulario,
     },
   );
 
-  // Devuelve la incapacidad actualizada
   return respuesta.data;
 }
 
-// Cambia únicamente el estado
-// Solo administrador
+// Cambia el estado utilizando el endpoint PUT existente.
+// Se conserva esta función para mantener compatibilidad
+// con otros componentes que pudieran utilizarla.
 export async function cambiarEstadoIncapacidad(
   id: number,
   estado: Incapacidad["estado"],
 ): Promise<Incapacidad> {
-  // Envía el nuevo estado como query parameter
-  const respuesta = await apiFetch(
-    `/incapacidades/${id}/estado?estado=${encodeURIComponent(
-      estado,
-    )}`,
-    {
-      method: "PUT",
-    },
-  );
+  const incapacidad = await obtenerIncapacidad(id);
 
-  // Devuelve la incapacidad actualizada
-  return respuesta.data;
+  return actualizarIncapacidad(id, {
+    fecha_inicio: incapacidad.fecha_inicio.split("T")[0],
+    fecha_fin: incapacidad.fecha_fin.split("T")[0],
+    motivo: incapacidad.motivo,
+    estado,
+    motivo_cambio: "Actualización del estado de la incapacidad.",
+    observacion_revision:
+      estado === "aprobada" || estado === "rechazada"
+        ? "Revisión realizada por el coordinador."
+        : undefined,
+  });
 }
