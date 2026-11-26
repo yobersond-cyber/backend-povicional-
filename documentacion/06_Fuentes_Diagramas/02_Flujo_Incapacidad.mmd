@@ -1,0 +1,10 @@
+flowchart TD
+ A([Inicio]) --> B[Estudiante registra incapacidad de 3 días o más y adjunta soporte]
+ B --> C[Coordinador revisa solicitud y soporte]
+ C --> D{¿Aprueba?}
+ D -- Sí --> E[Incapacidad aprobada]
+ D -- No --> F[Incapacidad rechazada]
+ F --> G[Estudiante puede presentar apelación]
+ G --> H[Coordinador gestiona apelación]
+ E --> I([Fin del trámite principal])
+ H --> I

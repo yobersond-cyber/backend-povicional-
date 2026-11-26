@@ -1,0 +1,10 @@
+flowchart LR
+ A[Administrador] --> U1((Administrar instituciones y asignar Rectores))
+ R[Rector] --> U2((Administrar institución y asignar Coordinadores))
+ C[Coordinador] --> U3((Gestionar Docentes y Estudiantes))
+ C --> U4((Revisar, aprobar o rechazar incapacidades))
+ C --> U5((Gestionar apelaciones y extensiones))
+ E[Estudiante] --> U6((Registrar incapacidad y adjuntar soporte))
+ E --> U7((Presentar apelación ante rechazo))
+ D[Docente] --> U8((Gestionar materiales, actividades y calificaciones))
+ E --> U9((Consultar materiales, entregar actividades y consultar notas))
