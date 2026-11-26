@@ -7,6 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 
 from app.database.conection import engine
+from app.database.base import Base
+
+# Registrar todos los modelos antes de crear las tablas.
+import app.models
 
 from app.routers import (
     usuario,
@@ -29,12 +33,15 @@ from app.services.automatic_tasks import tarea_finalizar_accesos
 
 def actualizar_estructura_base_datos():
     """
-    Agrega automáticamente las columnas necesarias para
-    almacenar archivos de Cloudinary.
+    Crea las tablas que falten y agrega automáticamente
+    las columnas necesarias para almacenar archivos
+    de Cloudinary.
 
-    Conserva los registros existentes y solo agrega
-    las columnas que todavía no existan.
+    Conserva las tablas y registros existentes.
     """
+
+    # Crear únicamente las tablas que todavía no existen.
+    Base.metadata.create_all(bind=engine)
 
     tablas_requeridas = [
         "material_academico",
@@ -50,8 +57,6 @@ def actualizar_estructura_base_datos():
         "archivo_resource_type": "VARCHAR(20) NULL",
     }
 
-    # Las tablas que ya tenían la columna archivo
-    # no necesitan que se agregue nuevamente.
     tablas_con_archivo_existente = {
         "material_academico",
         "entrega",
