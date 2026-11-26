@@ -2,7 +2,7 @@
 // URL del backend según el entorno.
 const API_URL = (
   import.meta.env.VITE_API_URL ||
-  "http://localhost:8000"
+  "https://backend-povicional-production.up.railway.app"
 ).replace(/\/+$/, "");
 
 // Realiza peticiones HTTP hacia nuestro backend.
@@ -39,12 +39,17 @@ export async function apiFetch(
     );
   }
 
+  // Normaliza la ruta.
+  const ruta = endpoint.startsWith("/")
+    ? endpoint
+    : `/${endpoint}`;
+
   // Envía la petición al backend.
   let response: Response;
 
   try {
     response = await fetch(
-      `${API_URL}${endpoint}`,
+      `${API_URL}${ruta}`,
       {
         ...options,
         headers,
@@ -52,7 +57,7 @@ export async function apiFetch(
     );
   } catch {
     throw new Error(
-      "No se pudo conectar con el servidor. Verifica tu conexión e intenta nuevamente.",
+      "No se pudo conectar con el servidor. Verifica la configuración del backend e intenta nuevamente.",
     );
   }
 
