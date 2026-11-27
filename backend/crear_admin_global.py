@@ -12,34 +12,10 @@ def main():
     db = SessionLocal()
 
     try:
-        # Si ya existe un administrador global, no crear otro.
-        admin_existente = (
-            db.query(Usuario)
-            .filter(
-                Usuario.tipo_de_usuario == "administrador",
-                Usuario.id_colegio.is_(None),
-            )
-            .first()
-        )
-
-        if admin_existente:
-            print(
-                "Ya existe un administrador global."
-            )
-            print(
-                f"ID de usuario: {admin_existente.id_usuario}"
-            )
-            print(
-                f"Correo: {admin_existente.correo}"
-            )
-            return
 
         print("=== Crear administrador global de APRENZY ===")
         print("La contraseña no se mostrará en pantalla.\n")
 
-        codigo_usuario = input(
-            "Código de usuario: "
-        ).strip()
 
         documento = input(
             "Documento: "
@@ -70,7 +46,6 @@ def main():
         )
 
         if not all([
-            codigo_usuario,
             documento,
             nombres,
             apellidos,
@@ -80,10 +55,6 @@ def main():
             print(
                 "Error: todos los campos son obligatorios."
             )
-            return
-
-        if len(codigo_usuario) > 20:
-            print("Error: el código admite máximo 20 caracteres.")
             return
 
         if len(documento) > 20:
@@ -110,10 +81,6 @@ def main():
 
         # Comprobar que los datos únicos no estén registrados.
         campos_unicos = {
-            "código de usuario": (
-                Usuario.codigo_usuario,
-                codigo_usuario,
-            ),
             "documento": (
                 Usuario.documento,
                 documento,
@@ -139,7 +106,6 @@ def main():
 
         administrador = Usuario(
             id_colegio=None,
-            codigo_usuario=codigo_usuario,
             documento=documento,
             nombres_compl=nombres,
             apellidos_compl=apellidos,
