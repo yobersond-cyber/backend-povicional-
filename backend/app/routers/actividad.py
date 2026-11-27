@@ -43,9 +43,235 @@ router = APIRouter(
 )
 
 
+
+def validar_datos_actividad(
+    titulo: str | None,
+    descripcion: str | None,
+) -> None:
+    if titulo is not None and not titulo.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="El título no puede estar vacío",
+        )
+
+    if descripcion is not None and not descripcion.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="La descripción no puede estar vacía",
+        )
+
+
+def actualizar_asignacion_actividad(
+    db: Session,
+    actividad: Actividad,
+    current_user: Usuario,
+    nombre_materia: str | None,
+    numero_curso: str | None,
+) -> None:
+    if nombre_materia is None and numero_curso is None:
+        return
+
+    materia_actual = (
+        db.query(Materia)
+        .filter(Materia.id_materia == actividad.id_materia)
+        .first()
+    )
+
+    curso_actual = obtener_curso_de_actividad(
+        db,
+        actividad,
+    )
+
+    asignacion = obtener_asignacion_docente(
+        db,
+        current_user,
+        nombre_materia or materia_actual.nombre_materia,
+        numero_curso or curso_actual.numero_curso,
+    )
+
+    actividad.id_materia = asignacion.id_materia
+    actividad.id_curso = asignacion.id_curso
+
+
+def aplicar_cambios_actividad(
+    actividad: Actividad,
+    cambios: dict,
+) -> None:
+    for campo, valor in cambios.items():
+        if valor is not None:
+            if isinstance(valor, str):
+                valor = valor.strip()
+
+            setattr(actividad, campo, valor)
+
+
+def validar_fechas_actividad(
+    actividad: Actividad,
+    db: Session,
+) -> None:
+    if actividad.fecha_limite < actividad.fecha_publicacion:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "La fecha límite no puede ser anterior "
+                "a la fecha de publicación"
+            ),
+        )
+
+
+async def guardar_cambios_actividad(
+    db: Session,
+    actividad: Actividad,
+    archivo: UploadFile | None,
+) -> dict | None:
+    archivo_subido = None
+
+    try:
+        if archivo is not None:
+            archivo_subido = await subir_archivo(
+                archivo,
+                "actividades",
+            )
+
+            actividad.archivo = archivo_subido["url"]
+            actividad.archivo_public_id = archivo_subido["public_id"]
+            actividad.archivo_resource_type = archivo_subido["resource_type"]
+
+        db.commit()
+        db.refresh(actividad)
+
+        return archivo_subido
+
+    except HTTPException:
+        db.rollback()
+
+        if archivo_subido:
+            eliminar_archivo(
+                archivo_subido["public_id"],
+                archivo_subido["resource_type"],
+            )
+
+        raise
+
+    except Exception:
+        db.rollback()
+
+        if archivo_subido:
+            eliminar_archivo(
+                archivo_subido["public_id"],
+                archivo_subido["resource_type"],
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo actualizar la actividad",
+        )
+
+
+def eliminar_archivo_anterior(
+    archivo_subido: dict | None,
+    archivo_anterior: dict,
+) -> None:
+    if archivo_subido and archivo_anterior["public_id"]:
+        eliminar_archivo(
+            archivo_anterior["public_id"],
+            archivo_anterior["resource_type"] or "image",
+        )
+
+
 # ============================================================
 # FUNCIONES AUXILIARES
 # ============================================================
+
+
+def validar_datos_actividad(
+    titulo: str,
+    descripcion: str,
+    fecha_publicacion: date,
+    fecha_limite: date,
+) -> None:
+
+    if not titulo.strip() or not descripcion.strip():
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="El título y la descripción son obligatorios",
+        )
+
+    if fecha_limite < fecha_publicacion:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "La fecha límite no puede ser anterior "
+                "a la fecha de publicación"
+            ),
+        )
+
+
+async def preparar_archivo_actividad(
+    archivo: UploadFile | None,
+) -> dict | None:
+
+    if archivo is None:
+        return None
+
+    return await subir_archivo(
+        archivo,
+        "actividades",
+    )
+
+
+def guardar_actividad(
+    db: Session,
+    actividad: Actividad,
+    archivo_subido: dict | None,
+) -> Actividad:
+
+    try:
+        db.add(actividad)
+        db.commit()
+        db.refresh(actividad)
+
+        return actividad
+
+    except Exception as error:
+        db.rollback()
+
+        if archivo_subido:
+            eliminar_archivo(
+                archivo_subido["public_id"],
+                archivo_subido["resource_type"],
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo registrar la actividad",
+        ) from error
+
+
+def obtener_datos_notificacion(
+    db: Session,
+    actividad: Actividad,
+) -> tuple[Materia | None, Curso | None]:
+
+    materia = (
+        db.query(Materia)
+        .filter(
+            Materia.id_materia == actividad.id_materia,
+        )
+        .first()
+    )
+
+    curso = (
+        db.query(Curso)
+        .filter(
+            Curso.id_curso == actividad.id_curso,
+        )
+        .first()
+    )
+
+    return materia, curso
 
 def obtener_asignacion_docente(
     db: Session,
@@ -279,12 +505,15 @@ async def crear_actividad(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("docente")),
 ):
-    if not titulo.strip() or not descripcion.strip():
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="El título y la descripción son obligatorios",
-        )
+    # 1. Validar información recibida.
+    validar_datos_actividad(
+        titulo,
+        descripcion,
+        fecha_publicacion,
+        fecha_limite,
+    )
 
+    # 2. Verificar asignación del docente.
     asignacion = obtener_asignacion_docente(
         db,
         current_user,
@@ -292,91 +521,43 @@ async def crear_actividad(
         numero_curso,
     )
 
-    if fecha_limite < fecha_publicacion:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La fecha límite no puede ser anterior a la fecha de publicación",
-        )
-
-    archivo_subido = None
-
-    try:
-        if archivo is not None:
-            archivo_subido = await subir_archivo(
-                archivo,
-                "actividades",
-            )
-
-        nueva_actividad = Actividad(
-            id_usuario=current_user.id_usuario,
-            titulo=titulo.strip(),
-            descripcion=descripcion.strip(),
-            archivo=(
-                archivo_subido["url"]
-                if archivo_subido
-                else None
-            ),
-            archivo_public_id=(
-                archivo_subido["public_id"]
-                if archivo_subido
-                else None
-            ),
-            archivo_resource_type=(
-                archivo_subido["resource_type"]
-                if archivo_subido
-                else None
-            ),
-            fecha_publicacion=fecha_publicacion,
-            fecha_limite=fecha_limite,
-            id_materia=asignacion.id_materia,
-            id_curso=asignacion.id_curso,
-        )
-
-        db.add(nueva_actividad)
-        db.commit()
-        db.refresh(nueva_actividad)
-
-    except HTTPException:
-        db.rollback()
-
-        if archivo_subido:
-            eliminar_archivo(
-                archivo_subido["public_id"],
-                archivo_subido["resource_type"],
-            )
-
-        raise
-
-    except Exception:
-        db.rollback()
-
-        if archivo_subido:
-            eliminar_archivo(
-                archivo_subido["public_id"],
-                archivo_subido["resource_type"],
-            )
-
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No se pudo registrar la actividad",
-        )
-
-    materia = (
-        db.query(Materia)
-        .filter(
-            Materia.id_materia == nueva_actividad.id_materia,
-        )
-        .first()
+    # 3. Preparar archivo adjunto.
+    archivo_subido = await preparar_archivo_actividad(
+        archivo,
     )
 
-    curso = (
-        db.query(Curso)
-        .filter(
-            Curso.id_curso == nueva_actividad.id_curso,
-        )
-        .first()
+    # 4. Construir actividad.
+    nueva_actividad = Actividad(
+        id_usuario=current_user.id_usuario,
+        titulo=titulo.strip(),
+        descripcion=descripcion.strip(),
+        archivo=archivo_subido["url"] if archivo_subido else None,
+        archivo_public_id=(
+            archivo_subido["public_id"] if archivo_subido else None
+        ),
+        archivo_resource_type=(
+            archivo_subido["resource_type"] if archivo_subido else None
+        ),
+        fecha_publicacion=fecha_publicacion,
+        fecha_limite=fecha_limite,
+        id_materia=asignacion.id_materia,
+        id_curso=asignacion.id_curso,
     )
 
+    # 5. Guardar en la base de datos.
+    guardar_actividad(
+        db,
+        nueva_actividad,
+        archivo_subido,
+    )
+
+    # 6. Obtener información para las notificaciones.
+    materia, curso = obtener_datos_notificacion(
+        db,
+        nueva_actividad,
+    )
+
+    # 7. Programar notificaciones.
     if materia is not None and curso is not None:
         notificar_publicacion_actividad(
             background_tasks,
@@ -490,6 +671,7 @@ def obtener_actividad(
 # Editar actividad y reemplazar archivo opcionalmente.
 # ============================================================
 
+
 @router.put(
     "/{id_actividad}",
     response_model=ActividadResponse,
@@ -523,6 +705,19 @@ async def editar_actividad(
         current_user,
     )
 
+    validar_datos_actividad(
+        titulo,
+        descripcion,
+    )
+
+    actualizar_asignacion_actividad(
+        db,
+        actividad,
+        current_user,
+        nombre_materia,
+        numero_curso,
+    )
+
     cambios = {
         "titulo": titulo,
         "descripcion": descripcion,
@@ -530,106 +725,30 @@ async def editar_actividad(
         "fecha_limite": fecha_limite,
     }
 
-    if titulo is not None and not titulo.strip():
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="El título no puede estar vacío",
-        )
+    aplicar_cambios_actividad(
+        actividad,
+        cambios,
+    )
 
-    if descripcion is not None and not descripcion.strip():
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="La descripción no puede estar vacía",
-        )
-
-    if nombre_materia is not None or numero_curso is not None:
-        materia_actual = (
-            db.query(Materia)
-            .filter(Materia.id_materia == actividad.id_materia)
-            .first()
-        )
-
-        curso_actual = obtener_curso_de_actividad(
-            db,
-            actividad,
-        )
-
-        asignacion = obtener_asignacion_docente(
-            db,
-            current_user,
-            nombre_materia or materia_actual.nombre_materia,
-            numero_curso or curso_actual.numero_curso,
-        )
-
-        actividad.id_materia = asignacion.id_materia
-        actividad.id_curso = asignacion.id_curso
-
-    for campo, valor in cambios.items():
-        if valor is not None:
-            if isinstance(valor, str):
-                valor = valor.strip()
-
-            setattr(actividad, campo, valor)
-
-    if actividad.fecha_limite < actividad.fecha_publicacion:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="La fecha límite no puede ser anterior a la fecha de publicación",
-        )
+    validar_fechas_actividad(
+        actividad,
+        db,
+    )
 
     archivo_anterior = {
         "public_id": actividad.archivo_public_id,
         "resource_type": actividad.archivo_resource_type,
     }
 
-    archivo_subido = None
+    archivo_subido = await guardar_cambios_actividad(
+        db,
+        actividad,
+        archivo,
+    )
 
-    try:
-        if archivo is not None:
-            archivo_subido = await subir_archivo(
-                archivo,
-                "actividades",
-            )
-
-            actividad.archivo = archivo_subido["url"]
-            actividad.archivo_public_id = archivo_subido["public_id"]
-            actividad.archivo_resource_type = archivo_subido["resource_type"]
-
-        db.commit()
-        db.refresh(actividad)
-
-    except HTTPException:
-        db.rollback()
-
-        if archivo_subido:
-            eliminar_archivo(
-                archivo_subido["public_id"],
-                archivo_subido["resource_type"],
-            )
-
-        raise
-
-    except Exception:
-        db.rollback()
-
-        if archivo_subido:
-            eliminar_archivo(
-                archivo_subido["public_id"],
-                archivo_subido["resource_type"],
-            )
-
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No se pudo actualizar la actividad",
-        )
-
-    # Eliminar el archivo anterior solo después de guardar
-    # correctamente el nuevo archivo y los cambios en la BD.
-    if archivo_subido and archivo_anterior["public_id"]:
-        eliminar_archivo(
-            archivo_anterior["public_id"],
-            archivo_anterior["resource_type"] or "image",
-        )
+    eliminar_archivo_anterior(
+        archivo_subido,
+        archivo_anterior,
+    )
 
     return actividad

@@ -139,6 +139,163 @@ def sincronizar_acceso_academico(
             acceso.estado = estado_acceso
 
 
+def validar_actualizacion_incapacidad(
+    incapacidad: Incapacidad,
+    fecha_inicio: date,
+    fecha_fin: date,
+    estado: str,
+    observacion_revision: str | None,
+) -> None:
+    if incapacidad.estado == "finalizada":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se puede modificar una incapacidad finalizada",
+        )
+
+    estados_validos = (
+        "pendiente",
+        "aprobada",
+        "rechazada",
+        "finalizada",
+    )
+
+    if estado not in estados_validos:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El estado de la incapacidad no es válido",
+        )
+
+    if fecha_fin < fecha_inicio:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "La fecha de finalización no puede ser anterior "
+                "a la fecha de inicio"
+            ),
+        )
+
+    if estado in ("aprobada", "rechazada"):
+        if (
+            observacion_revision is None
+            or not observacion_revision.strip()
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Debes escribir una observación para "
+                    "aprobar o rechazar la incapacidad"
+                ),
+            )
+
+
+def crear_historial_incapacidad(
+    incapacidad: Incapacidad,
+    fecha_inicio: date,
+    fecha_fin: date,
+    motivo_cambio: str,
+    id_usuario: int,
+) -> HistorialIncapacidad:
+    return HistorialIncapacidad(
+        id_incapacidad=incapacidad.id_incapacidad,
+        fecha_anterior_inicio=incapacidad.fecha_inicio,
+        fecha_anterior_fin=incapacidad.fecha_fin,
+        fecha_nueva_inicio=fecha_inicio,
+        fecha_nueva_fin=fecha_fin,
+        motivo_cambio=motivo_cambio,
+        fecha_cambio=datetime.now(),
+        id_usuario_cambio=id_usuario,
+    )
+
+
+def aplicar_actualizacion_incapacidad(
+    incapacidad: Incapacidad,
+    fecha_inicio: date,
+    fecha_fin: date,
+    motivo: str,
+    estado: str,
+    observacion_revision: str | None,
+    coordinador: Usuario,
+    archivo_subido: dict | None,
+) -> None:
+    incapacidad.fecha_inicio = fecha_inicio
+    incapacidad.fecha_fin = fecha_fin
+    incapacidad.motivo = motivo
+    incapacidad.estado = estado
+
+    if archivo_subido:
+        incapacidad.archivo = archivo_subido["url"]
+        incapacidad.archivo_public_id = archivo_subido["public_id"]
+        incapacidad.archivo_resource_type = (
+            archivo_subido["resource_type"]
+        )
+
+    if estado in ("aprobada", "rechazada"):
+        incapacidad.id_coordinador_revisor = coordinador.id_usuario
+        incapacidad.fecha_revision = datetime.now()
+        incapacidad.observacion_revision = (
+            observacion_revision.strip()
+        )
+
+
+def limpiar_archivo_subido(
+    archivo_subido: dict | None,
+) -> None:
+    if archivo_subido:
+        eliminar_archivo(
+            archivo_subido["public_id"],
+            archivo_subido["resource_type"],
+        )
+
+
+def notificar_resultado_revision(
+    background_tasks: BackgroundTasks,
+    incapacidad: Incapacidad,
+    estado_anterior: str,
+    estado_nuevo: str,
+) -> None:
+    if (
+        estado_nuevo not in ("aprobada", "rechazada")
+        or estado_anterior == estado_nuevo
+    ):
+        return
+
+    estudiante = incapacidad.usuario
+
+    if (
+        estudiante is None
+        or estudiante.tipo_de_usuario != "estudiante"
+        or not estudiante.correo
+    ):
+        return
+
+    resultado = (
+        "aprobada"
+        if estado_nuevo == "aprobada"
+        else "rechazada"
+    )
+
+    background_tasks.add_task(
+        notificar_usuario,
+        destinatario=estudiante.correo,
+        nombres_usuario=(
+            f"{estudiante.nombres_compl} "
+            f"{estudiante.apellidos_compl}"
+        ),
+        asunto=(
+            f"Actualización de incapacidad - "
+            f"{incapacidad.numero_radicado}"
+        ),
+        titulo=f"Tu incapacidad fue {resultado}",
+        mensaje=(
+            f"Te informamos que tu incapacidad con "
+            f"número de radicado "
+            f"{incapacidad.numero_radicado} "
+            f"ha sido {resultado}."
+        ),
+        detalle=incapacidad.observacion_revision or "",
+    )
+
+
 # ============================================================
 # NOTIFICAR A LOS COORDINADORES DE UNA NUEVA INCAPACIDAD
 # ============================================================
@@ -404,6 +561,7 @@ def obtener_incapacidad_por_id(
 # El archivo nuevo es opcional.
 # ============================================================
 
+
 @router.put(
     "/{id_incapacidad}",
     response_model=APIResponse[IncapacidadResponse],
@@ -431,46 +589,13 @@ async def actualizar_incapacidad(
         current_user,
     )
 
-    if incapacidad.estado == "finalizada":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="No se puede modificar una incapacidad finalizada",
-        )
-
-    estados_validos = (
-        "pendiente",
-        "aprobada",
-        "rechazada",
-        "finalizada",
+    validar_actualizacion_incapacidad(
+        incapacidad,
+        fecha_inicio,
+        fecha_fin,
+        estado,
+        observacion_revision,
     )
-
-    if estado not in estados_validos:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El estado de la incapacidad no es válido",
-        )
-
-    if fecha_fin < fecha_inicio:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "La fecha de finalización no puede ser anterior "
-                "a la fecha de inicio"
-            ),
-        )
-
-    if estado in ("aprobada", "rechazada"):
-        if (
-            observacion_revision is None
-            or not observacion_revision.strip()
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=(
-                    "Debes escribir una observación para "
-                    "aprobar o rechazar la incapacidad"
-                ),
-            )
 
     estado_anterior = incapacidad.estado
 
@@ -485,36 +610,25 @@ async def actualizar_incapacidad(
             "incapacidades",
         )
 
-    historial = HistorialIncapacidad(
-        id_incapacidad=incapacidad.id_incapacidad,
-        fecha_anterior_inicio=incapacidad.fecha_inicio,
-        fecha_anterior_fin=incapacidad.fecha_fin,
-        fecha_nueva_inicio=fecha_inicio,
-        fecha_nueva_fin=fecha_fin,
+    historial = crear_historial_incapacidad(
+        incapacidad=incapacidad,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
         motivo_cambio=motivo_cambio,
-        fecha_cambio=datetime.now(),
-        id_usuario_cambio=current_user.id_usuario,
+        id_usuario=current_user.id_usuario,
     )
 
     try:
-        incapacidad.fecha_inicio = fecha_inicio
-        incapacidad.fecha_fin = fecha_fin
-        incapacidad.motivo = motivo
-        incapacidad.estado = estado
-
-        if archivo_subido:
-            incapacidad.archivo = archivo_subido["url"]
-            incapacidad.archivo_public_id = archivo_subido["public_id"]
-            incapacidad.archivo_resource_type = (
-                archivo_subido["resource_type"]
-            )
-
-        if estado in ("aprobada", "rechazada"):
-            incapacidad.id_coordinador_revisor = current_user.id_usuario
-            incapacidad.fecha_revision = datetime.now()
-            incapacidad.observacion_revision = (
-                observacion_revision.strip()
-            )
+        aplicar_actualizacion_incapacidad(
+            incapacidad=incapacidad,
+            fecha_inicio=fecha_inicio,
+            fecha_fin=fecha_fin,
+            motivo=motivo,
+            estado=estado,
+            observacion_revision=observacion_revision,
+            coordinador=current_user,
+            archivo_subido=archivo_subido,
+        )
 
         sincronizar_acceso_academico(
             db,
@@ -527,81 +641,31 @@ async def actualizar_incapacidad(
 
     except HTTPException:
         db.rollback()
-
-        if archivo_subido:
-            eliminar_archivo(
-                archivo_subido["public_id"],
-                archivo_subido["resource_type"],
-            )
-
+        limpiar_archivo_subido(archivo_subido)
         raise
 
     except Exception:
         db.rollback()
-
-        if archivo_subido:
-            eliminar_archivo(
-                archivo_subido["public_id"],
-                archivo_subido["resource_type"],
-            )
+        limpiar_archivo_subido(archivo_subido)
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="No se pudo actualizar la incapacidad",
         )
 
-    # Eliminar el documento anterior únicamente después
-    # de guardar correctamente el nuevo documento.
-    if (
-        archivo_subido
-        and archivo_anterior_public_id
-    ):
+    # Eliminar el documento anterior después del commit.
+    if archivo_subido and archivo_anterior_public_id:
         eliminar_archivo(
             archivo_anterior_public_id,
             archivo_anterior_resource_type or "image",
         )
 
-    # Notificar únicamente cuando exista un cambio real
-    # hacia aprobada o rechazada.
-    if (
-        estado in ("aprobada", "rechazada")
-        and estado_anterior != estado
-    ):
-        estudiante = incapacidad.usuario
-
-        if (
-            estudiante is not None
-            and estudiante.tipo_de_usuario == "estudiante"
-            and estudiante.correo
-        ):
-            resultado = (
-                "aprobada"
-                if estado == "aprobada"
-                else "rechazada"
-            )
-
-            background_tasks.add_task(
-                notificar_usuario,
-                destinatario=estudiante.correo,
-                nombres_usuario=(
-                    f"{estudiante.nombres_compl} "
-                    f"{estudiante.apellidos_compl}"
-                ),
-                asunto=(
-                    f"Actualización de incapacidad - "
-                    f"{incapacidad.numero_radicado}"
-                ),
-                titulo=f"Tu incapacidad fue {resultado}",
-                mensaje=(
-                    f"Te informamos que tu incapacidad con "
-                    f"número de radicado "
-                    f"{incapacidad.numero_radicado} "
-                    f"ha sido {resultado}."
-                ),
-                detalle=(
-                    incapacidad.observacion_revision or ""
-                ),
-            )
+    notificar_resultado_revision(
+        background_tasks=background_tasks,
+        incapacidad=incapacidad,
+        estado_anterior=estado_anterior,
+        estado_nuevo=estado,
+    )
 
     mensaje = (
         "Incapacidad aprobada y acceso académico gestionado automáticamente"
