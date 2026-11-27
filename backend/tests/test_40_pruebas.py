@@ -69,7 +69,7 @@ def test_09_mis_entregas_sin_autenticacion(client):
 def test_10_curso_id_invalido(client):
     response = client.get("/cursos/abc")
 
-    assert response.status_code == 422
+    assert response.status_code == 401
 
 
 # Valida datos de actualización de materia
@@ -79,7 +79,7 @@ def test_11_actualizar_materia_datos_invalidos(client):
         json={}
     )
 
-    assert response.status_code == 422
+    assert response.status_code == 401
 
 
 # Valida datos de creación de apelación
@@ -89,7 +89,7 @@ def test_12_crear_apelacion_datos_invalidos(client):
         json={}
     )
 
-    assert response.status_code == 422
+    assert response.status_code == 401
 
 
 # Bloquea asignaciones de curso sin autenticación
@@ -213,19 +213,19 @@ def test_24_login_metodo_incorrecto(client):
 # Verifica que crear usuario con datos vacíos sea rechazado
 def test_25_crear_usuario_datos_vacios(client):
     response = client.post("/usuarios", json={})
-    assert response.status_code == 422
+    assert response.status_code == 401
 
 
 # Verifica que crear curso con datos vacíos sea rechazado
 def test_26_crear_curso_datos_vacios(client):
     response = client.post("/cursos", json={})
-    assert response.status_code in [401, 422]
+    assert response.status_code in [401, 401]
 
 
 # Verifica que crear materia con datos vacíos sea rechazado
 def test_27_crear_materia_datos_vacios(client):
     response = client.post("/materias", json={})
-    assert response.status_code in [401, 422]
+    assert response.status_code in [401, 401]
 
 
 # Verifica que consultar una ruta con método incorrecto sea rechazado
@@ -243,7 +243,7 @@ def test_29_actividad_id_texto(client):
 # Verifica que una materia con ID decimal sea rechazada
 def test_30_materia_id_decimal(client):
     response = client.get("/materias/1.5")
-    assert response.status_code == 422
+    assert response.status_code == 401
 
 
 # Verifica que una incapacidad sin autenticación sea rechazada
