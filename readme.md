@@ -10,7 +10,6 @@ Sistema web educativo orientado a estudiantes que, debido a una incapacidad méd
 - Yoberson David Diaz Romero
 - Daniela Andrea Jaraba Escobar
 - Kamila Pinzon Hurtado
-- Zuleima Terraza Iturriago
 
 ---
 
