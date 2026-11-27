@@ -1,8 +1,5 @@
-
 from getpass import getpass
-
 from sqlalchemy.exc import IntegrityError
-
 from app.database.conection import SessionLocal
 from app.models.Usuarios import Usuario
 from app.core.security import hash_password
@@ -12,10 +9,8 @@ def main():
     db = SessionLocal()
 
     try:
-
         print("=== Crear administrador global de APRENZY ===")
         print("La contraseña no se mostrará en pantalla.\n")
-
 
         documento = input(
             "Documento: "

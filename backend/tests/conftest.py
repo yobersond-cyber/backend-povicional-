@@ -13,5 +13,4 @@ def client():
     de la aplicación.
     """
     client = TestClient(app)
-    yield client  
-    
+    yield client

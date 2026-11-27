@@ -1,4 +1,3 @@
-
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -8,12 +7,6 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-
-from app.dependencias.auth import (
-    require_role,
-    get_current_user,
-)
-
 from app.database.conection import get_db
 from app.dependencias.auth import require_role
 from app.models.docente_asignacion import DocenteAsignacion
@@ -25,7 +18,6 @@ from app.schemas.docente_asignacion import (
     DocenteAsignacionResponse,
 )
 from app.schemas.base import APIResponse
-
 from app.services.notificaciones_service import notificar_usuario
 
 
@@ -34,10 +26,6 @@ router = APIRouter(
     tags=["Docentes - Asignaciones"],
 )
 
-
-# ============================================================
-# FUNCIONES AUXILIARES
-# ============================================================
 
 def verificar_colegio_coordinador(current_user: Usuario):
     if current_user.id_colegio is None:
@@ -163,6 +151,7 @@ def programar_notificacion_docente(
 # Asignar un docente a una materia y curso.
 # ============================================================
 
+
 @router.post(
     "",
     response_model=APIResponse[DocenteAsignacionResponse],
@@ -286,11 +275,11 @@ def asignar_docente_materia(
         data=nueva_asignacion,
     )
 
-
 # ============================================================
 # GET /docente-materia
 # Listar asignaciones del colegio.
 # ============================================================
+
 
 @router.get(
     "",
@@ -330,6 +319,7 @@ def listar_asignaciones(
 # DELETE /docente-materia/{id_asignacion}
 # Retirar una asignación docente.
 # ============================================================
+
 
 @router.delete(
     "/{id_asignacion}",
@@ -407,6 +397,7 @@ def eliminar_asignacion(
 # GET /docente-materia/mis-asignaciones
 # Consultar las materias y cursos del docente autenticado.
 # ============================================================
+
 
 @router.get("/mis-asignaciones")
 def listar_mis_asignaciones(

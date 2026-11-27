@@ -12,3 +12,18 @@ from .acceso_academico import AccesoAcademico
 from .material_academico import MaterialAcademico
 from .actividad import Actividad
 from .entrega import Entrega
+__all__ = [
+    "Colegio",
+    "Curso",
+    "Usuario",
+    "UsuarioCurso",
+    "Materia",
+    "DocenteAsignacion",
+    "Incapacidad",
+    "HistorialIncapacidad",
+    "Apelacion",
+    "AccesoAcademico",
+    "MaterialAcademico",
+    "Actividad",
+    "Entrega",
+]

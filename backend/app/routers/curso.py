@@ -1,4 +1,3 @@
-
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -7,22 +6,18 @@ from fastapi import (
     status,
 )
 from sqlalchemy.orm import Session
-
 from app.database.conection import get_db
 from app.dependencias.auth import require_role
 from app.models.Usuarios import Usuario
 from app.models.curso import Curso
 from app.models.docente_asignacion import DocenteAsignacion
 from app.models.usuario_curso import UsuarioCurso
-from app.models.materia import Materia
-
 from app.schemas.curso import (
     CursoCreate,
     CursoUpdate,
     CursoResponse,
 )
 from app.schemas.base import APIResponse
-
 from app.services.notificaciones_service import notificar_usuario
 
 

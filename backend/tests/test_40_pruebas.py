@@ -1,4 +1,21 @@
+import pytest
+from fastapi.testclient import TestClient
+from app.main import app
+
+
 # Verifica que la API funcione
+@pytest.fixture
+def client():
+    """
+    Cliente de pruebas de FastAPI.
+
+    No utiliza la base de datos y no inicia el lifespan
+    de la aplicación.
+    """
+    client = TestClient(app)
+    yield client
+
+
 def test_01_api_funcionando(client):
     response = client.get("/")
 
@@ -167,26 +184,8 @@ def test_20_actualizar_incapacidad_sin_autenticacion(client):
     )
 
     assert response.status_code == 401
-    
-import pytest
-from fastapi.testclient import TestClient
-
-from app.main import app
 
 
-@pytest.fixture
-def client():
-    """
-    Cliente de pruebas de FastAPI.
-
-    No utiliza la base de datos y no inicia el lifespan
-    de la aplicación.
-    """
-    client = TestClient(app)
-    yield client  
-    
-
-# Verifica que la documentación de la API esté disponible
 def test_21_documentacion_api(client):
     response = client.get("/docs")
     assert response.status_code == 200
@@ -306,4 +305,3 @@ def test_40_actualizar_actividad_sin_token(client):
         "titulo": "Actividad actualizada"
     })
     assert response.status_code == 401
-

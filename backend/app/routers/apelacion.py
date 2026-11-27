@@ -1,6 +1,4 @@
-
 from datetime import date, datetime
-
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -12,44 +10,37 @@ from fastapi import (
     status,
 )
 from sqlalchemy.orm import Session, joinedload
-
 from app.database.conection import get_db
 from app.dependencias.auth import (
     get_current_user,
     obtener_rol_efectivo,
     require_role,
 )
-
 from app.models.apelacion import Apelacion
 from app.models.incapacidad import Incapacidad
 from app.models.Usuarios import Usuario
 from app.models.acceso_academico import AccesoAcademico
 from app.models.historial_incapacidad import HistorialIncapacidad
-
 from app.schemas.apelacion import (
     ApelacionUpdate,
     ApelacionResponse,
     EstadoApelacion,
 )
-
 from app.schemas.base import APIResponse
-
 from app.services.notificaciones_service import notificar_usuario
 from app.services.archivo_service import (
     subir_archivo,
     eliminar_archivo,
 )
-
-
 router = APIRouter(
     prefix="/apelaciones",
     tags=["Apelaciones"],
 )
 
-
 # ============================================================
 # FUNCIONES AUXILIARES
 # ============================================================
+
 
 def obtener_apelacion(
     db: Session,
@@ -177,10 +168,10 @@ def sincronizar_acceso_academico(
         acceso.id_usuario = incapacidad.id_usuario
         acceso.estado = estado_acceso
 
-
 # ============================================================
 # NOTIFICAR A LOS COORDINADORES DE UNA NUEVA APELACIÓN
 # ============================================================
+
 
 def notificar_nueva_apelacion_coordinadores(
     background_tasks: BackgroundTasks,
@@ -243,11 +234,11 @@ def notificar_nueva_apelacion_coordinadores(
             ),
         )
 
-
 # ============================================================
 # POST /apelaciones
 # El estudiante registra una apelación.
 # ============================================================
+
 
 @router.post(
     "",
@@ -383,11 +374,11 @@ async def crear_apelacion(
         data=nueva_apelacion,
     )
 
-
 # ============================================================
 # GET /apelaciones
 # Listar apelaciones según el rol.
 # ============================================================
+
 
 @router.get(
     "",
@@ -451,11 +442,11 @@ def listar_apelaciones(
         data=apelaciones,
     )
 
-
 # ============================================================
 # GET /apelaciones/{id_apelacion}
 # Consultar una apelación concreta.
 # ============================================================
+
 
 @router.get(
     "/{id_apelacion}",
@@ -482,11 +473,11 @@ def obtener_apelacion_por_id(
         data=apelacion,
     )
 
-
 # ============================================================
 # PUT /apelaciones/{id_apelacion}
 # El coordinador revisa y actualiza una apelación.
 # ============================================================
+
 
 @router.put(
     "/{id_apelacion}",
@@ -640,4 +631,3 @@ def actualizar_apelacion(
         mensaje=mensaje_respuesta,
         data=apelacion,
     )
-    

@@ -2,17 +2,13 @@
 import asyncio
 import os
 from contextlib import asynccontextmanager
-
+from importlib import import_module
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
-
 from app.database.conection import engine
+from app.services.automatic_tasks import tarea_finalizar_accesos
 from app.database.base import Base
-
-# Registrar todos los modelos antes de crear las tablas.
-import app.models
-
 from app.routers import (
     usuario,
     colegio,
@@ -28,8 +24,7 @@ from app.routers import (
     actividad,
     entrega,
 )
-
-from app.services.automatic_tasks import tarea_finalizar_accesos
+import_module("app.models")
 
 
 def actualizar_estructura_base_datos():

@@ -1,7 +1,6 @@
 
 from datetime import date
 from typing import Literal
-
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -9,7 +8,6 @@ from fastapi import (
     HTTPException,
     status,
 )
-from pydantic import Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -20,13 +18,11 @@ from app.dependencias.auth import (
     obtener_rol_efectivo,
     verificar_acceso_academico,
 )
-
 from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
 )
-
 from app.models.Usuarios import Usuario
 from app.models.colegios import Colegio
 from app.models.curso import Curso
@@ -39,11 +35,9 @@ from app.models.docente_asignacion import DocenteAsignacion
 from app.models.material_academico import MaterialAcademico
 from app.models.historial_incapacidad import HistorialIncapacidad
 from app.models.acceso_academico import AccesoAcademico
-
 from app.schemas.base import APIResponse, BaseSchema
 from app.schemas.entrega import EntregaResponse
 from app.schemas.actividad import ActividadEstudianteResponse
-
 from app.schemas.usuario import (
     UsuarioCreate,
     UsuarioUpdate,
@@ -55,7 +49,6 @@ from app.schemas.usuario import (
     MateriaResumen,
     CursoResumen,
 )
-
 from app.services.notificaciones_service import notificar_usuario
 
 
@@ -72,6 +65,7 @@ class EstadoAprobacionUpdate(BaseSchema):
 # ============================================================
 # FUNCIONES AUXILIARES
 # ============================================================
+
 
 def verificar_colegio_usuario(current_user: Usuario) -> int:
     if current_user.id_colegio is None:
@@ -328,11 +322,11 @@ def notificar_cambio_curso_estudiante(
         ),
     )
 
-
 # ============================================================
 # 1. COLEGIOS Y CURSOS PARA EL REGISTRO PÚBLICO
 # No requieren autenticación.
 # ============================================================
+
 
 @router.get(
     "/colegios-disponibles",
@@ -402,10 +396,10 @@ def listar_cursos_disponibles(
         data=resultado,
     )
 
-
 # ============================================================
 # 2. REGISTRO PÚBLICO DE ESTUDIANTES
 # ============================================================
+
 
 @router.post(
     "/registro-estudiante",
@@ -477,10 +471,10 @@ def registrar_estudiante(
         data=estudiante,
     )
 
-
 # ============================================================
 # 3. CREACIÓN INTERNA DE USUARIOS
 # ============================================================
+
 
 @router.post(
     "",
@@ -581,10 +575,10 @@ def crear_usuario(
         data=nuevo_usuario,
     )
 
-
 # ============================================================
 # 4. INICIAR SESIÓN
 # ============================================================
+
 
 @router.post(
     "/login",
@@ -655,10 +649,10 @@ def login_usuario(
         },
     )
 
-
 # ============================================================
 # 5. OBTENER USUARIO AUTENTICADO
 # ============================================================
+
 
 @router.get(
     "/me",
@@ -673,10 +667,10 @@ def obtener_usuario_actual(
         data=current_user,
     )
 
-
 # ============================================================
 # 6. LISTAR USUARIOS DEL COLEGIO
 # ============================================================
+
 
 @router.get(
     "",
@@ -727,10 +721,10 @@ def listar_usuarios(
         data=usuarios,
     )
 
-
 # ============================================================
 # 7. LISTAR COORDINADORES DEL RECTOR
 # ============================================================
+
 
 @router.get(
     "/coordinadores",
@@ -763,10 +757,10 @@ def listar_coordinadores(
         data=coordinadores,
     )
 
-
 # ============================================================
 # 8. SOLICITUDES DE REGISTRO DE ESTUDIANTES
 # ============================================================
+
 
 @router.get(
     "/solicitudes-estudiantes",
@@ -899,10 +893,10 @@ def actualizar_aprobacion_estudiante(
         data=estudiante,
     )
 
-
 # ============================================================
 # 9. LISTAR ESTUDIANTES
 # ============================================================
+
 
 @router.get(
     "/estudiantes",
@@ -976,10 +970,10 @@ def listar_estudiantes(
         data=estudiantes,
     )
 
-
 # ============================================================
 # 10. LISTAR DOCENTES DEL COLEGIO
 # ============================================================
+
 
 @router.get(
     "/docentes",
@@ -1085,10 +1079,10 @@ def listar_docentes(
         data=resultado,
     )
 
-
 # ============================================================
 # 11. OBTENER MIS ENTREGAS
 # ============================================================
+
 
 @router.get(
     "/mis-entregas",
@@ -1114,10 +1108,10 @@ def obtener_mis_entregas(
         data=entregas,
     )
 
-
 # ============================================================
 # 12. OBTENER MIS ACTIVIDADES
 # ============================================================
+
 
 @router.get(
     "/mis-actividades",
@@ -1200,10 +1194,10 @@ def obtener_mis_actividades(
         data=resultado,
     )
 
-
 # ============================================================
 # 13. OBTENER MIS CALIFICACIONES
 # ============================================================
+
 
 @router.get(
     "/mis-calificaciones",
@@ -1232,10 +1226,10 @@ def obtener_mis_calificaciones(
         data=entregas,
     )
 
-
 # ============================================================
 # 14. ELIMINAR USUARIOS
 # ============================================================
+
 
 @router.delete(
     "/{id_usuario}",
@@ -1357,10 +1351,10 @@ def eliminar_usuario(
         },
     )
 
-
 # ============================================================
 # 15. OBTENER USUARIO POR ID
 # ============================================================
+
 
 @router.get(
     "/{id_usuario}",
@@ -1406,11 +1400,11 @@ def obtener_usuario(
         data=usuario,
     )
 
-
 # ============================================================
 # 16. ACTUALIZAR USUARIOS
 # Notifica al estudiante si cambia de curso.
 # ============================================================
+
 
 @router.put(
     "/{id_usuario}",
