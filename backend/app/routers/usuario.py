@@ -1,6 +1,7 @@
 
 from datetime import date
 from typing import Literal
+
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -322,6 +323,165 @@ def notificar_cambio_curso_estudiante(
         ),
     )
 
+
+# ============================================================
+# AUXILIARES PARA ACTUALIZAR USUARIOS
+# ============================================================
+
+
+def validar_cambios_actualizacion(
+    datos: UsuarioUpdate,
+) -> dict:
+    cambios = datos.model_dump(exclude_unset=True)
+
+    if not cambios:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se enviaron datos para actualizar",
+        )
+
+    return cambios
+
+
+def validar_datos_unicos_actualizacion(
+    db: Session,
+    usuario: Usuario,
+    cambios: dict,
+) -> None:
+    if "documento" not in cambios and "correo" not in cambios:
+        return
+
+    verificar_datos_unicos(
+        db,
+        cambios.get("documento", usuario.documento),
+        str(cambios.get("correo", usuario.correo)),
+        id_usuario_excluir=usuario.id_usuario,
+    )
+
+
+def actualizar_curso_estudiante(
+    db: Session,
+    usuario: Usuario,
+    cambios: dict,
+) -> tuple[Curso | None, Curso | None, bool]:
+    curso_anterior = None
+    curso_nuevo = None
+    cambio_real_de_curso = False
+
+    if usuario.tipo_de_usuario != "estudiante":
+        if "id_curso" in cambios:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Solo los estudiantes pueden tener un curso directo",
+            )
+
+        return curso_anterior, curso_nuevo, cambio_real_de_curso
+
+    if "id_curso" not in cambios:
+        return curso_anterior, curso_nuevo, cambio_real_de_curso
+
+    id_curso = cambios.pop("id_curso")
+
+    if id_curso is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El estudiante debe conservar un curso asignado",
+        )
+
+    curso_nuevo = obtener_curso_o_error(
+        db,
+        id_curso,
+        usuario.id_colegio,
+    )
+
+    relacion = (
+        db.query(UsuarioCurso)
+        .filter(
+            UsuarioCurso.id_usuario == usuario.id_usuario
+        )
+        .first()
+    )
+
+    if relacion is None:
+        db.add(
+            UsuarioCurso(
+                id_usuario=usuario.id_usuario,
+                id_curso=curso_nuevo.id_curso,
+            )
+        )
+        cambio_real_de_curso = True
+
+    elif relacion.id_curso != curso_nuevo.id_curso:
+        curso_anterior = (
+            db.query(Curso)
+            .filter(
+                Curso.id_curso == relacion.id_curso,
+            )
+            .first()
+        )
+
+        relacion.id_curso = curso_nuevo.id_curso
+        cambio_real_de_curso = True
+
+    if cambio_real_de_curso:
+        usuario.jornada = curso_nuevo.jornada
+
+    return curso_anterior, curso_nuevo, cambio_real_de_curso
+
+
+def aplicar_cambios_generales(
+    usuario: Usuario,
+    cambios: dict,
+) -> None:
+    contrasena = cambios.pop("contrasena", None)
+
+    cambios.pop("id_curso", None)
+
+    for campo, valor in cambios.items():
+        setattr(usuario, campo, valor)
+
+    if contrasena:
+        usuario.contrasena = hash_password(contrasena)
+
+
+def guardar_usuario_actualizado(
+    db: Session,
+    usuario: Usuario,
+) -> None:
+    try:
+        db.commit()
+        db.refresh(usuario)
+
+    except IntegrityError as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No se pudo actualizar el usuario. Verifica los datos.",
+        ) from exc
+
+
+def notificar_cambio_curso_si_corresponde(
+    background_tasks: BackgroundTasks,
+    estudiante: Usuario,
+    curso_anterior: Curso | None,
+    curso_nuevo: Curso | None,
+    cambio_real_de_curso: bool,
+) -> None:
+    if not cambio_real_de_curso or curso_nuevo is None:
+        return
+
+    if estudiante.tipo_de_usuario != "estudiante":
+        return
+
+    notificar_cambio_curso_estudiante(
+        background_tasks=background_tasks,
+        estudiante=estudiante,
+        curso_anterior=curso_anterior,
+        curso_nuevo=curso_nuevo,
+    )
+
+
 # ============================================================
 # 1. COLEGIOS Y CURSOS PARA EL REGISTRO PÚBLICO
 # No requieren autenticación.
@@ -395,6 +555,7 @@ def listar_cursos_disponibles(
         mensaje="Cursos del colegio recuperados correctamente",
         data=resultado,
     )
+
 
 # ============================================================
 # 2. REGISTRO PÚBLICO DE ESTUDIANTES
@@ -470,6 +631,7 @@ def registrar_estudiante(
         ),
         data=estudiante,
     )
+
 
 # ============================================================
 # 3. CREACIÓN INTERNA DE USUARIOS
@@ -575,6 +737,7 @@ def crear_usuario(
         data=nuevo_usuario,
     )
 
+
 # ============================================================
 # 4. INICIAR SESIÓN
 # ============================================================
@@ -649,6 +812,7 @@ def login_usuario(
         },
     )
 
+
 # ============================================================
 # 5. OBTENER USUARIO AUTENTICADO
 # ============================================================
@@ -666,6 +830,7 @@ def obtener_usuario_actual(
         mensaje="Usuario autenticado obtenido correctamente",
         data=current_user,
     )
+
 
 # ============================================================
 # 6. LISTAR USUARIOS DEL COLEGIO
@@ -721,6 +886,7 @@ def listar_usuarios(
         data=usuarios,
     )
 
+
 # ============================================================
 # 7. LISTAR COORDINADORES DEL RECTOR
 # ============================================================
@@ -756,6 +922,7 @@ def listar_coordinadores(
         mensaje="Coordinadores del colegio recuperados correctamente",
         data=coordinadores,
     )
+
 
 # ============================================================
 # 8. SOLICITUDES DE REGISTRO DE ESTUDIANTES
@@ -893,6 +1060,7 @@ def actualizar_aprobacion_estudiante(
         data=estudiante,
     )
 
+
 # ============================================================
 # 9. LISTAR ESTUDIANTES
 # ============================================================
@@ -969,6 +1137,7 @@ def listar_estudiantes(
         mensaje="Estudiantes recuperados correctamente",
         data=estudiantes,
     )
+
 
 # ============================================================
 # 10. LISTAR DOCENTES DEL COLEGIO
@@ -1079,6 +1248,7 @@ def listar_docentes(
         data=resultado,
     )
 
+
 # ============================================================
 # 11. OBTENER MIS ENTREGAS
 # ============================================================
@@ -1107,6 +1277,7 @@ def obtener_mis_entregas(
         mensaje="Entregas del usuario recuperadas correctamente",
         data=entregas,
     )
+
 
 # ============================================================
 # 12. OBTENER MIS ACTIVIDADES
@@ -1194,6 +1365,7 @@ def obtener_mis_actividades(
         data=resultado,
     )
 
+
 # ============================================================
 # 13. OBTENER MIS CALIFICACIONES
 # ============================================================
@@ -1225,6 +1397,7 @@ def obtener_mis_calificaciones(
         mensaje="Calificaciones recuperadas correctamente",
         data=entregas,
     )
+
 
 # ============================================================
 # 14. ELIMINAR USUARIOS
@@ -1351,6 +1524,7 @@ def eliminar_usuario(
         },
     )
 
+
 # ============================================================
 # 15. OBTENER USUARIO POR ID
 # ============================================================
@@ -1400,6 +1574,7 @@ def obtener_usuario(
         data=usuario,
     )
 
+
 # ============================================================
 # 16. ACTUALIZAR USUARIOS
 # Notifica al estudiante si cambia de curso.
@@ -1427,117 +1602,41 @@ def actualizar_usuario(
         usuario,
     )
 
-    cambios = datos.model_dump(exclude_unset=True)
+    cambios = validar_cambios_actualizacion(datos)
 
-    if not cambios:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No se enviaron datos para actualizar",
-        )
+    validar_datos_unicos_actualizacion(
+        db,
+        usuario,
+        cambios,
+    )
 
-    if "documento" in cambios or "correo" in cambios:
-        verificar_datos_unicos(
-            db,
-            cambios.get("documento", usuario.documento),
-            str(cambios.get("correo", usuario.correo)),
-            id_usuario_excluir=id_usuario,
-        )
+    (
+        curso_anterior,
+        curso_nuevo,
+        cambio_real_de_curso,
+    ) = actualizar_curso_estudiante(
+        db,
+        usuario,
+        cambios,
+    )
 
-    curso_anterior = None
-    curso_nuevo = None
-    cambio_real_de_curso = False
+    aplicar_cambios_generales(
+        usuario,
+        cambios,
+    )
 
-    if usuario.tipo_de_usuario == "estudiante":
-        if "id_curso" in cambios:
-            id_curso = cambios.pop("id_curso")
+    guardar_usuario_actualizado(
+        db,
+        usuario,
+    )
 
-            if id_curso is None:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="El estudiante debe conservar un curso asignado",
-                )
-
-            curso_nuevo = obtener_curso_o_error(
-                db,
-                id_curso,
-                usuario.id_colegio,
-            )
-
-            relacion = (
-                db.query(UsuarioCurso)
-                .filter(
-                    UsuarioCurso.id_usuario == usuario.id_usuario
-                )
-                .first()
-            )
-
-            if relacion is None:
-                db.add(
-                    UsuarioCurso(
-                        id_usuario=usuario.id_usuario,
-                        id_curso=curso_nuevo.id_curso,
-                    )
-                )
-
-                cambio_real_de_curso = True
-
-            else:
-                if relacion.id_curso != curso_nuevo.id_curso:
-                    curso_anterior = (
-                        db.query(Curso)
-                        .filter(
-                            Curso.id_curso == relacion.id_curso,
-                        )
-                        .first()
-                    )
-
-                    relacion.id_curso = curso_nuevo.id_curso
-                    cambio_real_de_curso = True
-
-            if cambio_real_de_curso:
-                usuario.jornada = curso_nuevo.jornada
-
-    elif "id_curso" in cambios:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Solo los estudiantes pueden tener un curso directo",
-        )
-
-    contrasena = cambios.pop("contrasena", None)
-
-    cambios.pop("id_curso", None)
-
-    for campo, valor in cambios.items():
-        setattr(usuario, campo, valor)
-
-    if contrasena:
-        usuario.contrasena = hash_password(contrasena)
-
-    try:
-        db.commit()
-        db.refresh(usuario)
-
-    except IntegrityError as exc:
-        db.rollback()
-
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="No se pudo actualizar el usuario. Verifica los datos.",
-        ) from exc
-
-    # Notificar solamente si el estudiante cambió realmente
-    # de curso y el cambio quedó guardado correctamente.
-    if (
-        cambio_real_de_curso
-        and curso_nuevo is not None
-        and usuario.tipo_de_usuario == "estudiante"
-    ):
-        notificar_cambio_curso_estudiante(
-            background_tasks=background_tasks,
-            estudiante=usuario,
-            curso_anterior=curso_anterior,
-            curso_nuevo=curso_nuevo,
-        )
+    notificar_cambio_curso_si_corresponde(
+        background_tasks=background_tasks,
+        estudiante=usuario,
+        curso_anterior=curso_anterior,
+        curso_nuevo=curso_nuevo,
+        cambio_real_de_curso=cambio_real_de_curso,
+    )
 
     return APIResponse(
         success=True,

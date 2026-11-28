@@ -21,6 +21,11 @@ router = APIRouter(
 )
 
 
+# ============================================================
+# FUNCIONES AUXILIARES
+# ============================================================
+
+
 def obtener_colegio_coordinador(current_user: Usuario) -> int:
     if current_user.id_colegio is None:
         raise HTTPException(
@@ -64,21 +69,14 @@ def obtener_relacion_del_colegio(
     return relacion
 
 
-@router.post(
-    "",
-    response_model=APIResponse[UsuarioCursoResponse],
-    status_code=status.HTTP_201_CREATED,
-)
-def asignar_estudiante_curso(
-    datos: UsuarioCursoCreate,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(require_role("coordinador")),
-):
-    id_colegio = obtener_colegio_coordinador(current_user)
-
+def obtener_estudiante_para_asignacion(
+    db: Session,
+    id_usuario: int,
+    id_colegio: int,
+) -> Usuario:
     estudiante = (
         db.query(Usuario)
-        .filter(Usuario.id_usuario == datos.id_usuario)
+        .filter(Usuario.id_usuario == id_usuario)
         .first()
     )
 
@@ -106,9 +104,17 @@ def asignar_estudiante_curso(
             detail="El estudiante debe estar aprobado antes de asignarlo a un curso",
         )
 
+    return estudiante
+
+
+def obtener_curso_para_asignacion(
+    db: Session,
+    id_curso: int,
+    id_colegio: int,
+) -> Curso:
     curso = (
         db.query(Curso)
-        .filter(Curso.id_curso == datos.id_curso)
+        .filter(Curso.id_curso == id_curso)
         .first()
     )
 
@@ -124,6 +130,14 @@ def asignar_estudiante_curso(
             detail="No puedes asignar estudiantes a cursos de otro colegio",
         )
 
+    return curso
+
+
+def validar_asignacion_existente(
+    db: Session,
+    estudiante: Usuario,
+    curso: Curso,
+) -> None:
     asignacion_existente = (
         db.query(UsuarioCurso)
         .filter(
@@ -132,47 +146,102 @@ def asignar_estudiante_curso(
         .first()
     )
 
-    if asignacion_existente is not None:
-        if asignacion_existente.id_curso == curso.id_curso:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="El estudiante ya pertenece a este curso",
-            )
+    if asignacion_existente is None:
+        return
+
+    if asignacion_existente.id_curso == curso.id_curso:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El estudiante ya pertenece a este curso",
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="El estudiante ya está asignado a otro curso",
+    )
+
+
+def guardar_nueva_asignacion(
+    db: Session,
+    nueva_relacion: UsuarioCurso,
+) -> None:
+    try:
+        db.add(nueva_relacion)
+        db.commit()
+        db.refresh(nueva_relacion)
+
+    except IntegrityError as exc:
+        db.rollback()
 
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="El estudiante ya está asignado a otro curso",
-        )
+            detail="El estudiante ya está asignado o existen referencias inválidas",
+        ) from exc
+
+    except Exception as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo asignar el estudiante al curso",
+        ) from exc
+
+
+# ============================================================
+# ASIGNAR ESTUDIANTE A UN CURSO
+# ============================================================
+
+
+@router.post(
+    "",
+    response_model=APIResponse[UsuarioCursoResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+def asignar_estudiante_curso(
+    datos: UsuarioCursoCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("coordinador")),
+):
+    id_colegio = obtener_colegio_coordinador(current_user)
+
+    estudiante = obtener_estudiante_para_asignacion(
+        db,
+        datos.id_usuario,
+        id_colegio,
+    )
+
+    curso = obtener_curso_para_asignacion(
+        db,
+        datos.id_curso,
+        id_colegio,
+    )
+
+    validar_asignacion_existente(
+        db,
+        estudiante,
+        curso,
+    )
 
     nueva_relacion = UsuarioCurso(
         id_usuario=estudiante.id_usuario,
         id_curso=curso.id_curso,
     )
 
-    try:
-        db.add(nueva_relacion)
-        db.commit()
-        db.refresh(nueva_relacion)
-
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="El estudiante ya está asignado o existen referencias inválidas",
-        )
-
-    except Exception:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No se pudo asignar el estudiante al curso",
-        )
+    guardar_nueva_asignacion(
+        db,
+        nueva_relacion,
+    )
 
     return APIResponse(
         success=True,
         mensaje="Estudiante asignado al curso exitosamente",
         data=nueva_relacion,
     )
+
+
+# ============================================================
+# ELIMINAR ESTUDIANTE DE UN CURSO
+# ============================================================
 
 
 @router.delete(
@@ -197,12 +266,13 @@ def eliminar_estudiante_curso(
         db.delete(relacion)
         db.commit()
 
-    except Exception:
+    except Exception as exc:
         db.rollback()
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="No se pudo retirar al estudiante del curso",
-        )
+        ) from exc
 
     return APIResponse(
         success=True,

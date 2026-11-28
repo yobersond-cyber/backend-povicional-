@@ -1,4 +1,6 @@
+
 from datetime import date, datetime
+
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -10,6 +12,7 @@ from fastapi import (
     status,
 )
 from sqlalchemy.orm import Session, joinedload
+
 from app.database.conection import get_db
 from app.dependencias.auth import (
     get_current_user,
@@ -32,10 +35,13 @@ from app.services.archivo_service import (
     subir_archivo,
     eliminar_archivo,
 )
+
+
 router = APIRouter(
     prefix="/apelaciones",
     tags=["Apelaciones"],
 )
+
 
 # ============================================================
 # FUNCIONES AUXILIARES
@@ -130,7 +136,6 @@ def sincronizar_acceso_academico(
     Crea o actualiza el acceso académico de la incapacidad
     cuando una apelación es aprobada.
     """
-
     hoy = date.today()
 
     if incapacidad.fecha_fin < hoy:
@@ -151,10 +156,11 @@ def sincronizar_acceso_academico(
         .first()
     )
 
-    if hoy < incapacidad.fecha_inicio:
-        estado_acceso = "suspendido"
-    else:
-        estado_acceso = "activo"
+    estado_acceso = (
+        "suspendido"
+        if hoy < incapacidad.fecha_inicio
+        else "activo"
+    )
 
     if acceso is None:
         acceso = AccesoAcademico(
@@ -167,6 +173,7 @@ def sincronizar_acceso_academico(
     else:
         acceso.id_usuario = incapacidad.id_usuario
         acceso.estado = estado_acceso
+
 
 # ============================================================
 # NOTIFICAR A LOS COORDINADORES DE UNA NUEVA APELACIÓN
@@ -182,11 +189,7 @@ def notificar_nueva_apelacion_coordinadores(
     """
     Notifica a los coordinadores del colegio del estudiante
     cuando se registra una nueva apelación.
-
-    No incluye administradores globales ni usuarios de
-    otros colegios.
     """
-
     if estudiante.id_colegio is None:
         return
 
@@ -234,25 +237,16 @@ def notificar_nueva_apelacion_coordinadores(
             ),
         )
 
+
 # ============================================================
-# POST /apelaciones
-# El estudiante registra una apelación.
+# FUNCIONES AUXILIARES PARA CREAR APELACIONES
 # ============================================================
 
 
-@router.post(
-    "",
-    response_model=APIResponse[ApelacionResponse],
-    status_code=status.HTTP_201_CREATED,
-)
-async def crear_apelacion(
-    background_tasks: BackgroundTasks,
-    numero_radicado: str = Form(...),
-    motivo: str = Form(...),
-    archivo: UploadFile | None = File(None),
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(require_role("estudiante")),
-):
+def validar_datos_nueva_apelacion(
+    numero_radicado: str,
+    motivo: str,
+) -> None:
     if not numero_radicado.strip():
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -271,12 +265,11 @@ async def crear_apelacion(
             detail="El motivo de la apelación es obligatorio",
         )
 
-    incapacidad = buscar_incapacidad_por_radicado(
-        db,
-        numero_radicado,
-        current_user.id_usuario,
-    )
 
+def verificar_incapacidad_apelable(
+    db: Session,
+    incapacidad: Incapacidad,
+) -> None:
     if incapacidad.estado != "rechazada":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -297,6 +290,23 @@ async def crear_apelacion(
             detail="Esta incapacidad ya tiene una apelación registrada",
         )
 
+
+def eliminar_archivo_subido_si_existe(
+    archivo_subido: dict | None,
+) -> None:
+    if archivo_subido:
+        eliminar_archivo(
+            archivo_subido["public_id"],
+            archivo_subido["resource_type"],
+        )
+
+
+async def guardar_nueva_apelacion(
+    db: Session,
+    incapacidad: Incapacidad,
+    motivo: str,
+    archivo: UploadFile | None,
+) -> Apelacion:
     archivo_subido = None
 
     try:
@@ -310,20 +320,12 @@ async def crear_apelacion(
             id_incapacidad=incapacidad.id_incapacidad,
             fecha_apelacion=datetime.now(),
             motivo=motivo.strip(),
-            archivo=(
-                archivo_subido["url"]
-                if archivo_subido
-                else None
-            ),
+            archivo=archivo_subido["url"] if archivo_subido else None,
             archivo_public_id=(
-                archivo_subido["public_id"]
-                if archivo_subido
-                else None
+                archivo_subido["public_id"] if archivo_subido else None
             ),
             archivo_resource_type=(
-                archivo_subido["resource_type"]
-                if archivo_subido
-                else None
+                archivo_subido["resource_type"] if archivo_subido else None
             ),
             respuesta=None,
             estado="pendiente",
@@ -334,33 +336,65 @@ async def crear_apelacion(
         db.commit()
         db.refresh(nueva_apelacion)
 
+        return nueva_apelacion
+
     except HTTPException:
         db.rollback()
-
-        if archivo_subido:
-            eliminar_archivo(
-                archivo_subido["public_id"],
-                archivo_subido["resource_type"],
-            )
-
+        eliminar_archivo_subido_si_existe(archivo_subido)
         raise
 
-    except Exception:
+    except Exception as exc:
         db.rollback()
-
-        if archivo_subido:
-            eliminar_archivo(
-                archivo_subido["public_id"],
-                archivo_subido["resource_type"],
-            )
+        eliminar_archivo_subido_si_existe(archivo_subido)
 
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="No se pudo registrar la apelación",
-        )
+        ) from exc
 
-    # Notificar a los coordinadores únicamente después
-    # de guardar correctamente la apelación.
+
+# ============================================================
+# POST /apelaciones
+# El estudiante registra una apelación.
+# ============================================================
+
+
+@router.post(
+    "",
+    response_model=APIResponse[ApelacionResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+async def crear_apelacion(
+    background_tasks: BackgroundTasks,
+    numero_radicado: str = Form(...),
+    motivo: str = Form(...),
+    archivo: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(require_role("estudiante")),
+):
+    validar_datos_nueva_apelacion(
+        numero_radicado,
+        motivo,
+    )
+
+    incapacidad = buscar_incapacidad_por_radicado(
+        db,
+        numero_radicado,
+        current_user.id_usuario,
+    )
+
+    verificar_incapacidad_apelable(
+        db,
+        incapacidad,
+    )
+
+    nueva_apelacion = await guardar_nueva_apelacion(
+        db,
+        incapacidad,
+        motivo,
+        archivo,
+    )
+
     notificar_nueva_apelacion_coordinadores(
         background_tasks=background_tasks,
         db=db,
@@ -373,6 +407,7 @@ async def crear_apelacion(
         mensaje="Apelación radicada exitosamente",
         data=nueva_apelacion,
     )
+
 
 # ============================================================
 # GET /apelaciones
@@ -442,6 +477,7 @@ def listar_apelaciones(
         data=apelaciones,
     )
 
+
 # ============================================================
 # GET /apelaciones/{id_apelacion}
 # Consultar una apelación concreta.
@@ -473,6 +509,160 @@ def obtener_apelacion_por_id(
         data=apelacion,
     )
 
+
+# ============================================================
+# FUNCIONES AUXILIARES PARA ACTUALIZAR APELACIONES
+# ============================================================
+
+
+def validar_revision_apelacion(
+    apelacion: Apelacion,
+    incapacidad: Incapacidad,
+) -> None:
+    if apelacion.estado != "pendiente":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Esta apelación ya fue revisada",
+        )
+
+    if incapacidad.estado != "rechazada":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="La incapacidad ya no se encuentra en estado rechazado",
+        )
+
+
+def obtener_estado_apelacion(
+    datos: ApelacionUpdate,
+) -> str:
+    return (
+        datos.estado.value
+        if isinstance(datos.estado, EstadoApelacion)
+        else datos.estado
+    )
+
+
+def aprobar_incapacidad_por_apelacion(
+    db: Session,
+    incapacidad: Incapacidad,
+    datos: ApelacionUpdate,
+    current_user: Usuario,
+) -> None:
+    fecha_revision = datetime.now()
+
+    historial = HistorialIncapacidad(
+        id_incapacidad=incapacidad.id_incapacidad,
+        fecha_anterior_inicio=incapacidad.fecha_inicio,
+        fecha_anterior_fin=incapacidad.fecha_fin,
+        fecha_nueva_inicio=incapacidad.fecha_inicio,
+        fecha_nueva_fin=incapacidad.fecha_fin,
+        motivo_cambio=(
+            "Incapacidad aprobada mediante apelación. "
+            + (
+                datos.respuesta.strip()
+                if datos.respuesta
+                else "El coordinador aprobó la apelación."
+            )
+        ),
+        fecha_cambio=fecha_revision,
+        id_usuario_cambio=current_user.id_usuario,
+    )
+
+    incapacidad.estado = "aprobada"
+    incapacidad.id_coordinador_revisor = current_user.id_usuario
+    incapacidad.fecha_revision = fecha_revision
+    incapacidad.observacion_revision = datos.respuesta
+
+    sincronizar_acceso_academico(
+        db,
+        incapacidad,
+    )
+
+    db.add(historial)
+
+
+def guardar_revision_apelacion(
+    db: Session,
+    apelacion: Apelacion,
+) -> None:
+    try:
+        db.commit()
+        db.refresh(apelacion)
+
+    except HTTPException:
+        db.rollback()
+        raise
+
+    except Exception as exc:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo actualizar la apelación",
+        ) from exc
+
+
+def notificar_resultado_apelacion(
+    background_tasks: BackgroundTasks,
+    incapacidad: Incapacidad,
+    datos: ApelacionUpdate,
+    estado: str,
+) -> None:
+    estudiante = incapacidad.usuario
+
+    if (
+        estudiante is None
+        or estudiante.tipo_de_usuario != "estudiante"
+        or not estudiante.correo
+    ):
+        return
+
+    resultado = "aprobada" if estado == "aprobada" else "rechazada"
+
+    mensaje = (
+        f"Tu apelación correspondiente a la incapacidad "
+        f"con número de radicado "
+        f"{incapacidad.numero_radicado} ha sido {resultado}."
+    )
+
+    if estado == "aprobada":
+        mensaje += (
+            " Tu incapacidad también ha sido aprobada. "
+            "El acceso académico fue gestionado según "
+            "las fechas de la incapacidad."
+        )
+
+    background_tasks.add_task(
+        notificar_usuario,
+        destinatario=estudiante.correo,
+        nombres_usuario=(
+            f"{estudiante.nombres_compl} "
+            f"{estudiante.apellidos_compl}"
+        ),
+        asunto=(
+            f"Resultado de apelación - "
+            f"{incapacidad.numero_radicado}"
+        ),
+        titulo=f"Tu apelación fue {resultado}",
+        mensaje=mensaje,
+        detalle=(
+            datos.respuesta.strip()
+            if datos.respuesta
+            else "El coordinador no agregó observaciones."
+        ),
+    )
+
+
+def obtener_mensaje_revision(estado: str) -> str:
+    if estado == "aprobada":
+        return (
+            "Apelación aprobada. La incapacidad fue aprobada "
+            "y el acceso académico fue gestionado."
+        )
+
+    return "Apelación rechazada correctamente"
+
+
 # ============================================================
 # PUT /apelaciones/{id_apelacion}
 # El coordinador revisa y actualiza una apelación.
@@ -500,134 +690,46 @@ def actualizar_apelacion(
         current_user,
     )
 
-    if apelacion.estado != "pendiente":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Esta apelación ya fue revisada",
-        )
-
     incapacidad = apelacion.incapacidad
 
-    if incapacidad.estado != "rechazada":
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="La incapacidad ya no se encuentra en estado rechazado",
-        )
-
-    estado = (
-        datos.estado.value
-        if isinstance(datos.estado, EstadoApelacion)
-        else datos.estado
+    validar_revision_apelacion(
+        apelacion,
+        incapacidad,
     )
 
+    estado = obtener_estado_apelacion(datos)
+
+    apelacion.respuesta = datos.respuesta
+    apelacion.estado = estado
+    apelacion.id_revisor = current_user.id_usuario
+
     try:
-        apelacion.respuesta = datos.respuesta
-        apelacion.estado = estado
-        apelacion.id_revisor = current_user.id_usuario
-
         if estado == "aprobada":
-            fecha_revision = datetime.now()
-
-            historial = HistorialIncapacidad(
-                id_incapacidad=incapacidad.id_incapacidad,
-                fecha_anterior_inicio=incapacidad.fecha_inicio,
-                fecha_anterior_fin=incapacidad.fecha_fin,
-                fecha_nueva_inicio=incapacidad.fecha_inicio,
-                fecha_nueva_fin=incapacidad.fecha_fin,
-                motivo_cambio=(
-                    "Incapacidad aprobada mediante apelación. "
-                    + (
-                        datos.respuesta.strip()
-                        if datos.respuesta
-                        else "El coordinador aprobó la apelación."
-                    )
-                ),
-                fecha_cambio=fecha_revision,
-                id_usuario_cambio=current_user.id_usuario,
-            )
-
-            incapacidad.estado = "aprobada"
-            incapacidad.id_coordinador_revisor = current_user.id_usuario
-            incapacidad.fecha_revision = fecha_revision
-            incapacidad.observacion_revision = datos.respuesta
-
-            sincronizar_acceso_academico(
+            aprobar_incapacidad_por_apelacion(
                 db,
                 incapacidad,
+                datos,
+                current_user,
             )
 
-            db.add(historial)
-
-        db.commit()
-        db.refresh(apelacion)
+        guardar_revision_apelacion(
+            db,
+            apelacion,
+        )
 
     except HTTPException:
         db.rollback()
         raise
 
-    except Exception:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No se pudo actualizar la apelación",
-        )
-
-    # Notificar al estudiante únicamente después de guardar
-    # correctamente el resultado de la apelación.
-    estudiante = incapacidad.usuario
-
-    if (
-        estudiante is not None
-        and estudiante.tipo_de_usuario == "estudiante"
-        and estudiante.correo
-    ):
-        resultado = (
-            "aprobada"
-            if estado == "aprobada"
-            else "rechazada"
-        )
-
-        mensaje = (
-            f"Tu apelación correspondiente a la incapacidad "
-            f"con número de radicado "
-            f"{incapacidad.numero_radicado} ha sido {resultado}."
-        )
-
-        if estado == "aprobada":
-            mensaje += (
-                " Tu incapacidad también ha sido aprobada. "
-                "El acceso académico fue gestionado según "
-                "las fechas de la incapacidad."
-            )
-
-        background_tasks.add_task(
-            notificar_usuario,
-            destinatario=estudiante.correo,
-            nombres_usuario=(
-                f"{estudiante.nombres_compl} "
-                f"{estudiante.apellidos_compl}"
-            ),
-            asunto=(
-                f"Resultado de apelación - "
-                f"{incapacidad.numero_radicado}"
-            ),
-            titulo=f"Tu apelación fue {resultado}",
-            mensaje=mensaje,
-            detalle=(
-                datos.respuesta.strip()
-                if datos.respuesta
-                else "El coordinador no agregó observaciones."
-            ),
-        )
-
-    mensaje_respuesta = (
-        "Apelación aprobada. La incapacidad fue aprobada y el acceso académico fue gestionado."
-        if estado == "aprobada"
-        else "Apelación rechazada correctamente"
+    notificar_resultado_apelacion(
+        background_tasks,
+        incapacidad,
+        datos,
+        estado,
     )
 
     return APIResponse(
         success=True,
-        mensaje=mensaje_respuesta,
+        mensaje=obtener_mensaje_revision(estado),
         data=apelacion,
     )

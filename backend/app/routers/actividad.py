@@ -43,8 +43,12 @@ router = APIRouter(
 )
 
 
+# ============================================================
+# FUNCIONES AUXILIARES
+# ============================================================
 
-def validar_datos_actividad(
+
+def validar_datos_actualizacion_actividad(
     titulo: str | None,
     descripcion: str | None,
 ) -> None:
@@ -155,7 +159,7 @@ async def guardar_cambios_actividad(
 
         raise
 
-    except Exception:
+    except Exception as exc:
         db.rollback()
 
         if archivo_subido:
@@ -167,7 +171,7 @@ async def guardar_cambios_actividad(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="No se pudo actualizar la actividad",
-        )
+        ) from exc
 
 
 def eliminar_archivo_anterior(
@@ -181,18 +185,12 @@ def eliminar_archivo_anterior(
         )
 
 
-# ============================================================
-# FUNCIONES AUXILIARES
-# ============================================================
-
-
 def validar_datos_actividad(
     titulo: str,
     descripcion: str,
     fecha_publicacion: date,
     fecha_limite: date,
 ) -> None:
-
     if not titulo.strip() or not descripcion.strip():
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -212,7 +210,6 @@ def validar_datos_actividad(
 async def preparar_archivo_actividad(
     archivo: UploadFile | None,
 ) -> dict | None:
-
     if archivo is None:
         return None
 
@@ -227,7 +224,6 @@ def guardar_actividad(
     actividad: Actividad,
     archivo_subido: dict | None,
 ) -> Actividad:
-
     try:
         db.add(actividad)
         db.commit()
@@ -254,7 +250,6 @@ def obtener_datos_notificacion(
     db: Session,
     actividad: Actividad,
 ) -> tuple[Materia | None, Curso | None]:
-
     materia = (
         db.query(Materia)
         .filter(
@@ -272,6 +267,7 @@ def obtener_datos_notificacion(
     )
 
     return materia, curso
+
 
 def obtener_asignacion_docente(
     db: Session,
@@ -424,6 +420,7 @@ def verificar_acceso_actividad(
 # NOTIFICACIONES
 # ============================================================
 
+
 def notificar_publicacion_actividad(
     background_tasks: BackgroundTasks,
     db: Session,
@@ -435,7 +432,6 @@ def notificar_publicacion_actividad(
     Programa notificaciones para los estudiantes inscritos
     en el curso donde se publicó la actividad.
     """
-
     estudiantes = (
         db.query(Usuario)
         .join(
@@ -488,6 +484,7 @@ def notificar_publicacion_actividad(
 # Crear actividad con archivo opcional.
 # ============================================================
 
+
 @router.post(
     "",
     response_model=ActividadResponse,
@@ -505,7 +502,6 @@ async def crear_actividad(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(require_role("docente")),
 ):
-    # 1. Validar información recibida.
     validar_datos_actividad(
         titulo,
         descripcion,
@@ -513,7 +509,6 @@ async def crear_actividad(
         fecha_limite,
     )
 
-    # 2. Verificar asignación del docente.
     asignacion = obtener_asignacion_docente(
         db,
         current_user,
@@ -521,12 +516,10 @@ async def crear_actividad(
         numero_curso,
     )
 
-    # 3. Preparar archivo adjunto.
     archivo_subido = await preparar_archivo_actividad(
         archivo,
     )
 
-    # 4. Construir actividad.
     nueva_actividad = Actividad(
         id_usuario=current_user.id_usuario,
         titulo=titulo.strip(),
@@ -544,20 +537,17 @@ async def crear_actividad(
         id_curso=asignacion.id_curso,
     )
 
-    # 5. Guardar en la base de datos.
     guardar_actividad(
         db,
         nueva_actividad,
         archivo_subido,
     )
 
-    # 6. Obtener información para las notificaciones.
     materia, curso = obtener_datos_notificacion(
         db,
         nueva_actividad,
     )
 
-    # 7. Programar notificaciones.
     if materia is not None and curso is not None:
         notificar_publicacion_actividad(
             background_tasks,
@@ -574,6 +564,7 @@ async def crear_actividad(
 # GET /actividades
 # Listar actividades según el rol.
 # ============================================================
+
 
 @router.get(
     "",
@@ -643,6 +634,7 @@ def listar_actividades(
 # Consultar actividad concreta.
 # ============================================================
 
+
 @router.get(
     "/{id_actividad}",
     response_model=ActividadResponse,
@@ -705,7 +697,7 @@ async def editar_actividad(
         current_user,
     )
 
-    validar_datos_actividad(
+    validar_datos_actualizacion_actividad(
         titulo,
         descripcion,
     )

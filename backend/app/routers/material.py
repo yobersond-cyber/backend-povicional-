@@ -286,6 +286,123 @@ def notificar_publicacion_material(
         )
 
 
+def verificar_propietario_material(
+    material: MaterialAcademico,
+    current_user: Usuario,
+) -> None:
+    if material.id_usuario != current_user.id_usuario:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No puedes editar material publicado por otro docente",
+        )
+
+
+def actualizar_asignacion_material(
+    db: Session,
+    material: MaterialAcademico,
+    current_user: Usuario,
+    nombre_materia: str | None,
+    numero_curso: str | None,
+) -> None:
+    if nombre_materia is None and numero_curso is None:
+        return
+
+    curso_actual = obtener_curso_de_material(
+        db,
+        material,
+    )
+
+    materia_actual = (
+        db.query(Materia)
+        .filter(Materia.id_materia == material.id_materia)
+        .first()
+    )
+
+    asignacion = obtener_asignacion_docente(
+        db,
+        current_user,
+        nombre_materia or materia_actual.nombre_materia,
+        numero_curso or curso_actual.numero_curso,
+    )
+
+    material.id_materia = asignacion.id_materia
+    material.id_curso = asignacion.id_curso
+
+
+def aplicar_datos_material(
+    material: MaterialAcademico,
+    titulo: str | None,
+    descripcion: str | None,
+    fecha_publicacion: datetime | None,
+) -> None:
+    if titulo is not None:
+        material.titulo = titulo
+
+    if descripcion is not None:
+        material.descripcion = descripcion
+
+    if fecha_publicacion is not None:
+        material.fecha_publicacion = fecha_publicacion
+
+
+async def reemplazar_archivo_material(
+    material: MaterialAcademico,
+    archivo: UploadFile | None,
+) -> tuple[str | None, str | None, dict | None]:
+    archivo_anterior_public_id = material.archivo_public_id
+    archivo_anterior_resource_type = material.archivo_resource_type
+    archivo_nuevo = None
+
+    if archivo is not None and archivo.filename:
+        archivo_nuevo = await subir_archivo(
+            archivo,
+            "materiales",
+        )
+
+        material.archivo = archivo_nuevo["url"]
+        material.archivo_public_id = archivo_nuevo["public_id"]
+        material.archivo_resource_type = archivo_nuevo["resource_type"]
+
+    return (
+        archivo_anterior_public_id,
+        archivo_anterior_resource_type,
+        archivo_nuevo,
+    )
+
+
+def guardar_material_actualizado(
+    db: Session,
+    material: MaterialAcademico,
+    archivo_nuevo: dict | None,
+) -> None:
+    try:
+        db.commit()
+        db.refresh(material)
+
+    except Exception:
+        db.rollback()
+
+        if archivo_nuevo:
+            eliminar_archivo(
+                archivo_nuevo["public_id"],
+                archivo_nuevo["resource_type"],
+            )
+
+        raise
+
+
+def eliminar_archivo_anterior(
+    archivo_nuevo: dict | None,
+    archivo_anterior_public_id: str | None,
+    archivo_anterior_resource_type: str | None,
+) -> None:
+    if archivo_nuevo and archivo_anterior_public_id:
+        eliminar_archivo(
+            archivo_anterior_public_id,
+            archivo_anterior_resource_type or "image",
+        )
+
+
 @router.post("")
 async def crear_material(
     background_tasks: BackgroundTasks,
@@ -486,11 +603,10 @@ async def editar_material(
         id_material,
     )
 
-    if material.id_usuario != current_user.id_usuario:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No puedes editar material publicado por otro docente",
-        )
+    verificar_propietario_material(
+        material,
+        current_user,
+    )
 
     verificar_acceso_material(
         db,
@@ -498,75 +614,41 @@ async def editar_material(
         current_user,
     )
 
-    if nombre_materia is not None or numero_curso is not None:
-        curso_actual = obtener_curso_de_material(
-            db,
-            material,
-        )
+    actualizar_asignacion_material(
+        db,
+        material,
+        current_user,
+        nombre_materia,
+        numero_curso,
+    )
 
-        materia_actual = (
-            db.query(Materia)
-            .filter(Materia.id_materia == material.id_materia)
-            .first()
-        )
+    aplicar_datos_material(
+        material,
+        titulo,
+        descripcion,
+        fecha_publicacion,
+    )
 
-        asignacion = obtener_asignacion_docente(
-            db,
-            current_user,
-            nombre_materia or materia_actual.nombre_materia,
-            numero_curso or curso_actual.numero_curso,
-        )
+    (
+        archivo_anterior_public_id,
+        archivo_anterior_resource_type,
+        archivo_nuevo,
+    ) = await reemplazar_archivo_material(
+        material,
+        archivo,
+    )
 
-        material.id_materia = asignacion.id_materia
-        material.id_curso = asignacion.id_curso
+    guardar_material_actualizado(
+        db,
+        material,
+        archivo_nuevo,
+    )
 
-    if titulo is not None:
-        material.titulo = titulo
-
-    if descripcion is not None:
-        material.descripcion = descripcion
-
-    if fecha_publicacion is not None:
-        material.fecha_publicacion = fecha_publicacion
-
-    archivo_anterior_public_id = material.archivo_public_id
-    archivo_anterior_resource_type = material.archivo_resource_type
-
-    archivo_nuevo = None
-
-    if archivo is not None and archivo.filename:
-        archivo_nuevo = await subir_archivo(
-            archivo,
-            "materiales",
-        )
-
-        material.archivo = archivo_nuevo["url"]
-        material.archivo_public_id = archivo_nuevo["public_id"]
-        material.archivo_resource_type = archivo_nuevo["resource_type"]
-
-    try:
-        db.commit()
-        db.refresh(material)
-
-    except Exception:
-        db.rollback()
-
-        if archivo_nuevo:
-            eliminar_archivo(
-                archivo_nuevo["public_id"],
-                archivo_nuevo["resource_type"],
-            )
-
-        raise
-
-    if (
-        archivo_nuevo
-        and archivo_anterior_public_id
-    ):
-        eliminar_archivo(
-            archivo_anterior_public_id,
-            archivo_anterior_resource_type or "image",
-        )
+    eliminar_archivo_anterior(
+        archivo_nuevo,
+        archivo_anterior_public_id,
+        archivo_anterior_resource_type,
+    )
 
     return material
 

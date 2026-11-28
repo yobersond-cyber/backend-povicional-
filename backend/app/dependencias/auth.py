@@ -1,11 +1,10 @@
-
 from datetime import date
+
+import jwt
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-
-import jwt
 
 from app.core.config import settings
 from app.database.conection import get_db
@@ -27,31 +26,24 @@ def obtener_rol_efectivo(usuario: Usuario) -> str:
     return usuario.tipo_de_usuario
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(security),
-    db: Session = Depends(get_db),
-) -> Usuario:
-
-    credentials_exception = HTTPException(
+def _crear_error_autenticacion() -> HTTPException:
+    return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token inválido o sesión expirada. Inicia sesión nuevamente.",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    if credentials is None:
-        raise credentials_exception
 
-    token = credentials.credentials
-
-    # 1. Validar firma, expiración e información obligatoria del JWT.
+def _validar_token(token: str, error: HTTPException) -> tuple[int, str]:
+    """
+    Valida el JWT y extrae el identificador y el rol.
+    """
     try:
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM],
-            options={
-                "require": ["exp", "sub", "rol"],
-            },
+            options={"require": ["exp", "sub", "rol"]},
         )
 
         sub = payload.get("sub")
@@ -63,31 +55,40 @@ def get_current_user(
             or len(sub) > 10
             or not isinstance(rol_token, str)
         ):
-            raise credentials_exception
+            raise error
 
         id_usuario = int(sub)
 
         if id_usuario <= 0:
-            raise credentials_exception
+            raise error
+
+        return id_usuario, rol_token
 
     except (jwt.InvalidTokenError, ValueError, TypeError) as exc:
-        raise credentials_exception from exc
+        raise error from exc
 
-    # 2. Consultar el usuario real en la base de datos.
-    usuario = (
+
+def _obtener_usuario_por_id(
+    db: Session,
+    id_usuario: int,
+) -> Usuario | None:
+    return (
         db.query(Usuario)
-        .filter(
-            Usuario.id_usuario == id_usuario
-        )
+        .filter(Usuario.id_usuario == id_usuario)
         .first()
     )
 
-    if usuario is None:
-        raise credentials_exception
 
-    # 3. Comprobar que el rol del JWT coincida con el rol actual.
+def _validar_rol_token(
+    usuario: Usuario,
+    rol_token: str,
+    error: HTTPException,
+) -> str:
+    """
+    Comprueba que el rol del token coincida con el rol actual.
+    """
     if rol_token != usuario.tipo_de_usuario:
-        raise credentials_exception
+        raise error
 
     rol = obtener_rol_efectivo(usuario)
 
@@ -100,31 +101,36 @@ def get_current_user(
     }
 
     if rol not in roles_validos:
-        raise credentials_exception
+        raise error
 
-    # 4. El administrador global no debe tener colegio.
+    return rol
+
+
+def _validar_colegio_usuario(
+    usuario: Usuario,
+    rol: str,
+    db: Session,
+) -> None:
+    """
+    Comprueba la asociación y el estado del colegio del usuario.
+    """
     if rol == "administrador":
         if usuario.id_colegio is not None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="El administrador global no puede estar asociado a un colegio",
             )
+        return
 
-        return usuario
-
-    # 5. El resto de usuarios debe pertenecer a un colegio.
     if usuario.id_colegio is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tu cuenta no está asociada a un colegio",
         )
 
-    # 6. Comprobar que el colegio exista y esté activo.
     colegio = (
         db.query(Colegio)
-        .filter(
-            Colegio.id_colegio == usuario.id_colegio
-        )
+        .filter(Colegio.id_colegio == usuario.id_colegio)
         .first()
     )
 
@@ -134,15 +140,47 @@ def get_current_user(
             detail="El colegio no existe o se encuentra inactivo",
         )
 
-    # 7. Los estudiantes deben estar aprobados.
-    if (
-        rol == "estudiante"
-        and usuario.estado_aprobacion != "aprobada"
-    ):
+
+def _validar_aprobacion_estudiante(
+    usuario: Usuario,
+    rol: str,
+) -> None:
+    """
+    Comprueba que la cuenta del estudiante esté aprobada.
+    """
+    if rol == "estudiante" and usuario.estado_aprobacion != "aprobada":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Tu cuenta todavía no está aprobada por el colegio",
         )
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    db: Session = Depends(get_db),
+) -> Usuario:
+    """
+    Obtiene el usuario autenticado y valida su acceso institucional.
+    """
+    error = _crear_error_autenticacion()
+
+    if credentials is None:
+        raise error
+
+    id_usuario, rol_token = _validar_token(
+        credentials.credentials,
+        error,
+    )
+
+    usuario = _obtener_usuario_por_id(db, id_usuario)
+
+    if usuario is None:
+        raise error
+
+    rol = _validar_rol_token(usuario, rol_token, error)
+
+    _validar_colegio_usuario(usuario, rol, db)
+    _validar_aprobacion_estudiante(usuario, rol)
 
     return usuario
 
@@ -157,8 +195,6 @@ def verificar_acceso_academico(
 
     Los demás roles conservan su funcionamiento habitual.
     """
-
-    # Esta restricción solo aplica a estudiantes.
     if current_user.tipo_de_usuario != "estudiante":
         return current_user
 
@@ -196,19 +232,11 @@ def verificar_acceso_academico(
 def require_role(*roles: str):
     """
     Protege las rutas según el rol actual del usuario.
-
-    Ejemplos:
-    require_role("administrador")
-    require_role("rector")
-    require_role("coordinador")
-    require_role("docente")
-    require_role("estudiante")
     """
 
     def role_checker(
         current_user: Usuario = Depends(get_current_user),
     ) -> Usuario:
-
         rol_actual = obtener_rol_efectivo(current_user)
 
         if rol_actual not in roles:

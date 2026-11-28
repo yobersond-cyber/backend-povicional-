@@ -1,3 +1,4 @@
+
 from datetime import date
 
 from sqlalchemy.orm import Session
@@ -6,11 +7,83 @@ from app.models.acceso_academico import AccesoAcademico
 from app.models.incapacidad import Incapacidad
 
 
-def finalizar_accesos_vencidos(db: Session) -> int:
-    hoy = date.today()
-    cambios = 0
+def actualizar_estado_acceso(
+    acceso: AccesoAcademico,
+    estado: str,
+) -> int:
+    if acceso.estado == estado:
+        return 0
 
-    accesos = (
+    acceso.estado = estado
+    return 1
+
+
+def actualizar_estado_incapacidad_finalizada(
+    incapacidad: Incapacidad,
+) -> int:
+    if incapacidad.estado == "finalizada":
+        return 0
+
+    incapacidad.estado = "finalizada"
+    return 1
+
+
+def procesar_incapacidad_aprobada(
+    acceso: AccesoAcademico,
+    incapacidad: Incapacidad,
+    hoy: date,
+) -> int:
+    if incapacidad.fecha_fin < hoy:
+        cambios = actualizar_estado_acceso(
+            acceso,
+            "finalizado",
+        )
+        cambios += actualizar_estado_incapacidad_finalizada(
+            incapacidad,
+        )
+        return cambios
+
+    if hoy < incapacidad.fecha_inicio:
+        return actualizar_estado_acceso(
+            acceso,
+            "suspendido",
+        )
+
+    return actualizar_estado_acceso(
+        acceso,
+        "activo",
+    )
+
+
+def procesar_acceso(
+    acceso: AccesoAcademico,
+    hoy: date,
+) -> int:
+    incapacidad = acceso.incapacidad
+
+    if incapacidad.estado == "aprobada":
+        return procesar_incapacidad_aprobada(
+            acceso,
+            incapacidad,
+            hoy,
+        )
+
+    if incapacidad.estado == "finalizada":
+        return actualizar_estado_acceso(
+            acceso,
+            "finalizado",
+        )
+
+    return actualizar_estado_acceso(
+        acceso,
+        "suspendido",
+    )
+
+
+def obtener_accesos_academicos(
+    db: Session,
+) -> list[AccesoAcademico]:
+    return (
         db.query(AccesoAcademico)
         .join(
             Incapacidad,
@@ -19,52 +92,19 @@ def finalizar_accesos_vencidos(db: Session) -> int:
         .all()
     )
 
+
+def finalizar_accesos_vencidos(db: Session) -> int:
+    hoy = date.today()
+    cambios = 0
+
+    accesos = obtener_accesos_academicos(db)
+
     try:
         for acceso in accesos:
-            incapacidad = acceso.incapacidad
-
-            if incapacidad.estado == "aprobada":
-
-                # La incapacidad ya terminó.
-                if incapacidad.fecha_fin < hoy:
-
-                    if acceso.estado != "finalizado":
-                        acceso.estado = "finalizado"
-                        cambios += 1
-
-                    if incapacidad.estado != "finalizada":
-                        incapacidad.estado = "finalizada"
-                        cambios += 1
-
-                    continue
-
-                # La incapacidad todavía no comienza.
-                if hoy < incapacidad.fecha_inicio:
-
-                    if acceso.estado != "suspendido":
-                        acceso.estado = "suspendido"
-                        cambios += 1
-
-                    continue
-
-                # La incapacidad está vigente.
-                if acceso.estado != "activo":
-                    acceso.estado = "activo"
-                    cambios += 1
-
-            # La incapacidad ya fue finalizada.
-            elif incapacidad.estado == "finalizada":
-
-                if acceso.estado != "finalizado":
-                    acceso.estado = "finalizado"
-                    cambios += 1
-
-            # La incapacidad está pendiente o rechazada.
-            else:
-
-                if acceso.estado != "suspendido":
-                    acceso.estado = "suspendido"
-                    cambios += 1
+            cambios += procesar_acceso(
+                acceso,
+                hoy,
+            )
 
         if cambios > 0:
             db.commit()
