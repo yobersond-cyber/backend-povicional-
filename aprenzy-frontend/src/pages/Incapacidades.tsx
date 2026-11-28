@@ -1,5 +1,6 @@
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -102,7 +103,7 @@ export default function Incapacidades() {
   // CARGAR INCAPACIDADES DESDE EL BACKEND
   // ============================================================
 
-  async function cargarIncapacidades() {
+  const cargarIncapacidades = useCallback(async () => {
     setCargando(true);
     setError("");
 
@@ -129,13 +130,13 @@ export default function Incapacidades() {
     } finally {
       setCargando(false);
     }
-  }
+  }, [esCoordinador, esEstudiante]);
 
   useEffect(() => {
     void cargarIncapacidades();
   }, [
+    cargarIncapacidades,
     usuario?.id_usuario,
-    usuario?.tipo_de_usuario,
   ]);
 
   // ============================================================
